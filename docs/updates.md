@@ -32,4 +32,6 @@ node tools/upstream-report.mjs upstream-report.md
 
 macOS ARM64 默认由 GitHub Intel Mac 交叉构建，流程验证 ARM64 组件与签名，原生启动和扩展联动需在 Apple 芯片机器验证并记录。标准 ARM 执行器可用时，可勾选手动运行中的 `native_mac_arm64`，直接执行原生 ARM 安装包测试。只做验证时将 `release_tag` 留空。
 
+main 分支的构建按提交隔离并发队列，过期构建会自动取消。长期排队且未响应普通取消的旧任务会被清理，避免阻塞新提交。
+
 若需要回退，从 Releases 获取前一版本并备份用户数据后安装。若版本改变了数据格式，使用升级前的备份验证兼容性。

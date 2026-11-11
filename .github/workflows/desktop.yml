@@ -18,7 +18,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: foxdown-build-${{ github.ref }}
+  group: foxdown-build-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'latest' }}-${{ inputs.native_mac_arm64 || false }}
   cancel-in-progress: true
 jobs:
   prepare:
@@ -135,6 +135,14 @@ jobs:
             if (run.id >= Number(process.env.GITHUB_RUN_ID) || !['queued', 'in_progress', 'pending'].includes(run.status)) continue;
             const cancelled = await fetch(`${api}/runs/${run.id}/cancel`, { method: 'POST', headers });
             console.log(`旧构建 ${run.id} 的取消结果：HTTP ${cancelled.status}`);
+            if (run.status === 'queued' && Date.now() - Date.parse(run.created_at) > 10 * 60 * 1000 && cancelled.status === 202) {
+              await new Promise(resolve => setTimeout(resolve, 10000));
+              const refreshed = await fetch(`${api}/runs/${run.id}`, { headers });
+              if (refreshed.ok && (await refreshed.json()).status === 'queued') {
+                const forced = await fetch(`${api}/runs/${run.id}/force-cancel`, { method: 'POST', headers });
+                console.log(`长期排队且未响应普通取消的旧构建 ${run.id}：HTTP ${forced.status}`);
+              }
+            }
           }
           NODE
       - uses: actions/checkout@v5
