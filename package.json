@@ -35,6 +35,8 @@
     "files": [
       "electron/**/*",
       "package.json",
+      "LICENSE",
+      "docs/third-party.md",
       "web/public/logo.png"
     ],
     "extraResources": [

@@ -53,6 +53,7 @@ npm run dev-electron
 
 | Project | What Foxdown uses or takes inspiration from |
 |---|---|
+| [Rdown](https://github.com/aimaonews/Rdown) | Original project codebase, retained under its MIT license and copyright notice |
 | [aria2](https://github.com/aria2/aria2) | Download engine and JSON-RPC for HTTP, FTP, SFTP, Metalink, and BitTorrent |
 | [Motrix](https://github.com/agalwood/Motrix) | Desktop engine management, session recovery, tracker settings, and the pinned aria2 builds |
 | [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) | Stream selectors, segment filtering, remuxing and the optional external stream engine |

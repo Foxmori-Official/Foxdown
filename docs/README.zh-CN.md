@@ -37,6 +37,8 @@ npm run dev-electron
 
 ## 参考项目
 
+Foxdown 基于 [Rdown](https://github.com/aimaonews/Rdown) 的代码继续开发，保留其 MIT 许可证和原作者版权声明。
+
 aria2 提供下载引擎，Motrix 提供桌面引擎管理和会话持久化参考，N_m3u8DL-RE 提供选流和分片下载参考。Gopeed 与 Gopeed 浏览器扩展提供任务接口及请求头透传参考。Aria2-Explorer 提供浏览器接管、多服务器路由和回退参考，cat-catch 提供媒体嗅探、过滤和预览参考。另使用 ffmpeg-static 的 Windows 二进制、ffmpeg-macos-builds 的 macOS LGPL 二进制和 hls.js 播放器。每个项目的链接和具体用途见 [参考项目表](../README.md#reference-projects)。
 
 项目代码使用 [MIT](../LICENSE) 许可证。外部引擎和第三方代码遵循各自的许可证。 [第三方声明](third-party.md)

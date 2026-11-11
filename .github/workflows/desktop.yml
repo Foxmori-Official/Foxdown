@@ -34,7 +34,13 @@ jobs:
       - run: npm --prefix server ci
       - run: npm --prefix web ci
       - run: npm test
-      - run: npm run test:web-build
+      - name: Verify web build
+        shell: bash
+        run: |
+          set -o pipefail
+          if npm run test:web-build 2>&1 | tee web-build.log; then exit 0; fi
+          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('web-build.log','utf8').slice(-12000); console.log('::error title=Web build failed::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
+          exit 1
       - run: npm run engines
       - run: npm run test:desktop-engine
       - name: Build installer

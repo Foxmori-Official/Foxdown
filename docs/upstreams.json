@@ -1,5 +1,10 @@
 [
   {
+    "repo": "aimaonews/Rdown",
+    "baseline": "807f8ef7d83979a626347641af379716bb315a74",
+    "focus": "Original project, download engines, browser extension and API fixes"
+  },
+  {
     "repo": "aria2/aria2",
     "baseline": "9e7273583f83e881e3ec067b523ba88724088d2f",
     "focus": "RPC, HTTP, BitTorrent, sessions and engine fixes"
