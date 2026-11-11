@@ -36,7 +36,7 @@ if (target === 'mac') {
     const header = Buffer.alloc(4);
     try { await handle.read(header, 0, 4, 0); } finally { await handle.close(); }
     if (!['cffaedfe', 'cefaedfe', 'cafebabe', 'bebafeca', 'cafebabf'].includes(header.toString('hex'))) continue;
-    execFileSync('lipo', ['-verify_arch', arch === 'x64' ? 'x86_64' : arch, file], { stdio: 'pipe' });
+    execFileSync('lipo', [file, '-verify_arch', arch === 'x64' ? 'x86_64' : arch], { stdio: 'pipe' });
     verified++;
   }
   console.log(`Verified ${verified} Mach-O components for ${arch}`);

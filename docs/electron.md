@@ -35,3 +35,9 @@ npm run pack -- --win --arm64
 在对应系统执行命令，产物位于 `dist-electron/`。Windows ARM64 的 Electron 进程为 ARM64，下载引擎通过 Windows 11 的 x64 模拟层运行。macOS 安装包支持 macOS 13 或更新版本，需要配置发布者签名和公证才能获得正式分发体验。当前构建使用临时签名，Windows 构建未做发布者签名。
 
 打包后，运行时后端和 Web UI 在应用资源目录 `runtime/` 中。日志和会话位于用户可写目录。安装文件路径与下载路径分开。
+
+## macOS 提示组件将不兼容未来系统
+
+Apple 芯片 Mac 运行 Intel 应用或组件时，系统可能提示未来 macOS 将结束兼容。这与 [Rosetta 支持变化](https://support.apple.com/en-us/102527) 有关。Apple 芯片请安装 `Foxdown-<版本>-mac-arm64.dmg`；`mac-x64.dmg` 供 Intel Mac 使用。
+
+Foxdown 的 ARM64 包包含原生 ARM64 Electron、aria2、FFmpeg、FFprobe 和媒体共享库。打包流程逐一检查 Mach-O 组件架构，发现不匹配就停止构建。关闭旧版后，将 ARM64 版拖入「应用程序」替换已有 Foxdown。
