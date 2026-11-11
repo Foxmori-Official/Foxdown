@@ -30,4 +30,6 @@ node tools/upstream-report.mjs upstream-report.md
 3. 准备对应版本的中英双语发布说明。可以在 main 分支提交标题为 `release: v<version>` 的发布提交，也可在 Actions 手动运行构建并填写 `release_tag`。工作流会先核对所有包与锁文件的版本，完成四个平台的构建和测试后，为该提交创建标签并生成 Release 草稿。直接推送 `v<version>` 标签也支持同一流程。普通提交仅构建，不创建版本。
 4. 在草稿中补充此次变更、已知限制、上游来源与升级说明，核对签名与安装结果后发布。用户通过「查看更新」访问已发布的版本。
 
+macOS ARM64 默认由 GitHub Intel Mac 交叉构建，流程验证 ARM64 组件与签名，原生启动和扩展联动需在 Apple 芯片机器验证并记录。标准 ARM 执行器可用时，可勾选手动运行中的 `native_mac_arm64`，直接执行原生 ARM 安装包测试。只做验证时将 `release_tag` 留空。
+
 若需要回退，从 Releases 获取前一版本并备份用户数据后安装。若版本改变了数据格式，使用升级前的备份验证兼容性。

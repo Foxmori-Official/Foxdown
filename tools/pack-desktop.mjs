@@ -27,6 +27,7 @@ if (target === 'mac') {
   const { version } = require('../package.json');
   const output = path.resolve('dist-electron');
   const app = path.join(output, arch === 'arm64' ? 'mac-arm64' : 'mac', 'Foxdown.app');
+  execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: 'pipe' });
   await fs.access(path.join(app, 'Contents', 'Resources', 'runtime', 'server', 'node_modules', 'express', 'package.json'));
   let verified = 0;
   for (const entry of await fs.readdir(app, { recursive: true, withFileTypes: true })) {

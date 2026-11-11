@@ -146,7 +146,7 @@ try {
   await app.screenshot({ path: path.join(shots, 'settings.png'), animations: 'disabled' });
   await app.getByRole('button', { name: 'Tasks', exact: true }).click();
   await app.getByRole('tab', { name: 'All', exact: true, selected: true }).waitFor();
-  console.log('Electron used bundled native engines; expandable sidebar settings, category memory, pending autosave and login controls passed.');
+  console.log(`Electron ${packaged ? 'packaged app' : 'host development runtime'} passed: expandable sidebar settings, category memory, pending autosave and login controls.`);
 
   await fs.mkdir(path.join(temp, 'browser/Default'), { recursive: true });
   await fs.writeFile(path.join(temp, 'browser/Default/Preferences'), JSON.stringify({ download: { default_directory: path.join(temp, 'browser-downloads'), prompt_for_download: false } }));

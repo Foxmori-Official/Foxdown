@@ -1,6 +1,6 @@
 # Foxdown 验证记录
 
-2026-11-11，macOS Apple 芯片开发机。
+2026-11-12，macOS Apple 芯片开发机。
 
 - `npm test` 覆盖浏览器扩展逻辑、引导和选项界面、API、调度、持久化、批量重试、种子文件选择和九种语言。
 - `npm run test:web-build` 验证生产构建依赖、按需加载和首屏资源预算。
@@ -13,3 +13,7 @@
 [四个平台构建和测试的运行记录](https://github.com/Foxmori-Official/Foxdown/actions/workflows/desktop.yml) · [上游变化报告](https://github.com/Foxmori-Official/Foxdown/actions/workflows/upstream.yml)
 
 Windows x64 与 Windows ARM64 的引擎测试及安装包构建由各自的 GitHub Actions runner 执行。以运行结果为准。Windows ARM64 桌面进程为原生 ARM64，所带下载引擎为 x64，依赖 Windows 11 的模拟支持。
+
+GitHub 的标准 ARM Mac 执行器持续排队时，默认使用 Intel Mac 交叉构建 ARM64 安装包。构建流程检查每个 Mach-O 组件的 ARM64 架构、应用签名和运行依赖；桌面与扩展联动在宿主架构执行。原生 ARM64 打包应用的启动、设置切换、自动保存、128 KiB 下载接管和失败回退另在 Apple 芯片开发机验证。两种验证方式分别记录，不将宿主架构测试视为原生 ARM 执行测试。
+
+需要在 GitHub 执行同一版本的原生 ARM 测试时，可在 Actions 手动运行中勾选 `native_mac_arm64`。此选项使用标准 `macos-26` ARM 执行器。

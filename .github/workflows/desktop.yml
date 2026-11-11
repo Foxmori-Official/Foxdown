@@ -10,6 +10,11 @@ on:
         description: '发布标签，例如 v0.0.1；留空则仅构建'
         required: false
         type: string
+      native_mac_arm64:
+        description: '使用 GitHub 原生 ARM Mac 执行器；默认用 Intel Mac 交叉构建 ARM 安装包'
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -38,10 +43,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { runner: macos-26, target: mac, arch: arm64, suffix: dmg }
-          - { runner: macos-15-intel, target: mac, arch: x64, suffix: dmg }
-          - { runner: windows-2025, target: win, arch: x64, suffix: exe }
-          - { runner: windows-11-arm, target: win, arch: arm64, suffix: exe }
+          - runner: ${{ inputs.native_mac_arm64 && 'macos-26' || 'macos-15-intel' }}
+            target: mac
+            arch: arm64
+            node_arch: ${{ inputs.native_mac_arm64 && 'arm64' || 'x64' }}
+            suffix: dmg
+          - { runner: macos-15-intel, target: mac, arch: x64, node_arch: x64, suffix: dmg }
+          - { runner: windows-2025, target: win, arch: x64, node_arch: x64, suffix: exe }
+          - { runner: windows-11-arm, target: win, arch: arm64, node_arch: arm64, suffix: exe }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     steps:
@@ -49,7 +58,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-          architecture: ${{ matrix.arch }}
+          architecture: ${{ matrix.node_arch }}
           cache: npm
           cache-dependency-path: |
             package-lock.json
@@ -77,15 +86,27 @@ jobs:
           if node tools/pack-desktop.mjs --${{ matrix.target }} --${{ matrix.arch }} 2>&1 | tee installer-build.log; then exit 0; fi
           node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('installer-build.log','utf8').slice(-12000); console.log('::error title=安装包构建失败::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
           exit 1
-      - name: 验证安装包与浏览器扩展
+      - name: 验证桌面应用与浏览器扩展
         shell: bash
         env:
-          FOXDOWN_TEST_PACKAGED: '1'
+          FOXDOWN_TEST_PACKAGED: ${{ matrix.arch == matrix.node_arch && '1' || '0' }}
         run: |
           set -o pipefail
           if (npx --no-install playwright install chromium && npm run test:desktop-extension) 2>&1 | tee desktop-extension.log; then exit 0; fi
           node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('desktop-extension.log','utf8').slice(-12000); console.log('::error title=桌面联动验证失败::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
           exit 1
+      - name: 记录构建与验证架构
+        shell: bash
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+          HOST_ARCH: ${{ matrix.node_arch }}
+        run: |
+          echo "### 输出架构：$TARGET_ARCH；运行验证架构：$HOST_ARCH" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$TARGET_ARCH" != "$HOST_ARCH" ]; then
+            echo '本任务在 Intel Mac 交叉构建原生 ARM64 安装包，逐个验证 Mach-O 架构及应用签名；宿主架构执行桌面与浏览器扩展联动测试。Apple 芯片原生运行验证见项目验证记录，也可手动勾选原生 ARM 执行器。' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '已从安装包启动桌面应用，并执行浏览器扩展真实下载接管与失败回退测试。' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: Foxdown-${{ matrix.target }}-${{ matrix.arch }}
