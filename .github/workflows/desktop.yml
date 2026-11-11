@@ -7,6 +7,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: foxdown-build-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   desktop:
     strategy:
@@ -53,11 +56,14 @@ jobs:
           node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('installer-build.log','utf8').slice(-12000); console.log('::error title=Installer build failed::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
           exit 1
       - name: Verify packaged app and browser extension
+        shell: bash
         env:
           FOXDOWN_TEST_PACKAGED: '1'
         run: |
-          npx --no-install playwright install chromium
-          npm run test:desktop-extension
+          set -o pipefail
+          if (npx --no-install playwright install chromium && npm run test:desktop-extension) 2>&1 | tee desktop-extension.log; then exit 0; fi
+          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('desktop-extension.log','utf8').slice(-12000); console.log('::error title=Desktop integration failed::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: Foxdown-${{ matrix.target }}-${{ matrix.arch }}
@@ -65,7 +71,27 @@ jobs:
           if-no-files-found: error
   extension:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
+      - name: Cancel superseded builds
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          const api = `${process.env.GITHUB_API_URL}/repos/${process.env.GITHUB_REPOSITORY}/actions`;
+          const headers = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json' };
+          const response = await fetch(`${api}/workflows/desktop.yml/runs?branch=main&event=push&per_page=30`, { headers });
+          if (!response.ok) throw new Error(`Cannot list previous builds: HTTP ${response.status}`);
+          const { workflow_runs: runs } = await response.json();
+          for (const run of runs) {
+            if (run.id >= Number(process.env.GITHUB_RUN_ID) || !['queued', 'in_progress', 'pending'].includes(run.status)) continue;
+            const cancelled = await fetch(`${api}/runs/${run.id}/cancel`, { method: 'POST', headers });
+            console.log(`Superseded build ${run.id}: HTTP ${cancelled.status}`);
+          }
+          NODE
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
