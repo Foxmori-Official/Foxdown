@@ -1,17 +1,39 @@
-name: Desktop and extension builds
+name: 桌面应用与浏览器扩展构建
 on:
   push:
     branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: '发布标签，例如 v0.0.1；留空则仅构建'
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
   group: foxdown-build-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  prepare:
+    name: 检查版本与发布说明
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.version.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - id: version
+        env:
+          RELEASE_INPUT: ${{ inputs.release_tag }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: node tools/prepare-release.mjs
   desktop:
+    name: 桌面应用 (${{ matrix.target }}/${{ matrix.arch }})
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -37,32 +59,32 @@ jobs:
       - run: npm --prefix server ci
       - run: npm --prefix web ci
       - run: npm test
-      - name: Verify web build
+      - name: 检查网页构建
         shell: bash
         run: |
           set -o pipefail
           if npm run test:web-build 2>&1 | tee web-build.log; then exit 0; fi
-          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('web-build.log','utf8').slice(-12000); console.log('::error title=Web build failed::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
+          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('web-build.log','utf8').slice(-12000); console.log('::error title=网页构建失败::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
           exit 1
       - run: npm run engines
       - run: npm run test:desktop-engine
-      - name: Build installer
+      - name: 构建安装包
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
           set -o pipefail
           if node tools/pack-desktop.mjs --${{ matrix.target }} --${{ matrix.arch }} 2>&1 | tee installer-build.log; then exit 0; fi
-          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('installer-build.log','utf8').slice(-12000); console.log('::error title=Installer build failed::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
+          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('installer-build.log','utf8').slice(-12000); console.log('::error title=安装包构建失败::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
           exit 1
-      - name: Verify packaged app and browser extension
+      - name: 验证安装包与浏览器扩展
         shell: bash
         env:
           FOXDOWN_TEST_PACKAGED: '1'
         run: |
           set -o pipefail
           if (npx --no-install playwright install chromium && npm run test:desktop-extension) 2>&1 | tee desktop-extension.log; then exit 0; fi
-          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('desktop-extension.log','utf8').slice(-12000); console.log('::error title=Desktop integration failed::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
+          node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('desktop-extension.log','utf8').slice(-12000); console.log('::error title=桌面联动验证失败::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
           exit 1
       - uses: actions/upload-artifact@v4
         with:
@@ -70,12 +92,14 @@ jobs:
           path: dist-electron/Foxdown-*.${{ matrix.suffix }}
           if-no-files-found: error
   extension:
+    name: 浏览器扩展
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: write
     steps:
-      - name: Cancel superseded builds
+      - name: 取消已被替代的旧构建
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,7 +113,7 @@ jobs:
           for (const run of runs) {
             if (run.id >= Number(process.env.GITHUB_RUN_ID) || !['queued', 'in_progress', 'pending'].includes(run.status)) continue;
             const cancelled = await fetch(`${api}/runs/${run.id}/cancel`, { method: 'POST', headers });
-            console.log(`Superseded build ${run.id}: HTTP ${cancelled.status}`);
+            console.log(`旧构建 ${run.id} 的取消结果：HTTP ${cancelled.status}`);
           }
           NODE
       - uses: actions/checkout@v5
@@ -108,8 +132,9 @@ jobs:
           path: Foxdown-extension.zip
           if-no-files-found: error
   draft-release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [desktop, extension]
+    name: 生成版本标签与 Release 草稿
+    if: needs.prepare.outputs.release_tag != ''
+    needs: [prepare, desktop, extension]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -120,16 +145,32 @@ jobs:
           pattern: Foxdown-*
           merge-multiple: true
           path: release
-      - name: Draft GitHub release
+      - name: 汇总产物、校验标签并创建草稿
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
         run: |
           test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
+          version="${RELEASE_TAG#v}"
+          test -s "release/Foxdown-$version-mac-arm64.dmg"
+          test -s "release/Foxdown-$version-mac-x64.dmg"
+          test -s "release/Foxdown-$version-win-x64.exe"
+          test -s "release/Foxdown-$version-win-arm64.exe"
+          test -s release/Foxdown-extension.zip
           (cd release && sha256sum Foxdown-* > SHA256SUMS.txt)
+          (cd release && sha256sum --check SHA256SUMS.txt)
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            git fetch --no-tags origin "refs/tags/$RELEASE_TAG"
+            test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "$GITHUB_SHA"
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$GITHUB_SHA" >/dev/null
+          fi
           if gh release view "$RELEASE_TAG" --json isDraft >/dev/null 2>&1; then
             test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true"
             gh release upload "$RELEASE_TAG" release/* --clobber
+            gh release edit "$RELEASE_TAG" --notes-file "docs/releases/$RELEASE_TAG.md" --title "Foxdown $RELEASE_TAG"
           else
-            gh release create "$RELEASE_TAG" release/* --verify-tag --draft --generate-notes --title "Foxdown ${RELEASE_TAG#v}"
+            gh release create "$RELEASE_TAG" release/* --verify-tag --draft --notes-file "docs/releases/$RELEASE_TAG.md" --title "Foxdown $RELEASE_TAG"
           fi
+          echo "### $RELEASE_TAG 构建完成" >> "$GITHUB_STEP_SUMMARY"
+          echo '已生成四个平台安装包、浏览器扩展和 SHA-256 校验清单，发布说明以中文为主、英文为次。' >> "$GITHUB_STEP_SUMMARY"

@@ -21,7 +21,7 @@ npm run dev-electron
 - Windows 的数据默认位于 `%APPDATA%\Foxdown\data`。
 - 桌面安装版的引擎位于应用资源目录 `runtime/bin`，下载默认保存到用户的 `Downloads/Foxdown`。
 - 在「设置 → 应用 → 查看更新」打开 Releases，选与当前系统架构相符的安装包。关闭旧版再安装新版。同名 Foxdown 更新使用现有用户目录。
-- 从旧版 Rdown 迁移时先退出两个程序，再备份和复制旧目录下的 `data` 内容。保留原下载目录，未完成任务的会话可能记录原文件路径。确认 Web API Token 后再连接浏览器扩展。
+- 从旧版本迁移时先退出两个程序，再备份和复制旧目录下的 `data` 内容。保留原下载目录，未完成任务的会话可能记录原文件路径。确认 Web API Token 后再连接浏览器扩展。
 
 ## 打包
 

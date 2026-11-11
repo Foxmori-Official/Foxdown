@@ -23,9 +23,11 @@ node tools/upstream-report.mjs upstream-report.md
 
 ## 发布 Foxdown
 
+主 README 使用简体中文，英文文档位于 `docs/README.en.md`。每个版本的发布说明保存在 `docs/releases/v<version>.md`，先写「简体中文」，再写「English」。不要使用自动生成的英文提交列表替代发布说明。
+
 1. 同步更新根包、服务端、Web 包、浏览器扩展 manifest 的版本和 npm lockfiles。
 2. 检查 [Desktop and extension builds](https://github.com/Foxmori-Official/Foxdown/actions/workflows/desktop.yml) 的四个平台构建和扩展产物。使用旧版本用户目录验证升级，并用临时用户目录验证首次安装。
-3. 在审阅通过的提交打 `v<version>` 标签。工作流会构建安装包、扩展 ZIP 和 SHA-256 清单，并创建 GitHub Release 草稿。
+3. 准备对应版本的中英双语发布说明。可以在 main 分支提交标题为 `release: v<version>` 的发布提交，也可在 Actions 手动运行构建并填写 `release_tag`。工作流会先核对所有包与锁文件的版本，完成四个平台的构建和测试后，为该提交创建标签并生成 Release 草稿。直接推送 `v<version>` 标签也支持同一流程。普通提交仅构建，不创建版本。
 4. 在草稿中补充此次变更、已知限制、上游来源与升级说明，核对签名与安装结果后发布。用户通过「查看更新」访问已发布的版本。
 
 若需要回退，从 Releases 获取前一版本并备份用户数据后安装。若版本改变了数据格式，使用升级前的备份验证兼容性。
