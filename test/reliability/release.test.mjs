@@ -48,6 +48,13 @@ test('a mismatched release tag or package version blocks the release', t => {
   assert.notEqual(f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' }).status, 0);
 });
 
+test('Chinese-first release notes also support Windows line endings', t => {
+  const f = fixture(t);
+  f.write('docs/releases/v0.0.1.md', '\uFEFF## 简体中文\r\n\r\n首个版本。\r\n\r\n## English\r\n\r\nInitial release.\r\n');
+  const result = f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' });
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('foreign branches and English-first release notes cannot be released manually', t => {
   const f = fixture(t);
   assert.notEqual(f.run({ GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/other', RELEASE_INPUT: 'v0.0.1' }).status, 0);

@@ -38,7 +38,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { runner: macos-15, target: mac, arch: arm64, suffix: dmg }
+          - { runner: macos-26, target: mac, arch: arm64, suffix: dmg }
           - { runner: macos-15-intel, target: mac, arch: x64, suffix: dmg }
           - { runner: windows-2025, target: win, arch: x64, suffix: exe }
           - { runner: windows-11-arm, target: win, arch: arm64, suffix: exe }
