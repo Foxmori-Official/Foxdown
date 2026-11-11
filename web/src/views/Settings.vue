@@ -1,14 +1,8 @@
 <template>
-  <div ref="settingsRoot" class="settings-view" v-loading="!store.loaded">
+  <div class="settings-view" v-loading="!store.loaded">
     <template v-if="store.loaded">
   
       <header class="settings-tools">
-        <nav class="settings-index" role="tablist" :aria-label="t('common.navSettings')" @keydown="onGroupKeydown">
-          <button v-for="group in settingsGroups" :key="group.id" type="button"
-            role="tab" :id="'tab-' + group.id" :aria-controls="group.id"
-            :aria-selected="activeGroup === group.id" :tabindex="activeGroup === group.id ? 0 : -1"
-            @click="selectGroup(group.id)">{{ t(group.label) }}</button>
-        </nav>
         <div class="save-state" role="status" :class="{ 'save-error': saveError }">
           <span>{{ saveError || t(saving ? 'settings.saving' : justSaved ? 'settings.autoSaved' : 'settings.autoSaveHint') }}</span>
           <el-button v-if="saveError" text size="small" @click="persistAll">{{ t('taskrow.retry') }}</el-button>
@@ -381,43 +375,13 @@ function onLocaleChange(val) {
 }
 
 const { t } = useI18n()
+defineProps({ activeGroup: { type: String, default: 'sec-basic' } })
 const store = useSettingsStore()
 const saving = ref(false)
 const saveError = ref('')
 const desktop = window.foxdownDesktop
 const loginAtStartup = ref(null)
 const savingStartup = ref(false)
-const settingsRoot = ref(null)
-const activeGroup = ref('sec-basic')
-const settingsGroups = [
-  { id: 'sec-basic', label: 'settings.groupBasic' },
-  { id: 'sec-rpc', label: 'settings.groupRpc' },
-  { id: 'sec-stream', label: 'settings.groupStream' },
-  { id: 'sec-bt', label: 'settings.groupBt' },
-  { id: 'sec-post', label: 'settings.groupPost' },
-  { id: 'sec-proxy', label: 'settings.groupProxy' },
-  { id: 'sec-app', label: 'settings.groupApp' }
-]
-
-function selectGroup(id) {
-  activeGroup.value = id
-  nextTick(() => { settingsRoot.value?.closest('.main-body')?.scrollTo({ top: 0 }) })
-}
-
-function onGroupKeydown(event) {
-  const current = settingsGroups.findIndex(group => group.id === activeGroup.value)
-  let index
-  if (event.key === 'ArrowRight') index = (current + 1) % settingsGroups.length
-  else if (event.key === 'ArrowLeft') index = (current + settingsGroups.length - 1) % settingsGroups.length
-  else if (event.key === 'Home') index = 0
-  else if (event.key === 'End') index = settingsGroups.length - 1
-  else return
-  event.preventDefault()
-  const id = settingsGroups[index].id
-  selectGroup(id)
-  document.getElementById('tab-' + id)?.focus()
-}
-
 async function setStartup(value) {
   savingStartup.value = true
   try {
@@ -906,25 +870,12 @@ async function regenerateSecret() {
 
 .settings-tools {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 8px 20px;
   padding-bottom: 14px;
 }
-.settings-index { display: flex; flex-wrap: wrap; gap: 6px; }
-.settings-index button {
-  padding: 5px 9px;
-  border: 1px solid var(--kd-border);
-  border-radius: var(--kd-radius-ctrl);
-  background: var(--kd-card-bg);
-  color: var(--kd-text-secondary);
-  font: inherit;
-  font-size: var(--kd-caption);
-  cursor: pointer;
-}
-.settings-index button:hover { color: var(--kd-primary); background: var(--kd-primary-soft); }
-.settings-index button[aria-selected="true"] { color: var(--kd-on-primary); background: var(--kd-primary); border-color: var(--kd-primary); }
 .save-state { font-size: var(--kd-caption); color: var(--kd-text-tertiary); overflow-wrap: anywhere; }
 .save-state.save-error { color: var(--kd-danger); }
 .advanced-settings { border-top: 1px solid var(--kd-border); padding-top: 12px; }

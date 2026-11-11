@@ -64,14 +64,33 @@ try {
     ? path.join(path.dirname(path.dirname(packaged)), 'Resources/runtime/bin')
     : path.join(path.dirname(packaged), 'resources/runtime/bin')) : engineDir;
   await fs.access(path.join(packageBin, process.platform === 'darwin' ? 'media/bin/ffprobe' : 'ffprobe.exe'));
-  await app.getByRole('button', { name: 'Settings', exact: true }).click();
-  await app.locator('.settings-index').waitFor();
-  const settingsTabs = app.locator('.settings-index').getByRole('tab');
+  const settingsToggle = app.getByRole('button', { name: 'Settings', exact: true });
+  await settingsToggle.click();
+  const settingsNavigation = app.locator('.side-nav .settings-subnav');
+  await settingsNavigation.waitFor();
+  await app.getByRole('tabpanel').first().waitFor();
+  assert.equal(await settingsToggle.getAttribute('aria-expanded'), 'true');
+  await settingsToggle.click();
+  assert.equal(await settingsNavigation.isVisible(), false);
+  assert.equal(await app.getByRole('tabpanel').count(), 1, 'Collapsing the sidebar must keep the current settings panel');
+  await settingsToggle.click();
+  await settingsNavigation.waitFor();
+  const settingsTabs = settingsNavigation.getByRole('tab');
   assert.equal(await settingsTabs.count(), 7);
+  const sidebarLayout = await app.evaluate(() => {
+    const sidebar = document.querySelector('.side-nav').getBoundingClientRect();
+    const workspace = document.querySelector('.main-area').getBoundingClientRect();
+    return { direction: getComputedStyle(document.querySelector('.app-layout')).flexDirection,
+      sidebarRight: sidebar.right, workspaceLeft: workspace.left,
+      horizontalCategoryBars: document.querySelectorAll('.settings-view [role=tablist]').length };
+  });
+  assert.equal(sidebarLayout.direction, 'row');
+  assert.ok(sidebarLayout.sidebarRight <= sidebarLayout.workspaceLeft + 1, JSON.stringify(sidebarLayout));
+  assert.equal(sidebarLayout.horizontalCategoryBars, 0);
   for (const tab of await settingsTabs.all()) {
     await tab.click();
     assert.equal(await app.getByRole('tabpanel').count(), 1, 'Only the selected settings category should be visible');
-    const overflow = await app.evaluate(() => [...document.querySelectorAll('.main-body, .settings-view, .settings-form, .group-card')]
+    const overflow = await app.evaluate(() => [...document.querySelectorAll('.side-nav, .settings-subnav, .main-body, .settings-view, .settings-form, .group-card')]
       .filter(element => element.getBoundingClientRect().width > 0 && element.scrollWidth > element.clientWidth + 1)
       .map(element => ({ className: element.className, width: element.clientWidth, content: element.scrollWidth })));
     assert.deepEqual(overflow, [], 'Settings must fit the desktop window without horizontal scrolling');
@@ -80,10 +99,42 @@ try {
   await app.getByText('Open Foxdown at login', { exact: true }).waitFor();
   await app.getByRole('tab', { name: 'General', exact: true }).click();
   await settingsTabs.first().focus();
-  await app.keyboard.press('ArrowRight');
+  await app.keyboard.press('ArrowDown');
   assert.equal(await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).getAttribute('aria-selected'), 'true');
   await app.keyboard.press('Home');
   assert.equal(await settingsTabs.first().getAttribute('aria-selected'), 'true');
+  await app.keyboard.press('ArrowLeft');
+  assert.equal(await settingsToggle.getAttribute('aria-expanded'), 'false');
+  await app.keyboard.press('ArrowRight');
+  assert.equal(await settingsToggle.getAttribute('aria-expanded'), 'true');
+  const concurrency = app.locator('#sec-basic .num-stepper input').first();
+  await concurrency.fill('6');
+  await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).click();
+  await app.getByRole('button', { name: 'Tasks', exact: true }).click();
+  assert.equal(await settingsNavigation.isVisible(), false);
+  for (let attempt = 0; ; attempt++) {
+    const saved = await (await fetch(origin + '/api/v1/settings', { headers: { Authorization: 'Bearer ' + token } })).json();
+    if (saved.maxConcurrentDownloads === 6) break;
+    assert.ok(attempt < 30, 'Pending settings must still save after leaving the settings view');
+    await delay(100);
+  }
+  await settingsToggle.click();
+  assert.equal(await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).getAttribute('aria-selected'), 'true');
+  await app.getByRole('tab', { name: 'General', exact: true }).click();
+  assert.equal(await concurrency.inputValue(), '6');
+  await concurrency.fill('5');
+  await settingsTabs.first().focus();
+  // Download settings restart aria2; wait for the saved value and RPC readiness before testing the extension.
+  for (let attempt = 0; ; attempt++) {
+    const headers = { Authorization: 'Bearer ' + token };
+    const [saved, health] = await Promise.all([
+      fetch(origin + '/api/v1/settings', { headers }).then(response => response.json()),
+      fetch(origin + '/api/v1/health', { headers }).then(response => response.json()),
+    ]);
+    if (saved.maxConcurrentDownloads === 5 && health.aria2) break;
+    assert.ok(attempt < 100, 'Saved settings must leave the bundled download engine ready: ' + JSON.stringify(health));
+    await delay(100);
+  }
   const generalLayout = await app.evaluate(() => {
     const main = document.querySelector('.main-body');
     return { height: innerHeight, scrollHeight: main.scrollHeight, clientHeight: main.clientHeight,
@@ -95,7 +146,7 @@ try {
   await app.screenshot({ path: path.join(shots, 'settings.png'), animations: 'disabled' });
   await app.getByRole('button', { name: 'Tasks', exact: true }).click();
   await app.getByRole('tab', { name: 'All', exact: true, selected: true }).waitFor();
-  console.log('Electron used bundled native engines and reached connected tasks; settings and login control rendered.');
+  console.log('Electron used bundled native engines; expandable sidebar settings, category memory, pending autosave and login controls passed.');
 
   await fs.mkdir(path.join(temp, 'browser/Default'), { recursive: true });
   await fs.writeFile(path.join(temp, 'browser/Default/Preferences'), JSON.stringify({ download: { default_directory: path.join(temp, 'browser-downloads'), prompt_for_download: false } }));

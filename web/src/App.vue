@@ -10,18 +10,33 @@
         </div>
       </div>
       <nav class="nav-items">
+        <template v-for="item in navItems" :key="item.key">
         <button type="button"
-          v-for="item in navItems"
-          :key="item.key"
+          :id="item.key === 'settings' ? 'settings-toggle' : undefined"
           class="nav-item"
           :class="{ active: view === item.key }"
           :title="item.label"
-          :aria-current="view === item.key ? 'page' : undefined"
-          @click="view = item.key"
+          :aria-current="view === item.key && (item.key !== 'settings' || !settingsExpanded) ? 'page' : undefined"
+          :aria-expanded="item.key === 'settings' ? view === 'settings' && settingsExpanded : undefined"
+          :aria-controls="item.key === 'settings' ? 'settings-navigation' : undefined"
+          @click="selectView(item.key)"
+          @keydown="item.key === 'settings' && onSettingsToggleKeydown($event)"
         >
           <el-icon :size="18"><component :is="item.icon" /></el-icon>
           <span class="nav-label">{{ item.label }}</span>
+          <svg v-if="item.key === 'settings'" class="nav-chevron" :class="{ expanded: view === 'settings' && settingsExpanded }"
+            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
         </button>
+        <div v-if="item.key === 'settings'" v-show="view === 'settings' && settingsExpanded"
+          id="settings-navigation" class="settings-subnav" role="tablist" aria-orientation="vertical"
+          :aria-label="t('common.navSettings')" @keydown="onSettingsGroupKeydown">
+          <button v-for="group in settingsGroups" :key="group.id" type="button" role="tab"
+            :id="'tab-' + group.id" class="settings-subitem" :aria-controls="group.id"
+            :aria-selected="activeSettingsGroup === group.id" :tabindex="activeSettingsGroup === group.id ? 0 : -1"
+            @click="selectSettingsGroup(group.id)">{{ t(group.label) }}</button>
+        </div>
+        </template>
       </nav>
       <div class="nav-footer">
         <a class="nav-brand" href="https://foxmori.com" target="_blank" rel="noopener">Foxmori <span aria-hidden="true">↗</span></a>
@@ -45,7 +60,7 @@
           {{ connText }}
         </span>
       </header>
-      <section class="main-body">
+      <section ref="mainBody" class="main-body">
         <form v-if="!settingsStore.loaded || connectionFailure" class="connection-card" @submit.prevent="connectBackend">
           <h2>{{ t('common.connectionTitle') }}</h2>
           <template v-if="connectionFailure">
@@ -66,7 +81,8 @@
           <button type="button" :disabled="connecting" @click="connectBackend">{{ t('common.connectionRetry') }}</button>
         </div>
         <Tasks v-if="settingsStore.loaded" v-show="!connectionFailure && view === 'tasks'" />
-        <Settings v-if="settingsStore.loaded && settingsVisited" v-show="!connectionFailure && view === 'settings'" />
+        <Settings v-if="settingsStore.loaded && settingsVisited" v-show="!connectionFailure && view === 'settings'"
+          :active-group="activeSettingsGroup" />
       </section>
     </main>
   </div>
@@ -97,7 +113,66 @@ const navItems = computed(() => [
 
 const view = ref('tasks')
 const settingsVisited = ref(false)
-watch(view, value => { if (value === 'settings') settingsVisited.value = true })
+const settingsExpanded = ref(false)
+const activeSettingsGroup = ref('sec-basic')
+const mainBody = ref(null)
+const settingsGroups = [
+  { id: 'sec-basic', label: 'settings.groupBasic' },
+  { id: 'sec-rpc', label: 'settings.groupRpc' },
+  { id: 'sec-stream', label: 'settings.groupStream' },
+  { id: 'sec-bt', label: 'settings.groupBt' },
+  { id: 'sec-post', label: 'settings.groupPost' },
+  { id: 'sec-proxy', label: 'settings.groupProxy' },
+  { id: 'sec-app', label: 'settings.groupApp' }
+]
+function resetWorkspaceScroll() { mainBody.value?.scrollTo({ top: 0 }) }
+watch(view, value => {
+  if (value === 'settings') settingsVisited.value = true
+  nextTick(resetWorkspaceScroll)
+})
+
+function selectView(key) {
+  if (key === 'settings') settingsExpanded.value = view.value !== 'settings' || !settingsExpanded.value
+  view.value = key
+}
+
+function selectSettingsGroup(id) {
+  activeSettingsGroup.value = id
+  settingsExpanded.value = true
+  view.value = 'settings'
+  nextTick(resetWorkspaceScroll)
+}
+
+function onSettingsToggleKeydown(event) {
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    settingsExpanded.value = false
+  } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    event.preventDefault()
+    settingsExpanded.value = true
+    view.value = 'settings'
+    nextTick(() => document.getElementById('tab-' + activeSettingsGroup.value)?.focus())
+  }
+}
+
+function onSettingsGroupKeydown(event) {
+  const current = settingsGroups.findIndex(group => group.id === activeSettingsGroup.value)
+  let index
+  if (event.key === 'ArrowDown') index = (current + 1) % settingsGroups.length
+  else if (event.key === 'ArrowUp') index = (current + settingsGroups.length - 1) % settingsGroups.length
+  else if (event.key === 'Home') index = 0
+  else if (event.key === 'End') index = settingsGroups.length - 1
+  else if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    settingsExpanded.value = false
+    document.getElementById('settings-toggle')?.focus()
+    return
+  } else return
+  event.preventDefault()
+  const id = settingsGroups[index].id
+  selectSettingsGroup(id)
+  document.getElementById('tab-' + id)?.focus()
+}
 const connectionToken = ref(getAuthToken())
 const connectionTokenInput = ref(null)
 const connectionFailure = ref('')
@@ -175,7 +250,8 @@ watch(
 }
 
 .side-nav {
-  width: 212px;
+  width: 232px;
+  min-height: 0;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -204,7 +280,7 @@ watch(
   font-size: 23px;
   font-weight: 800;
   line-height: 1.05;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.035em;
 }
 
 .nav-identity span {
@@ -219,9 +295,14 @@ watch(
 .nav-items {
   display: grid;
   gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
 }
 
 .nav-item {
+  width: 100%;
+  min-width: 0;
   border: 0;
   background: transparent;
   font: inherit;
@@ -247,6 +328,33 @@ watch(
   font-weight: 650;
 }
 
+.nav-label { flex: 1; }
+.nav-chevron { flex-shrink: 0; transition: transform 150ms ease; }
+.nav-chevron.expanded { transform: rotate(90deg); }
+.settings-subnav {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px 20px;
+  padding-left: 10px;
+  border-left: 1px solid var(--kd-border);
+}
+.settings-subitem {
+  min-width: 0;
+  border: 0;
+  border-radius: var(--kd-radius-ctrl);
+  padding: 9px 10px;
+  background: transparent;
+  color: var(--kd-text-secondary);
+  font: inherit;
+  font-size: var(--kd-meta);
+  line-height: 1.4;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.settings-subitem:hover { background: var(--kd-hover-bg); color: var(--kd-text-primary); }
+.settings-subitem[aria-selected="true"] { background: var(--kd-primary); color: var(--kd-on-primary); font-weight: 600; }
+
 .nav-footer {
   margin-top: auto;
   padding-top: 12px;
@@ -262,7 +370,7 @@ watch(
   padding: 8px;
 }
 
-.theme-toggle { padding: 9px; }
+.theme-toggle { width: auto; padding: 9px; }
 
 .main-area {
   flex: 1;
@@ -372,31 +480,4 @@ watch(
 .connection-notice p { margin: 0; }
 .connection-notice button { color: inherit; background: var(--kd-card-bg); cursor: pointer; }
 
-@media (max-width: 700px) {
-  .app-layout { flex-direction: column; }
-
-  .side-nav {
-    width: auto;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 6px;
-    border-right: 0;
-    border-bottom: 1px solid var(--kd-border);
-    padding: 8px 12px;
-  }
-
-  .nav-logo { padding: 0; border: 0; gap: 6px; }
-  .nav-logo-img { width: 30px; height: 30px; }
-  .nav-identity strong { font-size: 18px; }
-  .nav-identity span { font-size: 8px; }
-  .nav-items { display: flex; flex-wrap: wrap; }
-  .nav-item { padding: 8px; gap: 5px; font-size: 12px; }
-  .nav-footer { margin: 0; padding: 0; border: 0; }
-  .nav-brand { display: none; }
-  .main-area { min-height: 0; --workspace-padding: 16px; }
-  .main-header { padding-block: 18px 14px; }
-  .app-title { font-size: 23px; }
-}
 </style>
