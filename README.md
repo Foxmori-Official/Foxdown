@@ -2,7 +2,7 @@
 
 Foxdown is a desktop download manager for HTTP, BitTorrent, magnet links, and HLS/DASH streams. Its Chrome and Edge extension hands browser downloads and discovered media to the desktop app.
 
-[简体中文](docs/README.zh-CN.md) · [API](docs/api.md) · [维护与更新](docs/updates.md) · [Privacy](PRIVACY.md)
+[简体中文](docs/README.zh-CN.md) · [API](docs/api.md) · [维护与更新](docs/updates.md) · [UI review](docs/design-review.md) · [Privacy](PRIVACY.md)
 
 ## Install Foxdown
 

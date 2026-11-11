@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, shell, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, shell, dialog, screen } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { spawn } = require('node:child_process');
@@ -172,8 +172,11 @@ function showWindow() {
 }
 
 function createWindow() {
+  const available = screen.getPrimaryDisplay().workAreaSize;
+  const width = Math.min(1360, available.width - 24);
+  const height = Math.min(900, available.height - 24);
   mainWindow = new BrowserWindow({
-    width: 1180, height: 780, minWidth: 760, minHeight: 530,
+    width, height, minWidth: Math.min(1080, width), minHeight: Math.min(760, height),
     title: 'Foxdown', icon: logo,
     backgroundColor: '#faf9f4', autoHideMenuBar: true,
     webPreferences: {

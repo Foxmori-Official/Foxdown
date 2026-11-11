@@ -2,7 +2,7 @@
 
 Foxdown 是 macOS 和 Windows 上的下载管理器，支持 HTTP、BT／磁力和 HLS／DASH。Chrome 和 Edge 扩展可以接管浏览器下载，也可以发现并发送网页媒体。
 
-[English](../README.md) · [API](api.md) · [更新与维护](updates.md)
+[English](../README.md) · [API](api.md) · [更新与维护](updates.md) · [界面复核](design-review.md)
 
 ## 安装桌面版
 

@@ -66,9 +66,32 @@ try {
   await fs.access(path.join(packageBin, process.platform === 'darwin' ? 'media/bin/ffprobe' : 'ffprobe.exe'));
   await app.getByRole('button', { name: 'Settings', exact: true }).click();
   await app.locator('.settings-index').waitFor();
-  await app.getByRole('button', { name: 'Application', exact: true }).click();
+  const settingsTabs = app.locator('.settings-index').getByRole('tab');
+  assert.equal(await settingsTabs.count(), 7);
+  for (const tab of await settingsTabs.all()) {
+    await tab.click();
+    assert.equal(await app.getByRole('tabpanel').count(), 1, 'Only the selected settings category should be visible');
+    const overflow = await app.evaluate(() => [...document.querySelectorAll('.main-body, .settings-view, .settings-form, .group-card')]
+      .filter(element => element.getBoundingClientRect().width > 0 && element.scrollWidth > element.clientWidth + 1)
+      .map(element => ({ className: element.className, width: element.clientWidth, content: element.scrollWidth })));
+    assert.deepEqual(overflow, [], 'Settings must fit the desktop window without horizontal scrolling');
+  }
+  await app.getByRole('tab', { name: 'Application', exact: true }).click();
   await app.getByText('Open Foxdown at login', { exact: true }).waitFor();
-  await app.getByRole('button', { name: 'General', exact: true }).click();
+  await app.getByRole('tab', { name: 'General', exact: true }).click();
+  await settingsTabs.first().focus();
+  await app.keyboard.press('ArrowRight');
+  assert.equal(await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).getAttribute('aria-selected'), 'true');
+  await app.keyboard.press('Home');
+  assert.equal(await settingsTabs.first().getAttribute('aria-selected'), 'true');
+  const generalLayout = await app.evaluate(() => {
+    const main = document.querySelector('.main-body');
+    return { height: innerHeight, scrollHeight: main.scrollHeight, clientHeight: main.clientHeight,
+      nestedScrollers: [...document.querySelectorAll('.settings-view, .settings-form, .group-card')].filter(element =>
+        element.getBoundingClientRect().height > 0 && /auto|scroll/.test(getComputedStyle(element).overflowY)).length };
+  });
+  assert.equal(generalLayout.nestedScrollers, 0, 'Settings must use the main workspace scroll only');
+  if (generalLayout.height >= 800) assert.ok(generalLayout.scrollHeight <= generalLayout.clientHeight + 1, JSON.stringify(generalLayout));
   await app.screenshot({ path: path.join(shots, 'settings.png'), animations: 'disabled' });
   await app.getByRole('button', { name: 'Tasks', exact: true }).click();
   await app.getByRole('tab', { name: 'All', exact: true, selected: true }).waitFor();

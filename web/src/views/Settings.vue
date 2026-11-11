@@ -1,21 +1,22 @@
 <template>
-  <div class="settings-view" v-loading="!store.loaded">
+  <div ref="settingsRoot" class="settings-view" v-loading="!store.loaded">
     <template v-if="store.loaded">
   
       <header class="settings-tools">
-        <nav class="settings-index" :aria-label="t('common.navSettings')">
+        <nav class="settings-index" role="tablist" :aria-label="t('common.navSettings')" @keydown="onGroupKeydown">
           <button v-for="group in settingsGroups" :key="group.id" type="button"
-            @click="jumpTo(group.id)">{{ t(group.label) }}</button>
+            role="tab" :id="'tab-' + group.id" :aria-controls="group.id"
+            :aria-selected="activeGroup === group.id" :tabindex="activeGroup === group.id ? 0 : -1"
+            @click="selectGroup(group.id)">{{ t(group.label) }}</button>
         </nav>
         <div class="save-state" role="status" :class="{ 'save-error': saveError }">
           <span>{{ saveError || t(saving ? 'settings.saving' : justSaved ? 'settings.autoSaved' : 'settings.autoSaveHint') }}</span>
           <el-button v-if="saveError" text size="small" @click="persistAll">{{ t('taskrow.retry') }}</el-button>
         </div>
       </header>
-      <div class="settings-scroll">
       <el-form label-width="160px" label-position="right" class="settings-form">
 <!-- 基本 -->
-        <section class="group-card" id="sec-basic">
+        <section v-show="activeGroup === 'sec-basic'" class="group-card" id="sec-basic" role="tabpanel" aria-labelledby="tab-sec-basic">
           <div class="group-header">
             <h2 class="group-title">{{ t('settings.groupBasic') }}</h2>
             <span class="header-spacer"></span>
@@ -48,14 +49,6 @@
           </el-form-item>
           <el-form-item :label="t('settings.maxConcurrent')">
             <el-input-number v-model="form.maxConcurrentDownloads" :min="1" :max="20" class="num-stepper" />
-          </el-form-item>
-          <el-form-item :label="t('settings.maxConnPerServer')">
-            <el-input-number v-model="form.maxConnectionPerServer" :min="1" :max="64" class="num-stepper" />
-            <span class="hint">{{ t('settings.maxConnPerServerHint') }}</span>
-          </el-form-item>
-          <el-form-item :label="t('settings.split')">
-            <el-input-number v-model="form.split" :min="1" :max="64" class="num-stepper" />
-            <span class="hint">{{ t('settings.splitHint') }}</span>
           </el-form-item>
           <el-form-item :label="t('settings.dlLimit')">
             <div class="speed-field">
@@ -110,6 +103,14 @@
           </el-form-item>
           <details class="advanced-settings">
           <summary>{{ t('dialog.advanced') }}</summary>
+          <el-form-item :label="t('settings.maxConnPerServer')">
+            <el-input-number v-model="form.maxConnectionPerServer" :min="1" :max="64" class="num-stepper" />
+            <span class="hint">{{ t('settings.maxConnPerServerHint') }}</span>
+          </el-form-item>
+          <el-form-item :label="t('settings.split')">
+            <el-input-number v-model="form.split" :min="1" :max="64" class="num-stepper" />
+            <span class="hint">{{ t('settings.splitHint') }}</span>
+          </el-form-item>
           <el-form-item :label="t('settings.minSplitSize')">
             <el-input-number v-model="form.minSplitSizeMB" :min="0" :step="1" class="num-stepper" />
             <span class="unit-suffix">MB</span>
@@ -141,7 +142,7 @@
         </section>
 
 <!-- RPC / 远程访问 -->
-        <section class="group-card" id="sec-rpc">
+        <section v-show="activeGroup === 'sec-rpc'" class="group-card" id="sec-rpc" role="tabpanel" aria-labelledby="tab-sec-rpc">
           <div class="group-header">
             <h2 class="group-title">{{ t('settings.groupRpc') }}</h2>
           </div>
@@ -184,7 +185,7 @@
         </section>
 
 <!-- 流媒体 -->
-        <section class="group-card" id="sec-stream">
+        <section v-show="activeGroup === 'sec-stream'" class="group-card" id="sec-stream" role="tabpanel" aria-labelledby="tab-sec-stream">
           <div class="group-header">
             <h2 class="group-title">{{ t('settings.groupStream') }}</h2>
           </div>
@@ -221,7 +222,7 @@
         </section>
 
 <!-- BT -->
-        <section class="group-card" id="sec-bt">
+        <section v-show="activeGroup === 'sec-bt'" class="group-card" id="sec-bt" role="tabpanel" aria-labelledby="tab-sec-bt">
           <div class="group-header">
             <h2 class="group-title">{{ t('settings.groupBt') }}</h2>
           </div>
@@ -272,7 +273,7 @@
         </section>
 
 <!-- 后处理 -->
-        <section class="group-card" id="sec-post">
+        <section v-show="activeGroup === 'sec-post'" class="group-card" id="sec-post" role="tabpanel" aria-labelledby="tab-sec-post">
           <div class="group-header">
             <h2 class="group-title">{{ t('settings.groupPost') }}</h2>
           </div>
@@ -296,7 +297,7 @@
         </section>
 
 <!-- 代理 -->
-        <section class="group-card" id="sec-proxy">
+        <section v-show="activeGroup === 'sec-proxy'" class="group-card" id="sec-proxy" role="tabpanel" aria-labelledby="tab-sec-proxy">
           <div class="group-header">
             <h2 class="group-title">{{ t('settings.groupProxy') }}</h2>
           </div>
@@ -319,7 +320,7 @@
             </el-form-item>
           </div>
         </section>
-        <section class="group-card" id="sec-app">
+        <section v-show="activeGroup === 'sec-app'" class="group-card" id="sec-app" role="tabpanel" aria-labelledby="tab-sec-app">
           <div class="group-header"><h2 class="group-title">{{ t('settings.groupApp') }}</h2></div>
           <el-form-item v-if="desktop && loginAtStartup !== null" :label="t('settings.desktopStartup')">
             <el-switch v-model="loginAtStartup" @change="setStartup" :loading="savingStartup" />
@@ -330,7 +331,6 @@
           </div>
         </section>
       </el-form>
-    </div>
 
 
 
@@ -387,6 +387,8 @@ const saveError = ref('')
 const desktop = window.foxdownDesktop
 const loginAtStartup = ref(null)
 const savingStartup = ref(false)
+const settingsRoot = ref(null)
+const activeGroup = ref('sec-basic')
 const settingsGroups = [
   { id: 'sec-basic', label: 'settings.groupBasic' },
   { id: 'sec-rpc', label: 'settings.groupRpc' },
@@ -397,8 +399,23 @@ const settingsGroups = [
   { id: 'sec-app', label: 'settings.groupApp' }
 ]
 
-function jumpTo(id) {
-  document.getElementById(id)?.scrollIntoView({ block: 'start' })
+function selectGroup(id) {
+  activeGroup.value = id
+  nextTick(() => { settingsRoot.value?.closest('.main-body')?.scrollTo({ top: 0 }) })
+}
+
+function onGroupKeydown(event) {
+  const current = settingsGroups.findIndex(group => group.id === activeGroup.value)
+  let index
+  if (event.key === 'ArrowRight') index = (current + 1) % settingsGroups.length
+  else if (event.key === 'ArrowLeft') index = (current + settingsGroups.length - 1) % settingsGroups.length
+  else if (event.key === 'Home') index = 0
+  else if (event.key === 'End') index = settingsGroups.length - 1
+  else return
+  event.preventDefault()
+  const id = settingsGroups[index].id
+  selectGroup(id)
+  document.getElementById('tab-' + id)?.focus()
 }
 
 async function setStartup(value) {
@@ -883,17 +900,8 @@ async function regenerateSecret() {
 
 <style scoped>
 .settings-view {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.settings-scroll {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-  padding-right: 4px;
+  min-width: 0;
+  container: settings / inline-size;
 }
 
 .settings-tools {
@@ -916,6 +924,7 @@ async function regenerateSecret() {
   cursor: pointer;
 }
 .settings-index button:hover { color: var(--kd-primary); background: var(--kd-primary-soft); }
+.settings-index button[aria-selected="true"] { color: var(--kd-on-primary); background: var(--kd-primary); border-color: var(--kd-primary); }
 .save-state { font-size: var(--kd-caption); color: var(--kd-text-tertiary); overflow-wrap: anywhere; }
 .save-state.save-error { color: var(--kd-danger); }
 .advanced-settings { border-top: 1px solid var(--kd-border); padding-top: 12px; }
@@ -925,6 +934,7 @@ async function regenerateSecret() {
 
 /* 分组卡片 */
 .group-card {
+  min-width: 0;
   background: var(--kd-card-bg);
   border: 1px solid var(--kd-border);
   border-radius: var(--kd-radius-card);
@@ -962,6 +972,10 @@ async function regenerateSecret() {
 .settings-form :deep(.el-form-item) {
   margin-bottom: var(--kd-space-4);
 }
+.settings-form { min-width: 0; max-width: 100%; }
+.settings-form :deep(.el-form-item__content) { min-width: 0; gap: 4px 0; }
+.settings-form :deep(.el-input), .settings-form :deep(.el-select) { min-width: 0; max-width: 100%; }
+.settings-form :deep(.el-input__wrapper) { min-height: 36px; }
 
 .group-card :deep(.el-form-item:last-child) {
   margin-bottom: 0;
@@ -1043,8 +1057,8 @@ async function regenerateSecret() {
 }
 
 .tracker-input :deep(textarea) {
-  white-space: pre;
-  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
   font-size: var(--kd-caption);
   line-height: 1.7;
@@ -1056,6 +1070,8 @@ async function regenerateSecret() {
   justify-content: space-between;
   width: 100%;
   margin-top: var(--kd-space-2);
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .profile-bar {
@@ -1069,6 +1085,7 @@ async function regenerateSecret() {
   align-items: center;
   gap: var(--kd-space-2);
   width: 100%;
+  min-width: 0;
 }
 
 .webhook-bar {
@@ -1076,7 +1093,10 @@ async function regenerateSecret() {
   align-items: center;
   gap: var(--kd-space-2);
   width: 100%;
+  min-width: 0;
 }
+.secret-bar > .el-input, .webhook-bar > .el-input { flex: 1; }
+.secret-bar > .el-button, .webhook-bar > .el-button { flex-shrink: 0; }
 
 /* 模板变量胶囊 */
 .var-tags {
@@ -1103,7 +1123,7 @@ async function regenerateSecret() {
   background: var(--kd-danger-soft);
 }
 
-@media (max-width: 700px) {
+@container settings (max-width: 700px) {
   .group-card { padding: var(--kd-space-4); }
   .settings-form :deep(.el-form-item) { display: block; }
   .settings-form :deep(.el-form-item__label) {
