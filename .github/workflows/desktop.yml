@@ -52,11 +52,12 @@ jobs:
           if node tools/pack-desktop.mjs --${{ matrix.target }} --${{ matrix.arch }} 2>&1 | tee installer-build.log; then exit 0; fi
           node --input-type=module -e "import fs from 'node:fs'; const log=fs.readFileSync('installer-build.log','utf8').slice(-12000); console.log('::error title=Installer build failed::'+log.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));"
           exit 1
-      - name: Verify packaged macOS app and browser extension
-        if: matrix.target == 'mac' && matrix.arch == 'arm64'
+      - name: Verify packaged app and browser extension
+        env:
+          FOXDOWN_TEST_PACKAGED: '1'
         run: |
           npx --no-install playwright install chromium
-          FOXDOWN_PACKAGED_EXE="$PWD/dist-electron/mac-arm64/Foxdown.app/Contents/MacOS/Foxdown" npm run test:desktop-extension
+          npm run test:desktop-extension
       - uses: actions/upload-artifact@v4
         with:
           name: Foxdown-${{ matrix.target }}-${{ matrix.arch }}

@@ -36,7 +36,12 @@ await fs.writeFile(path.join(data, 'settings.json'), JSON.stringify({
 let desktop;
 let browser;
 try {
-  const packaged = process.env.FOXDOWN_PACKAGED_EXE;
+  const packagedDirectory = process.platform === 'darwin'
+    ? (process.arch === 'arm64' ? 'mac-arm64' : 'mac')
+    : (process.arch === 'arm64' ? 'win-arm64-unpacked' : 'win-unpacked');
+  const packaged = process.env.FOXDOWN_PACKAGED_EXE || (process.env.FOXDOWN_TEST_PACKAGED === '1'
+    ? path.join(root, 'dist-electron', packagedDirectory, process.platform === 'darwin'
+      ? 'Foxdown.app/Contents/MacOS/Foxdown' : 'Foxdown.exe') : undefined);
   const env = { ...process.env, FOXDOWN_PORT: String(port), DATA_DIR: data, DOWNLOAD_DIR: downloads, API_TOKEN: token };
   if (!packaged) env.FOXDOWN_BIN_DIR = engineDir;
   desktop = await playwright._electron.launch({
@@ -163,5 +168,5 @@ try {
 } finally {
   await browser?.close();
   await desktop?.close();
-  await fs.rm(temp, { recursive: true, force: true });
+  await fs.rm(temp, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
 }
