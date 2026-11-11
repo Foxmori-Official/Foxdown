@@ -1,0 +1,24 @@
+services:
+  foxdown:
+    build: .
+    image: foxdown:latest
+    container_name: foxdown
+    ports:
+      - "16801:16801"
+      # BitTorrent listen port (optional, uncomment if you use BT):
+      # - "51413:51413"
+      # - "51413:51413/udp"
+    environment:
+      FOXDOWN_PORT: 16801
+      # Access token for the Web UI / API. STRONGLY recommended when exposed
+      # beyond localhost; empty = no auth.
+      API_TOKEN: "change-me"
+      DOWNLOAD_DIR: /downloads
+      DATA_DIR: /data
+    volumes:
+      - ./downloads:/downloads
+      - ./data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped

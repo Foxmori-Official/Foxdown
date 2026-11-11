@@ -1,0 +1,111 @@
+{
+  "name": "foxdown",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Foxdown - unified download manager: aria2 engine + HLS/DASH stream engine + browser capture",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "node server/src/index.js",
+    "build:web": "npm --prefix web run build",
+    "start": "node server/src/index.js",
+    "dev-electron": "electron .",
+    "pack": "npm run build:web && node tools/pack-desktop.mjs",
+    "pack:extension": "npm run assets && node tools/pack-extension.mjs",
+    "test": "node test/extension-test.mjs && node test/extension-ui-test.mjs && node test/i18n-check.mjs && node test/i18n-switch-test.mjs && node test/web-i18n-check.mjs && node test/unit-convert-test.mjs && node --test --test-concurrency=3 test/reliability/*.test.mjs",
+    "test:web-build": "npm run build:web && node --test test/performance/*.test.mjs",
+    "assets": "node extension/gen-icons.js",
+    "engines": "node tools/download-engines.mjs",
+    "upstream:report": "node tools/upstream-report.mjs",
+    "prebuild:web": "npm run assets",
+    "test:desktop-engine": "node test/desktop-engine-smoke.mjs",
+    "test:desktop-extension": "node test/desktop-extension-smoke.mjs"
+  },
+  "devDependencies": {
+    "electron": "^39.8.10",
+    "electron-builder": "^26.15.3",
+    "playwright": "1.64.0",
+    "sharp": "^0.35.5"
+  },
+  "build": {
+    "appId": "com.foxmori.foxdown",
+    "productName": "Foxdown",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json",
+      "web/public/logo.png"
+    ],
+    "extraResources": [
+      {
+        "from": "server",
+        "to": "runtime/server",
+        "filter": [
+          "package.json",
+          "src/**/*"
+        ]
+      },
+      {
+        "from": "server/node_modules",
+        "to": "runtime/server/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "web/dist",
+        "to": "runtime/web/dist"
+      },
+      {
+        "from": "bin/${os}-${arch}",
+        "to": "runtime/bin",
+        "filter": [
+          "**/*",
+          "!.gitkeep"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "web/public/logo.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "shortcutName": "Foxdown"
+    },
+    "protocols": [
+      {
+        "name": "Magnet URI",
+        "role": "Viewer",
+        "schemes": [
+          "magnet"
+        ]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "torrent",
+        "name": "BitTorrent File",
+        "role": "Viewer",
+        "icon": "web/public/logo.png"
+      }
+    ],
+    "artifactName": "Foxdown-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "target": [
+        "dir"
+      ],
+      "icon": "web/public/logo.png",
+      "category": "public.app-category.utilities",
+      "notarize": false,
+      "identity": "-",
+      "minimumSystemVersion": "13.0"
+    }
+  },
+  "author": "Foxmori"
+}

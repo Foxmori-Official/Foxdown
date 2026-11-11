@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="optTitle">Foxdown 连接器 - 设置</title>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; max-width: 860px; margin: 24px auto; padding: 0 16px 40px; color: var(--text); background: var(--bg); }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    h1 { font-size: 25px; display: flex; align-items: center; gap: 8px; }
+    h1 img { width: 24px; height: 24px; }
+    h2 { font-size: 16px; margin: 28px 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    label { display: block; margin-top: 14px; font-weight: 600; font-size: 14px; }
+    input[type=text], input[type=password], input[type=number], textarea, select {
+      width: 100%; box-sizing: border-box; padding: 8px; margin-top: 4px;
+      border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--card-bg); color: inherit;
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--focus); }
+    input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    textarea { min-height: 64px; resize: vertical; font-family: Consolas, monospace; }
+    .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    .row label { margin: 0; font-weight: 400; }
+    .hint { color: var(--text-dim); font-size: 12px; margin-top: 4px; line-height: 1.6; }
+    button { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; background: var(--brand); color: var(--on-brand); font-size: 14px; }
+    button:hover { background: var(--focus); }
+    button.secondary { background: var(--brand-ghost-bg); color: var(--text); }
+    button.secondary:hover { background: var(--border); }
+    #status { margin-top: 16px; font-size: 14px; white-space: pre-wrap; }
+    .ok { color: var(--ok); } .err { color: var(--err); }
+    /* 多服务器列表 */
+    .server-row { display: grid; grid-template-columns: 1fr 1.6fr 1fr 1.4fr 32px; gap: 6px; margin-top: 8px; align-items: center; }
+    .server-row input { margin-top: 0; }
+    .srv-del { padding: 0; height: 32px; font-size: 16px; line-height: 1; background: var(--err-bg); color: var(--err); border-radius: 6px; }
+    .srv-del:hover { background: var(--err-bg); }
+    .server-head { display: grid; grid-template-columns: 1fr 1.6fr 1fr 1.4fr 32px; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--text-dim); }
+    #addServer { margin-top: 10px; font-size: 13px; padding: 6px 14px; }
+
+    @media (max-width: 520px) {
+      .server-head { display: none; }
+      .server-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin: 8px 0; }
+      .server-row input { width: 100%; min-width: 0; box-sizing: border-box; }
+      .server-row .srv-url, .server-row .srv-pattern { grid-column: 1 / -1; }
+    }
+    .routing { margin-top: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-bg); }
+    .routing summary { cursor: pointer; font-size: 14px; font-weight: 650; }
+    .save-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px; margin-top: 24px; padding: 12px 0; border-top: 1px solid var(--border); background: var(--bg); }
+    #status { margin: 0; overflow-wrap: anywhere; }
+    button:disabled { opacity: .55; cursor: wait; }
+  </style>
+</head>
+<body>
+  <h1><img src="icons/icon48.png" alt=""><span data-i18n="optHeading">Foxdown 连接器设置</span></h1>
+
+  <h2 data-i18n="langTitle">语言</h2>
+  <label><span data-i18n="langLabel">界面语言</span>
+    <select id="locale">
+      <option value="auto" data-i18n="langAuto">跟随系统（浏览器语言）</option>
+      <option value="en">English</option>
+      <option value="de">Deutsch</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="pt-BR">Português (Brasil)</option>
+      <option value="ja">日本語</option>
+      <option value="zh-CN">简体中文</option>
+      <option value="zh-TW">繁體中文</option>
+      <option value="ko">한국어</option>
+    </select>
+  </label>
+  <div class="hint" data-i18n="langHint">切换语言后扩展将自动重载，使所有界面生效</div>
+
+  <h2 data-i18n="optServerSection">服务器</h2>
+  <label><span data-i18n="optServerUrl">服务器地址</span>
+    <input type="text" id="serverUrl" placeholder="http://127.0.0.1:16801">
+  </label>
+  <div class="hint" data-i18n="optServerUrlHint">Foxdown 后端地址，默认 http://127.0.0.1:16801（下方多服务器列表为空时生效）</div>
+  <label><span data-i18n="optApiToken">API Token（可空）</span>
+    <input type="password" id="apiToken">
+  </label>
+  <div class="hint" data-i18n="optApiTokenHint">若后端"设置 → API Token"非空，需在此填写相同令牌</div>
+
+  <details class="routing">
+  <summary data-i18n="optServers">多服务器（URL 路由）</summary>
+  <div class="hint" data-i18n="optServersHint">按顺序匹配「下载地址+文件名」，首个命中的服务器接收任务；规则为 * 或留空的项是默认服务器；列表第一项兜底</div>
+  <div class="server-head">
+    <span data-i18n="srvColName">名称</span><span data-i18n="srvColUrl">地址</span><span data-i18n="srvColToken">Token</span><span data-i18n="srvColPattern">URL 规则</span><span></span>
+  </div>
+  <div id="serverList"></div>
+  <button id="addServer" class="secondary" type="button" data-i18n="optAddServer">添加服务器</button>
+  </details>
+  <div class="row"><button id="test" class="secondary" type="button" data-i18n="testBtn">测试连接</button></div>
+
+  <h2 data-i18n="optCaptureSection">接管规则</h2>
+  <div class="row">
+    <input type="checkbox" id="enabled">
+    <label for="enabled" data-i18n="optEnabled">接管浏览器下载到 Foxdown（快捷键 Alt+Shift+D）</label>
+  </div>
+
+  <label><span data-i18n="optDomainMode">域名过滤模式</span>
+    <select id="domainMode">
+      <option value="off" data-i18n="domainModeOff">不过滤（所有站点）</option>
+      <option value="blacklist" data-i18n="domainModeBlacklist">黑名单：排除以下域名</option>
+      <option value="whitelist" data-i18n="domainModeWhitelist">白名单：仅接管以下域名</option>
+    </select>
+  </label>
+  <label><span data-i18n="optDomainList">域名列表（每行一个，支持 * 通配符）</span>
+    <textarea id="domainList" data-i18n-ph="domainListPh" placeholder="例如：*.baidu.com&#10;github.com"></textarea>
+  </label>
+  <div class="hint" data-i18n="optDomainListHint">同时匹配页面域名与下载文件域名；* 匹配任意字符</div>
+
+  <label><span data-i18n="optExtMode">文件后缀过滤模式</span>
+    <select id="extMode">
+      <option value="off" data-i18n="extModeOff">不过滤（按大小判断）</option>
+      <option value="whitelist" data-i18n="extModeWhitelist">白名单：仅接管以下后缀</option>
+      <option value="blacklist" data-i18n="extModeBlacklist">黑名单：排除以下后缀</option>
+    </select>
+  </label>
+  <label><span data-i18n="optExtList">后缀列表（逗号或空格分隔）</span>
+    <input type="text" id="extList" data-i18n-ph="extListPh" placeholder="例如：zip exe mp4 pdf">
+  </label>
+  <div class="hint" data-i18n="optExtListHint">m3u8 / mpd 流媒体地址始终接管，不受后缀过滤影响</div>
+
+  <label><span data-i18n="optMinSize">最小接管大小（MB，0 = 不限制）</span>
+    <input type="number" id="minSizeMB" min="0" step="1">
+  </label>
+  <div class="row">
+    <input type="checkbox" id="captureUnknownSize">
+    <label for="captureUnknownSize" data-i18n="optCaptureUnknownSize">无法获取大小时也接管</label>
+  </div>
+
+  <h2 data-i18n="optFeatures">功能</h2>
+  <div class="row">
+    <input type="checkbox" id="captureMagnet">
+    <label for="captureMagnet" data-i18n="optCaptureMagnet">点击页面磁力链接（magnet:）时直接接管</label>
+  </div>
+  <div class="row">
+    <input type="checkbox" id="notifyComplete">
+    <label for="notifyComplete" data-i18n="optNotifyComplete">下载完成 / 失败时显示系统通知</label>
+  </div>
+  <div class="row">
+    <input type="checkbox" id="sniffEnabled">
+    <label for="sniffEnabled" data-i18n="optSniffMedia">嗅探网页中的媒体资源（视频 / 音频 / m3u8），在弹窗中列出</label>
+  </div>
+  <div class="row">
+    <input type="checkbox" id="allowExternalRequest">
+    <label for="allowExternalRequest" data-i18n="optAllowExternal">允许其他扩展发送下载请求（中间件 API，谨慎开启）</label>
+  </div>
+  <div class="row">
+    <input type="checkbox" id="askBeforeDownload">
+    <label for="askBeforeDownload" data-i18n="optAskBeforeDownload">下载前弹出参数确认窗口（可修改文件名、分片数与目标服务器）</label>
+  </div>
+  <label><span data-i18n="optPanelStyle">管理面板打开方式</span>
+    <select id="panelOpenStyle">
+      <option value="popup" data-i18n="panelStylePopup">弹窗（默认）</option>
+      <option value="newtab" data-i18n="panelStyleNewtab">新标签页</option>
+      <option value="window" data-i18n="panelStyleWindow">独立窗口</option>
+      <option value="sidepanel" data-i18n="panelStyleSidepanel">侧边栏</option>
+    </select>
+  </label>
+  <div class="hint" data-i18n="optAltBypassHint">按住 Alt 点击下载可临时跳过接管（旁路）</div>
+
+  <h2 data-i18n="optSniffSection">嗅探与媒体</h2>
+  <div class="row">
+    <input type="checkbox" id="deepSearch">
+    <label for="deepSearch" data-i18n="optDeepSearch">深度搜索：页面加载完成后自动扫描脚本与播放器变量中的媒体地址（也可在弹窗手动触发）</label>
+  </div>
+  <label><span data-i18n="optSniffRules">嗅探正则过滤（每行一条通配符或 /正则/；留空 = 全部进入嗅探列表）</span>
+    <textarea id="sniffRegexRules" placeholder="*.example.com*m3u8*&#10;/^https:\/\/cdn\.a\.com\/.*\.mp4/"></textarea>
+  </label>
+  <div class="hint" data-i18n="optSniffRulesHint">仅命中规则的 URL 会进入嗅探列表；* 匹配任意字符，? 匹配单个字符</div>
+  <label><span data-i18n="optFileNameTemplate">文件名模板（留空 = 使用服务器默认命名）</span>
+    <input type="text" id="fileNameTemplate" placeholder="${title}.${ext}">
+  </label>
+  <div class="hint" data-i18n="optTemplateHint">可用变量：${title} 页面标题、${fileName} 原文件名（不含扩展名）、${ext} 扩展名、${host} 站点域名、${date} 日期（YYYYMMDD）</div>
+  <div class="row">
+    <input type="checkbox" id="autoDownloadSniffed">
+    <label for="autoDownloadSniffed" data-i18n="optAutoDownload">自动下载嗅探到的媒体（m3u8 直播流除外，同一地址只发一次）</label>
+  </div>
+  <label><span data-i18n="optAutoDownloadMinSize">自动下载最小体积（MB，体积小于该值不自动下载）</span>
+    <input type="number" id="autoDownloadMinSizeMB" min="0" step="1">
+  </label>
+
+  <h2 data-i18n="optConfigSection">配置管理</h2>
+  <div class="row">
+    <button id="export" class="secondary" data-i18n="exportBtn">导出配置</button>
+    <button id="import" class="secondary" data-i18n="importBtn">导入配置</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+  </div>
+  <div class="row">
+    <button id="reopenGuide" class="secondary" type="button" data-i18n="obReopenGuide">重新打开安装引导</button>
+  </div>
+
+  <footer class="save-bar">
+    <button id="save" data-i18n="saveBtn">保存</button>
+    <div id="status" role="status"></div>
+  </footer>
+
+  <script src="i18n.js"></script>
+  <script src="connection.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

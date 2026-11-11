@@ -1,0 +1,52 @@
+[
+  {
+    "repo": "aria2/aria2",
+    "baseline": "9e7273583f83e881e3ec067b523ba88724088d2f",
+    "focus": "RPC, HTTP, BitTorrent, sessions and engine fixes"
+  },
+  {
+    "repo": "agalwood/Motrix",
+    "baseline": "7830f80524cc0ea54aa9f799b20e9a5033fa1534",
+    "focus": "Desktop integration, engine builds and settings"
+  },
+  {
+    "repo": "nilaoda/N_m3u8DL-RE",
+    "baseline": "7849be8437148b33324d5ba298804d49d3add3d8",
+    "focus": "HLS and DASH parsing, track selection, live recording and remuxing"
+  },
+  {
+    "repo": "GopeedLab/gopeed",
+    "baseline": "89dfbe4c45a79234cf20d388821825d3a05a6872",
+    "focus": "Task model, resolve/create API, scheduler and CLI"
+  },
+  {
+    "repo": "alexhua/Aria2-Explorer",
+    "baseline": "8308bc1b5ce75f301362dda4633d227b6adb99f0",
+    "focus": "Download interception, confirmation and server routing"
+  },
+  {
+    "repo": "GopeedLab/browser-extension",
+    "baseline": "d29bf1b0a7acfe233c3b13e388bb45939133ea48",
+    "focus": "Browser handoff and request-header handling"
+  },
+  {
+    "repo": "xifangczy/cat-catch",
+    "baseline": "019c465794b5871701383e4485c0e9ee7be2f840",
+    "focus": "Media discovery, filtering and preview"
+  },
+  {
+    "repo": "eugeneware/ffmpeg-static",
+    "baseline": "5d17f62ee62b4d11a5c9416ecba44c20464b7a1f",
+    "focus": "FFmpeg and FFprobe versions and platform availability"
+  },
+  {
+    "repo": "video-dev/hls.js",
+    "baseline": "cb22168d8088aceca4c6934d70d8d035be31d607",
+    "focus": "HLS media preview and playback fixes"
+  },
+  {
+    "repo": "dfloresc/ffmpeg-macos-builds",
+    "baseline": "0a061a161fb7adce5723bed96872adcbc08466e2",
+    "focus": "macOS FFmpeg distribution, source notices and shared libraries"
+  }
+]

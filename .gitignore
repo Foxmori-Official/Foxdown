@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+web/dist/
+dist-electron/
+Foxdown-extension.zip
+/bin/*
+!/bin/.gitkeep
+/extension/icons/*.png
+/extension/store/icon256.png
+/web/public/*.png
+/.impeccable/
+
+# Runtime data
+data/
+downloads/
+
+# Dev scratch
+.scratch/
+.research/
+
+# OS
+Thumbs.db
+.DS_Store

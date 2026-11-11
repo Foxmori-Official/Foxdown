@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="obTitle">Foxdown 安装引导</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="onboarding.css">
+</head>
+<body>
+  <main class="card">
+    <!-- 步骤圆点指示器 -->
+    <nav class="dots" aria-label="steps">
+      <span class="dot active" data-step-dot="1"><i>1</i><b data-i18n="obStep1">核心设置</b></span>
+      <span class="dot" data-step-dot="2"><i>2</i><b data-i18n="obStep2">固定图标</b></span>
+      <span class="dot" data-step-dot="3"><i>3</i><b data-i18n="obStep3">开始体验</b></span>
+    </nav>
+
+    <!-- Step 1：欢迎 + 核心设置 -->
+    <section class="step" data-step="1">
+      <header class="hero">
+        <img src="icons/icon128.png" alt="Foxdown" class="logo">
+        <h1 data-i18n="obWelcomeTitle">欢迎使用 Foxdown</h1>
+        <p class="sub" data-i18n="obWelcomeSub">自动拦截浏览器下载，交给本地下载管理器 Foxdown 高速下载</p>
+      </header>
+
+      <div class="connection-fields">
+        <label class="fld" for="serverUrl"><span data-i18n="obServerUrl">服务器地址</span></label>
+        <input type="text" id="serverUrl" placeholder="http://127.0.0.1:16801">
+        <label class="fld" for="apiToken"><span data-i18n="optApiToken">API Token（可空）</span></label>
+        <input type="password" id="apiToken" autocomplete="off">
+        <p class="hint" data-i18n="optApiTokenHint"></p>
+        <a class="hint" id="routingHint" href="options.html" target="_blank" rel="noopener" data-i18n="obRoutingHint" hidden></a>
+        <button type="button" id="testBtn" class="ghost" data-i18n="obTestBtn">测试连接</button>
+        <p id="testState" class="test-state" role="status"></p>
+        <a class="hint" href="https://github.com/Foxmori-Official/Foxdown/releases" target="_blank" rel="noopener" data-i18n="obDownloadApp"></a>
+      </div>
+
+      <label class="fld switch-row">
+        <span data-i18n="obEnabled">接管浏览器下载</span>
+        <span class="switch"><input type="checkbox" id="enabled"><span class="slider"></span></span>
+      </label>
+
+      <label class="fld">
+        <span data-i18n="obLocale">界面语言</span>
+        <select id="locale">
+          <option value="auto" data-i18n="langAuto">跟随系统</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="pt-BR">Português (Brasil)</option>
+          <option value="ja">日本語</option>
+          <option value="zh-CN">简体中文</option>
+          <option value="zh-TW">繁體中文</option>
+          <option value="ko">한국어</option>
+        </select>
+      </label>
+    </section>
+
+    <!-- Step 2：固定到工具栏（纯 CSS 图示） -->
+    <section class="step" data-step="2" hidden>
+      <h2 data-i18n="obPinTitle">将 Foxdown 固定到工具栏</h2>
+      <div class="pin-illus" aria-hidden="true">
+        <span class="puzzle">
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 3v2a2 2 0 1 0 4 0V3h3v4h-2a2 2 0 1 0 0 4h2v4h-4v2a2 2 0 1 1-4 0v-2H9v2a2 2 0 1 1-4 0v-2H3v-4h2a2 2 0 1 0 0-4H3V3h6v2a2 2 0 1 0 4 0V3h1z"/>
+          </svg>
+        </span>
+        <span class="arrow">→</span>
+        <span class="pin">
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 4h6l1 7 3 3v2H5v-2l3-3 1-7z"/>
+            <path d="M12 16v5"/>
+          </svg>
+        </span>
+      </div>
+      <ol class="pin-steps">
+        <li data-i18n="obPinStep1">点击浏览器工具栏右侧的拼图图标（扩展程序）</li>
+        <li data-i18n="obPinStep2">在列表中找到 Foxdown，点击图钉图标将其固定</li>
+      </ol>
+    </section>
+
+    <!-- Step 3：初体验 -->
+    <section class="step" data-step="3" hidden>
+      <h2 data-i18n="obDemoTitle">试一试第一次下载</h2>
+      <p class="desc" data-i18n="obDemoDesc">打开内置演示页，点击其中的下载链接，观察扩展如何将下载任务发送给 Foxdown。</p>
+      <button type="button" id="demoBtn" class="primary block" data-i18n="obDemoBtn">打开演示页</button>
+      <p class="hint" data-i18n="obDemoHint">点击页面中的下载链接，观察扩展接管</p>
+    </section>
+
+    <!-- 完成态 -->
+    <section class="step done" data-step="done" hidden>
+      <div class="check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+      <h2 data-i18n="obDoneTitle">设置完成</h2>
+      <p class="desc" data-i18n="obDoneDesc">一切就绪，可以关闭此页面了。</p>
+    </section>
+
+    <!-- 底部按钮区 -->
+    <footer class="actions">
+      <button type="button" id="backBtn" class="ghost" data-i18n="obBack" hidden>上一步</button>
+      <button type="button" id="nextBtn" class="primary" disabled data-i18n="obNext">下一步</button>
+      <span id="finishState" role="status"></span>
+      <button type="button" id="finishBtn" class="primary" data-i18n="obFinish" hidden>完成设置，开始使用</button>
+    </footer>
+  </main>
+
+  <script src="i18n.js"></script>
+  <script src="connection.js"></script>
+  <script src="onboarding.js"></script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+{
+  "extName": {
+    "message": "Foxdown",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "Captura downloads do navegador e os envia ao gerenciador de downloads local Foxdown (HTTP/BT/magnet/m3u8)",
+    "description": "Extension description"
+  },
+  "cmdToggle": {
+    "message": "Alternar captura de downloads"
+  },
+  "cmdOpenPanel": {
+    "message": "Abrir painel do Foxdown"
+  },
+  "captureOn": {
+    "message": "Captura ativada"
+  },
+  "captureOff": {
+    "message": "Captura desativada"
+  },
+  "sentToKimi": {
+    "message": "Enviado ao Foxdown"
+  },
+  "sendFailed": {
+    "message": "Falha ao enviar; o navegador fará o download"
+  },
+  "menuLink": {
+    "message": "Baixar link com o Foxdown"
+  },
+  "menuMedia": {
+    "message": "Baixar imagem/vídeo/áudio com o Foxdown"
+  },
+  "menuPage": {
+    "message": "Baixar todos os links desta página com o Foxdown"
+  },
+  "menuSel": {
+    "message": "Baixar links selecionados com o Foxdown"
+  },
+  "taskComplete": {
+    "message": "Download concluído"
+  },
+  "taskError": {
+    "message": "Falha no download"
+  },
+  "openPanel": {
+    "message": "Abrir painel de gerenciamento"
+  },
+  "openSettings": {
+    "message": "Configurações da extensão"
+  },
+  "srvDefault": {
+    "message": "Padrão",
+    "description": "Default server name"
+  },
+  "optServers": {
+    "message": "Vários servidores (roteamento por URL)"
+  },
+  "optServersHint": {
+    "message": "Corresponde «URL de download + nome do arquivo» em ordem; a primeira correspondência recebe a tarefa. Uma regra * (ou vazia) marca o servidor padrão; a primeira linha é a opção final."
+  },
+  "srvColName": {
+    "message": "Nome"
+  },
+  "srvColUrl": {
+    "message": "Endereço"
+  },
+  "srvColPattern": {
+    "message": "Regras de URL (curingas separados por vírgula)"
+  },
+  "srvColToken": {
+    "message": "Token"
+  },
+  "optAddServer": {
+    "message": "Adicionar servidor"
+  },
+  "optSniffMedia": {
+    "message": "Detectar recursos de mídia nas páginas (vídeo / áudio / m3u8) e listá-los no pop-up"
+  },
+  "optAllowExternal": {
+    "message": "Permitir solicitações de download de outras extensões (API de middleware, ative com cautela)"
+  },
+  "mediaTitle": {
+    "message": "Mídia desta página"
+  },
+  "mediaDownload": {
+    "message": "Baixar"
+  },
+  "deepSearchBtn": {
+    "message": "Busca profunda",
+    "description": "Deep search button in the popup"
+  },
+  "mediaPreview": {
+    "message": "Pré-visualizar",
+    "description": "Preview button of a media list item"
+  },
+  "previewFailed": {
+    "message": "Falha na pré-visualização: não foi possível carregar esta mídia (pode exigir login ou ter proteção contra hotlink)"
+  },
+  "previewUnsupported": {
+    "message": "Este formato não pode ser pré-visualizado"
+  },
+  "autoDownloaded": {
+    "message": "Baixado automaticamente"
+  },
+  "optSniffSection": {
+    "message": "Detecção e mídia"
+  },
+  "optDeepSearch": {
+    "message": "Busca profunda: verifica scripts e variáveis do player em busca de URLs de mídia após o carregamento da página (também pode ser acionada manualmente no pop-up)"
+  },
+  "optSniffRules": {
+    "message": "Filtro de URL de detecção (um curinga ou /regex/ por linha; vazio = aceitar todas)"
+  },
+  "optSniffRulesHint": {
+    "message": "Apenas URLs que correspondem a uma regra entram na lista; * corresponde a qualquer caractere, ? a um único caractere"
+  },
+  "optFileNameTemplate": {
+    "message": "Modelo de nome de arquivo (vazio = nomeação padrão do servidor)"
+  },
+  "optTemplateHint": {
+    "message": "Variáveis: ${title} título da página, ${fileName} nome original do arquivo sem extensão, ${ext} extensão, ${host} domínio do site, ${date} data (AAAAMMDD)"
+  },
+  "optAutoDownload": {
+    "message": "Baixar automaticamente a mídia detectada (exceto transmissões ao vivo m3u8; cada URL é enviada apenas uma vez)"
+  },
+  "optAutoDownloadMinSize": {
+    "message": "Tamanho mínimo para download automático (MB; arquivos menores não são baixados automaticamente)"
+  },
+  "optAskBeforeDownload": {
+    "message": "Mostrar janela de confirmação antes do download (nome do arquivo, segmentos e servidor de destino editáveis)"
+  },
+  "optPanelStyle": {
+    "message": "Modo de abrir o painel de gerenciamento"
+  },
+  "panelStylePopup": {
+    "message": "Pop-up (padrão)"
+  },
+  "panelStyleNewtab": {
+    "message": "Nova aba"
+  },
+  "panelStyleWindow": {
+    "message": "Janela independente"
+  },
+  "panelStyleSidepanel": {
+    "message": "Painel lateral"
+  },
+  "confirmTitle": {
+    "message": "Confirmar download"
+  },
+  "confirmFileName": {
+    "message": "Nome do arquivo"
+  },
+  "confirmReferer": {
+    "message": "Página de origem (Referer)"
+  },
+  "confirmSplit": {
+    "message": "Segmentos (0 = padrão do servidor)"
+  },
+  "confirmServer": {
+    "message": "Servidor de destino"
+  },
+  "confirmStart": {
+    "message": "Iniciar download"
+  },
+  "confirmCancel": {
+    "message": "Cancelar"
+  },
+  "confirmMissing": {
+    "message": "Tarefa não encontrada ou expirada"
+  },
+  "captureLabel": {
+    "message": "Capturar downloads do navegador"
+  },
+  "statActive": {
+    "message": "Tarefas ativas"
+  },
+  "statWaiting": {
+    "message": "Tarefas em espera"
+  },
+  "statSpeed": {
+    "message": "Velocidade de download"
+  },
+  "statUpspeed": {
+    "message": "Velocidade de upload"
+  },
+  "openPanelBtn": {
+    "message": "Painel de gerenciamento",
+    "description": "Manager panel button in the popup"
+  },
+  "settingsBtn": {
+    "message": "Configurações",
+    "description": "Settings button in the popup"
+  },
+  "stateConnected": {
+    "message": "Conectado a $1",
+    "description": "Popup footer status: connected, $1 is the server URL (may include name)"
+  },
+  "stateFailed": {
+    "message": "Falha na conexão: $1",
+    "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "noLinksFound": {
+    "message": "Nenhum link para download encontrado nesta página"
+  },
+  "batchResult": {
+    "message": "$1 com êxito$2",
+    "description": "Batch download result, $1 is the success count, $2 is the failure part (batchResultFail or empty)"
+  },
+  "batchResultFail": {
+    "message": ", $1 com falha",
+    "description": "Failure part of the batch download result, $1 is the failure count"
+  },
+  "optTitle": {
+    "message": "Foxdown Connector - Configurações",
+    "description": "Options page document title"
+  },
+  "optHeading": {
+    "message": "Configurações do Foxdown Connector"
+  },
+  "optServerSection": {
+    "message": "Servidor"
+  },
+  "optServerUrl": {
+    "message": "Endereço do servidor"
+  },
+  "optServerUrlHint": {
+    "message": "Endereço do backend do Foxdown, padrão http://127.0.0.1:16801 (usado quando a lista de servidores abaixo está vazia)"
+  },
+  "optApiToken": {
+    "message": "Token de API (opcional)"
+  },
+  "optApiTokenHint": {
+    "message": "Se o backend tiver «Configurações → Token de API» definido, insira o mesmo token aqui"
+  },
+  "optCaptureSection": {
+    "message": "Regras de captura"
+  },
+  "optEnabled": {
+    "message": "Capturar downloads do navegador para o Foxdown (atalho Alt+Shift+D)"
+  },
+  "optDomainMode": {
+    "message": "Modo de filtro de domínio"
+  },
+  "domainModeOff": {
+    "message": "Sem filtro (todos os sites)"
+  },
+  "domainModeBlacklist": {
+    "message": "Lista negra: excluir estes domínios"
+  },
+  "domainModeWhitelist": {
+    "message": "Lista branca: capturar apenas estes domínios"
+  },
+  "optDomainList": {
+    "message": "Lista de domínios (um por linha, aceita o curinga *)"
+  },
+  "optDomainListHint": {
+    "message": "Corresponde ao domínio da página e ao domínio do arquivo baixado; * corresponde a qualquer caractere"
+  },
+  "optExtMode": {
+    "message": "Modo de filtro de extensão"
+  },
+  "extModeOff": {
+    "message": "Sem filtro (decidir pelo tamanho)"
+  },
+  "extModeWhitelist": {
+    "message": "Lista branca: capturar apenas estas extensões"
+  },
+  "extModeBlacklist": {
+    "message": "Lista negra: excluir estas extensões"
+  },
+  "optExtList": {
+    "message": "Lista de extensões (separadas por vírgulas ou espaços)"
+  },
+  "optExtListHint": {
+    "message": "URLs de streaming m3u8 / mpd são sempre capturadas, independentemente do filtro de extensão"
+  },
+  "optMinSize": {
+    "message": "Tamanho mínimo de captura (MB, 0 = sem limite)"
+  },
+  "optCaptureUnknownSize": {
+    "message": "Capturar mesmo quando o tamanho for desconhecido"
+  },
+  "optFeatures": {
+    "message": "Recursos"
+  },
+  "optCaptureMagnet": {
+    "message": "Capturar diretamente os links magnet (magnet:) ao clicar"
+  },
+  "optNotifyComplete": {
+    "message": "Mostrar notificação do sistema quando um download for concluído / falhar"
+  },
+  "optAltBypassHint": {
+    "message": "Segure Alt ao clicar em um download para ignorar temporariamente a captura"
+  },
+  "optConfigSection": {
+    "message": "Gerenciamento de configuração"
+  },
+  "exportBtn": {
+    "message": "Exportar configuração"
+  },
+  "importBtn": {
+    "message": "Importar configuração"
+  },
+  "saveBtn": {
+    "message": "Salvar"
+  },
+  "testBtn": {
+    "message": "Testar conexão"
+  },
+  "statusSaved": {
+    "message": "Salvo."
+  },
+  "statusTesting": {
+    "message": "Conectando…"
+  },
+  "testSuccess": {
+    "message": "Conectado: aria2=$1 ($2), motor de streaming=$3, ffmpeg=$4",
+    "description": "Test connection success, $1=aria2 status, $2=aria2 version, $3=stream engine, $4=ffmpeg"
+  },
+  "versionUnknown": {
+    "message": "desconhecido"
+  },
+  "statusFailed": {
+    "message": "Falha na conexão: $1",
+    "description": "Test connection failed, $1 is the error message"
+  },
+  "importSuccess": {
+    "message": "Importação bem-sucedida."
+  },
+  "importFailed": {
+    "message": "Falha na importação: $1",
+    "description": "Config import failed, $1 is the error message"
+  },
+  "domainListPh": {
+    "message": "ex.: *.baidu.com\ngithub.com",
+    "description": "Domain list textarea placeholder"
+  },
+  "extListPh": {
+    "message": "ex.: zip exe mp4 pdf",
+    "description": "Extension list input placeholder"
+  },
+  "langTitle": {
+    "message": "Idioma",
+    "description": "Language settings section title"
+  },
+  "langLabel": {
+    "message": "Idioma da interface",
+    "description": "Interface language select label"
+  },
+  "langAuto": {
+    "message": "Seguir o sistema",
+    "description": "Option: follow the browser/system language"
+  },
+  "langHint": {
+    "message": "As alterações de idioma são aplicadas imediatamente.",
+    "description": "UI language applies immediately without reloading."
+  },
+  "langApplied": {
+    "message": "Idioma atualizado.",
+    "description": "UI language applies immediately without reloading."
+  },
+  "extShortName": {
+    "message": "Foxdown",
+    "description": "Short name of the extension (max 12 chars)"
+  },
+  "actionTitle": {
+    "message": "Downloads Foxdown",
+    "description": "Browser action toolbar tooltip (max 30 chars)"
+  },
+  "obTitle": {
+    "message": "Guia de configuração do Foxdown"
+  },
+  "obWelcomeTitle": {
+    "message": "Bem-vindo ao Foxdown"
+  },
+  "obWelcomeSub": {
+    "message": "Intercepta automaticamente os downloads do navegador e os envia ao gerenciador de downloads local Foxdown."
+  },
+  "obStep1": {
+    "message": "Configurações básicas"
+  },
+  "obStep2": {
+    "message": "Fixar o ícone"
+  },
+  "obStep3": {
+    "message": "Experimente"
+  },
+  "obServerUrl": {
+    "message": "Endereço do servidor"
+  },
+  "obTestBtn": {
+    "message": "Testar conexão"
+  },
+  "obTestOk": {
+    "message": "Conectado: versão do aria2 $1"
+  },
+  "obTestFail": {
+    "message": "Inicie primeiro o backend do Foxdown"
+  },
+  "obEnabled": {
+    "message": "Interceptar downloads do navegador"
+  },
+  "obLocale": {
+    "message": "Idioma da interface"
+  },
+  "obPinTitle": {
+    "message": "Fixe o Foxdown na barra de ferramentas"
+  },
+  "obPinStep1": {
+    "message": "Clique no ícone de quebra-cabeça (Extensões) à direita da barra de ferramentas"
+  },
+  "obPinStep2": {
+    "message": "Encontre o Foxdown na lista e clique no ícone de alfinete para fixá-lo"
+  },
+  "obDemoTitle": {
+    "message": "Experimente o primeiro download"
+  },
+  "obDemoDesc": {
+    "message": "Abra a página de demonstração integrada, clique em um link de download e veja a extensão enviar a tarefa ao Foxdown."
+  },
+  "obDemoBtn": {
+    "message": "Abrir página de demonstração"
+  },
+  "obDemoHint": {
+    "message": "Clique em um link de download na página e veja a extensão assumir"
+  },
+  "obFinish": {
+    "message": "Concluir configuração e começar"
+  },
+  "obDoneTitle": {
+    "message": "Configuração concluída"
+  },
+  "obDoneDesc": {
+    "message": "Tudo pronto. Você já pode fechar esta página."
+  },
+  "obBack": {
+    "message": "Voltar"
+  },
+  "obNext": {
+    "message": "Avançar"
+  },
+  "obOpenGuide": {
+    "message": "Guia de uso"
+  },
+  "obReopenGuide": {
+    "message": "Reabrir guia de configuração"
+  },
+  "serverAddressInvalid": {
+    "message": "Informe um endereço HTTP ou HTTPS sem credenciais ou parâmetros de consulta."
+  },
+  "serverTokenInvalid": {
+    "message": "Confira o token da API web nas configurações do Foxdown."
+  },
+  "serverNotFoxdown": {
+    "message": "Este endereço não respondeu como um servidor do Foxdown."
+  },
+  "serverEngineUnavailable": {
+    "message": "O Foxdown respondeu, mas o aria2 está indisponível."
+  },
+  "settingsSaveFailed": {
+    "message": "Não foi possível salvar as configurações. Tente novamente."
+  },
+  "obTestRequired": {
+    "message": "Teste a conexão para continuar."
+  },
+  "obRoutingHint": {
+    "message": "Editar o servidor padrão nas configurações"
+  },
+  "obDownloadApp": {
+    "message": "Baixar o aplicativo Foxdown para desktop"
+  }
+}

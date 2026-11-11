@@ -1,0 +1,473 @@
+{
+  "extName": {
+    "message": "Foxdown",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "ブラウザーのダウンロードを自動的にキャプチャし、ローカルのダウンロードマネージャー Foxdown に送信します（HTTP/BT/マグネット/m3u8 ストリーム）",
+    "description": "Extension description"
+  },
+  "cmdToggle": {
+    "message": "ダウンロードキャプチャの切り替え"
+  },
+  "cmdOpenPanel": {
+    "message": "Foxdown 管理パネルを開く"
+  },
+  "captureOn": {
+    "message": "キャプチャが有効になりました"
+  },
+  "captureOff": {
+    "message": "キャプチャが無効になりました"
+  },
+  "sentToKimi": {
+    "message": "Foxdown に送信しました"
+  },
+  "sendFailed": {
+    "message": "送信に失敗しました。ブラウザーでダウンロードします"
+  },
+  "menuLink": {
+    "message": "Foxdown でリンクをダウンロード"
+  },
+  "menuMedia": {
+    "message": "Foxdown で画像/動画/音声をダウンロード"
+  },
+  "menuPage": {
+    "message": "Foxdown でこのページのリンクを一括ダウンロード"
+  },
+  "menuSel": {
+    "message": "Foxdown で選択したリンクをダウンロード"
+  },
+  "taskComplete": {
+    "message": "ダウンロード完了"
+  },
+  "taskError": {
+    "message": "ダウンロードに失敗しました"
+  },
+  "openPanel": {
+    "message": "管理パネルを開く"
+  },
+  "openSettings": {
+    "message": "拡張機能の設定"
+  },
+  "srvDefault": {
+    "message": "デフォルト",
+    "description": "Default server name"
+  },
+  "optServers": {
+    "message": "複数サーバー（URL ルーティング）"
+  },
+  "optServersHint": {
+    "message": "「ダウンロード URL + ファイル名」を順に照合し、最初に一致したサーバーがタスクを受け取ります。ルールが * または空欄の項目はデフォルトサーバー、リストの先頭が最終フォールバックです。"
+  },
+  "srvColName": {
+    "message": "名前"
+  },
+  "srvColUrl": {
+    "message": "アドレス"
+  },
+  "srvColPattern": {
+    "message": "URL ルール（カンマ区切りのワイルドカード）"
+  },
+  "srvColToken": {
+    "message": "トークン"
+  },
+  "optAddServer": {
+    "message": "サーバーを追加"
+  },
+  "optSniffMedia": {
+    "message": "ウェブページ内のメディアリソース（動画 / 音声 / m3u8）をスニッフィングしてポップアップに一覧表示"
+  },
+  "optAllowExternal": {
+    "message": "他の拡張機能からのダウンロード要求を許可（ミドルウェア API、慎重に有効化してください）"
+  },
+  "mediaTitle": {
+    "message": "このページのメディア"
+  },
+  "mediaDownload": {
+    "message": "ダウンロード"
+  },
+  "deepSearchBtn": {
+    "message": "ディープ検索",
+    "description": "Deep search button in the popup"
+  },
+  "mediaPreview": {
+    "message": "プレビュー",
+    "description": "Preview button of a media list item"
+  },
+  "previewFailed": {
+    "message": "プレビューに失敗しました：このメディアを読み込めません（ログインまたはホットリンク保護が必要な場合があります）"
+  },
+  "previewUnsupported": {
+    "message": "この形式はプレビューに対応していません"
+  },
+  "autoDownloaded": {
+    "message": "自動ダウンロードしました"
+  },
+  "optSniffSection": {
+    "message": "スニッフィングとメディア"
+  },
+  "optDeepSearch": {
+    "message": "ディープ検索：ページ読み込み完了後にスクリプトやプレーヤー変数内のメディア URL を自動スキャン（ポップアップから手動実行も可能）"
+  },
+  "optSniffRules": {
+    "message": "スニッフィング正規表現フィルター（1 行に 1 つのワイルドカードまたは /正規表現/；空欄 = すべてスニッフィングリストへ）"
+  },
+  "optSniffRulesHint": {
+    "message": "ルールに一致した URL のみスニッフィングリストに入ります。* は任意の文字列、? は任意の 1 文字に一致"
+  },
+  "optFileNameTemplate": {
+    "message": "ファイル名テンプレート（空欄 = サーバーのデフォルト命名）"
+  },
+  "optTemplateHint": {
+    "message": "使用可能な変数：${title} ページタイトル、${fileName} 元のファイル名（拡張子なし）、${ext} 拡張子、${host} サイトのドメイン、${date} 日付（YYYYMMDD）"
+  },
+  "optAutoDownload": {
+    "message": "スニッフィングしたメディアを自動ダウンロード（m3u8 ライブストリームを除く、同一 URL は一度だけ送信）"
+  },
+  "optAutoDownloadMinSize": {
+    "message": "自動ダウンロードの最小サイズ（MB、これより小さいファイルは自動ダウンロードしません）"
+  },
+  "optAskBeforeDownload": {
+    "message": "ダウンロード前に確認ダイアログを表示（ファイル名、分割数、ターゲットサーバーを変更可能）"
+  },
+  "optPanelStyle": {
+    "message": "管理パネルの開き方"
+  },
+  "panelStylePopup": {
+    "message": "ポップアップ（デフォルト）"
+  },
+  "panelStyleNewtab": {
+    "message": "新しいタブ"
+  },
+  "panelStyleWindow": {
+    "message": "独立ウィンドウ"
+  },
+  "panelStyleSidepanel": {
+    "message": "サイドパネル"
+  },
+  "confirmTitle": {
+    "message": "ダウンロードの確認"
+  },
+  "confirmFileName": {
+    "message": "ファイル名"
+  },
+  "confirmReferer": {
+    "message": "参照元ページ（Referer）"
+  },
+  "confirmSplit": {
+    "message": "分割数（0 = サーバーデフォルト）"
+  },
+  "confirmServer": {
+    "message": "ターゲットサーバー"
+  },
+  "confirmStart": {
+    "message": "ダウンロード開始"
+  },
+  "confirmCancel": {
+    "message": "キャンセル"
+  },
+  "confirmMissing": {
+    "message": "タスクが見つからないか期限切れです"
+  },
+  "captureLabel": {
+    "message": "ブラウザーのダウンロードをキャプチャ"
+  },
+  "statActive": {
+    "message": "アクティブなタスク"
+  },
+  "statWaiting": {
+    "message": "待機中のタスク"
+  },
+  "statSpeed": {
+    "message": "ダウンロード速度"
+  },
+  "statUpspeed": {
+    "message": "アップロード速度"
+  },
+  "openPanelBtn": {
+    "message": "管理パネル",
+    "description": "Manager panel button in the popup"
+  },
+  "settingsBtn": {
+    "message": "設定",
+    "description": "Settings button in the popup"
+  },
+  "stateConnected": {
+    "message": "$1 に接続しました",
+    "description": "Popup footer status: connected, $1 is the server URL (may include name)"
+  },
+  "stateFailed": {
+    "message": "接続に失敗しました：$1",
+    "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "noLinksFound": {
+    "message": "このページにダウンロード可能なリンクが見つかりません"
+  },
+  "batchResult": {
+    "message": "成功 $1 件$2",
+    "description": "Batch download result, $1 is the success count, $2 is the failure part (batchResultFail or empty)"
+  },
+  "batchResultFail": {
+    "message": "、失敗 $1 件",
+    "description": "Failure part of the batch download result, $1 is the failure count"
+  },
+  "optTitle": {
+    "message": "Foxdown コネクター - 設定",
+    "description": "Options page document title"
+  },
+  "optHeading": {
+    "message": "Foxdown コネクターの設定"
+  },
+  "optServerSection": {
+    "message": "サーバー"
+  },
+  "optServerUrl": {
+    "message": "サーバーアドレス"
+  },
+  "optServerUrlHint": {
+    "message": "Foxdown バックエンドアドレス、デフォルト http://127.0.0.1:16801（下の複数サーバーリストが空の場合に有効）"
+  },
+  "optApiToken": {
+    "message": "API トークン（省略可）"
+  },
+  "optApiTokenHint": {
+    "message": "バックエンドの「設定 → API トークン」が設定されている場合は、ここに同じトークンを入力してください"
+  },
+  "optCaptureSection": {
+    "message": "キャプチャルール"
+  },
+  "optEnabled": {
+    "message": "ブラウザーのダウンロードを Foxdown にキャプチャ（ショートカット Alt+Shift+D）"
+  },
+  "optDomainMode": {
+    "message": "ドメインフィルターモード"
+  },
+  "domainModeOff": {
+    "message": "フィルターなし（すべてのサイト）"
+  },
+  "domainModeBlacklist": {
+    "message": "ブラックリスト：以下のドメインを除外"
+  },
+  "domainModeWhitelist": {
+    "message": "ホワイトリスト：以下のドメインのみキャプチャ"
+  },
+  "optDomainList": {
+    "message": "ドメインリスト（1 行に 1 つ、* ワイルドカード対応）"
+  },
+  "optDomainListHint": {
+    "message": "ページのドメインとダウンロードファイルのドメインの両方にマッチします。* は任意の文字列に一致"
+  },
+  "optExtMode": {
+    "message": "ファイル拡張子フィルターモード"
+  },
+  "extModeOff": {
+    "message": "フィルターなし（サイズで判定）"
+  },
+  "extModeWhitelist": {
+    "message": "ホワイトリスト：以下の拡張子のみキャプチャ"
+  },
+  "extModeBlacklist": {
+    "message": "ブラックリスト：以下の拡張子を除外"
+  },
+  "optExtList": {
+    "message": "拡張子リスト（カンマまたはスペース区切り）"
+  },
+  "optExtListHint": {
+    "message": "m3u8 / mpd ストリーム URL は常にキャプチャされ、拡張子フィルターの影響を受けません"
+  },
+  "optMinSize": {
+    "message": "最小キャプチャサイズ（MB、0 = 制限なし）"
+  },
+  "optCaptureUnknownSize": {
+    "message": "サイズを取得できない場合もキャプチャ"
+  },
+  "optFeatures": {
+    "message": "機能"
+  },
+  "optCaptureMagnet": {
+    "message": "ページ上のマグネットリンク（magnet:）をクリック時に直接キャプチャ"
+  },
+  "optNotifyComplete": {
+    "message": "ダウンロード完了 / 失敗時にシステム通知を表示"
+  },
+  "optAltBypassHint": {
+    "message": "Alt を押しながらダウンロードをクリックすると、一時的にキャプチャをスキップできます（バイパス）"
+  },
+  "optConfigSection": {
+    "message": "設定の管理"
+  },
+  "exportBtn": {
+    "message": "設定をエクスポート"
+  },
+  "importBtn": {
+    "message": "設定をインポート"
+  },
+  "saveBtn": {
+    "message": "保存"
+  },
+  "testBtn": {
+    "message": "接続テスト"
+  },
+  "statusSaved": {
+    "message": "保存しました。"
+  },
+  "statusTesting": {
+    "message": "接続中…"
+  },
+  "testSuccess": {
+    "message": "接続しました：aria2=$1（$2）、ストリームエンジン=$3、ffmpeg=$4",
+    "description": "Test connection success, $1=aria2 status, $2=aria2 version, $3=stream engine, $4=ffmpeg"
+  },
+  "versionUnknown": {
+    "message": "不明"
+  },
+  "statusFailed": {
+    "message": "接続に失敗しました：$1",
+    "description": "Test connection failed, $1 is the error message"
+  },
+  "importSuccess": {
+    "message": "インポートしました。"
+  },
+  "importFailed": {
+    "message": "インポートに失敗しました：$1",
+    "description": "Config import failed, $1 is the error message"
+  },
+  "domainListPh": {
+    "message": "例：*.baidu.com\ngithub.com",
+    "description": "Domain list textarea placeholder"
+  },
+  "extListPh": {
+    "message": "例：zip exe mp4 pdf",
+    "description": "Extension list input placeholder"
+  },
+  "langTitle": {
+    "message": "言語",
+    "description": "Language settings section title"
+  },
+  "langLabel": {
+    "message": "表示言語",
+    "description": "Interface language select label"
+  },
+  "langAuto": {
+    "message": "システムに従う",
+    "description": "Option: follow the browser/system language"
+  },
+  "langHint": {
+    "message": "言語の変更はすぐに反映されます。",
+    "description": "UI language applies immediately without reloading."
+  },
+  "langApplied": {
+    "message": "言語を更新しました。",
+    "description": "UI language applies immediately without reloading."
+  },
+  "extShortName": {
+    "message": "Foxdown",
+    "description": "Short name of the extension (max 12 chars)"
+  },
+  "actionTitle": {
+    "message": "Foxdown ダウンロードマネージャー",
+    "description": "Browser action toolbar tooltip (max 30 chars)"
+  },
+  "obTitle": {
+    "message": "Foxdown セットアップガイド"
+  },
+  "obWelcomeTitle": {
+    "message": "Foxdown へようこそ"
+  },
+  "obWelcomeSub": {
+    "message": "ブラウザのダウンロードを自動的に横取りし、ローカルのダウンロードマネージャー Foxdown で高速ダウンロードします。"
+  },
+  "obStep1": {
+    "message": "基本設定"
+  },
+  "obStep2": {
+    "message": "アイコンを固定"
+  },
+  "obStep3": {
+    "message": "試してみる"
+  },
+  "obServerUrl": {
+    "message": "サーバーアドレス"
+  },
+  "obTestBtn": {
+    "message": "接続テスト"
+  },
+  "obTestOk": {
+    "message": "接続成功：aria2 バージョン $1"
+  },
+  "obTestFail": {
+    "message": "先に Foxdown バックエンドを起動してください"
+  },
+  "obEnabled": {
+    "message": "ブラウザのダウンロードを横取りする"
+  },
+  "obLocale": {
+    "message": "表示言語"
+  },
+  "obPinTitle": {
+    "message": "Foxdown をツールバーに固定"
+  },
+  "obPinStep1": {
+    "message": "ブラウザのツールバー右側にあるパズルアイコン（拡張機能）をクリック"
+  },
+  "obPinStep2": {
+    "message": "一覧から Foxdown を見つけ、ピンアイコンをクリックして固定"
+  },
+  "obDemoTitle": {
+    "message": "最初のダウンロードを試す"
+  },
+  "obDemoDesc": {
+    "message": "内蔵のデモページを開き、ダウンロードリンクをクリックして、拡張機能がタスクを Foxdown に送信する様子を確認しましょう。"
+  },
+  "obDemoBtn": {
+    "message": "デモページを開く"
+  },
+  "obDemoHint": {
+    "message": "ページ内のダウンロードリンクをクリックし、拡張機能の横取りを確認してください"
+  },
+  "obFinish": {
+    "message": "設定を完了して使い始める"
+  },
+  "obDoneTitle": {
+    "message": "設定完了"
+  },
+  "obDoneDesc": {
+    "message": "準備完了です。このページを閉じてかまいません。"
+  },
+  "obBack": {
+    "message": "戻る"
+  },
+  "obNext": {
+    "message": "次へ"
+  },
+  "obOpenGuide": {
+    "message": "使い方ガイド"
+  },
+  "obReopenGuide": {
+    "message": "セットアップガイドを再度開く"
+  },
+  "serverAddressInvalid": {
+    "message": "認証情報やクエリを含まない HTTP または HTTPS のアドレスを入力してください。"
+  },
+  "serverTokenInvalid": {
+    "message": "Foxdown の設定で Web API トークンを確認してください。"
+  },
+  "serverNotFoxdown": {
+    "message": "このアドレスから Foxdown の応答を取得できませんでした。"
+  },
+  "serverEngineUnavailable": {
+    "message": "Foxdown は応答しましたが、aria2 を利用できません。"
+  },
+  "settingsSaveFailed": {
+    "message": "設定を保存できませんでした。再試行してください。"
+  },
+  "obTestRequired": {
+    "message": "続けるには接続をテストしてください。"
+  },
+  "obRoutingHint": {
+    "message": "拡張機能の設定で既定のサーバーを編集"
+  },
+  "obDownloadApp": {
+    "message": "Foxdown デスクトップアプリをダウンロード"
+  }
+}

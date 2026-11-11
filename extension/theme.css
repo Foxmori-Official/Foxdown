@@ -1,0 +1,41 @@
+:root {
+  color-scheme: light dark;
+  --brand: #2e5943;
+  --brand-hover: #254936;
+  --on-brand: #fffefa;
+  --brand-ghost-bg: #e7eddf;
+  --brand-ghost-hover: #dce6d3;
+  --focus: #567750;
+  --text: #293d33;
+  --text-dim: #596957;
+  --bg: #faf9f4;
+  --card-bg: #fffefa;
+  --border: #d7ddce;
+  --ok: #356649;
+  --ok-bg: #e7efe2;
+  --err: #a34139;
+  --err-bg: #faeae4;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #adc795;
+    --brand-hover: #c2d6ae;
+    --on-brand: #1c291f;
+    --brand-ghost-bg: #354c31;
+    --brand-ghost-hover: #394d34;
+    --focus: #adc795;
+    --text: #eeeddf;
+    --text-dim: #b0b9a3;
+    --bg: #1c291f;
+    --card-bg: #26342a;
+    --border: #4b5a46;
+    --ok: #b5cfa4;
+    --ok-bg: #334b36;
+    --err: #f1a99b;
+    --err-bg: #4d342d;
+  }
+}
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a { color: var(--brand); text-underline-offset: 3px; }
+.switch input:focus-visible + .slider { outline: 2px solid var(--focus); outline-offset: 3px; }
+[hidden] { display: none !important; }

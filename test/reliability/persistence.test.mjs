@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { isolateServer } from '../helpers/server-fixture.mjs';
+import { TaskScheduler } from '../../server/src/tasks/scheduler.js';
+
+test('real TaskStore reload preserves failed schedules and persists successful cleanup', async t => {
+  const root = isolateServer(t);
+  const data = path.join(root, 'DATA_DIR');
+  fs.mkdirSync(data);
+  const file = path.join(data, 'db.json');
+  fs.writeFileSync(file, JSON.stringify({ streamTasks: [], meta: { restored: { scheduledAt: 0, engine: 'aria2', name: 'keep' } } }));
+  const { TaskStore } = await import('../../server/src/tasks/store.js');
+  const store = new TaskStore();
+  let fail = true;
+  const scheduler = new TaskScheduler({ unpause: async () => { if (fail) throw new Error('isolated engine offline'); } }, {}, store);
+  t.after(() => { scheduler.stop(); clearTimeout(store._saveTimer); });
+  await scheduler.start();
+  await new Promise(resolve => setTimeout(resolve, 350));
+  const reloaded = new TaskStore();
+  assert.equal(reloaded.getMeta('restored').scheduledAt, 0);
+  assert.equal(reloaded.getMeta('restored').scheduledAttempts, 1);
+  assert.ok(reloaded.getMeta('restored').scheduledRetryAt > Date.now());
+  fail = false;
+  store.setMeta('restored', { scheduledRetryAt: 0 });
+  await scheduler._tick();
+  await new Promise(resolve => setTimeout(resolve, 350));
+  const completed = new TaskStore().getMeta('restored');
+  assert.equal(completed.scheduledAt, undefined);
+  assert.equal(completed.scheduledAttempts, undefined);
+  assert.equal(completed.name, 'keep');
+});

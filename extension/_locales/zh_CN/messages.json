@@ -1,0 +1,473 @@
+{
+  "extName": {
+    "message": "Foxdown",
+    "description": "扩展名称"
+  },
+  "extDesc": {
+    "message": "自动拦截浏览器下载，发送到本地下载管理器 Foxdown（HTTP/BT/磁力/m3u8 流媒体）",
+    "description": "扩展描述"
+  },
+  "cmdToggle": {
+    "message": "开关下载接管"
+  },
+  "cmdOpenPanel": {
+    "message": "打开 Foxdown 管理面板"
+  },
+  "captureOn": {
+    "message": "接管已开启"
+  },
+  "captureOff": {
+    "message": "接管已关闭"
+  },
+  "sentToKimi": {
+    "message": "已发送到 Foxdown"
+  },
+  "sendFailed": {
+    "message": "发送失败，已由浏览器下载"
+  },
+  "menuLink": {
+    "message": "用 Foxdown 下载链接"
+  },
+  "menuMedia": {
+    "message": "用 Foxdown 下载图片/视频/音频"
+  },
+  "menuPage": {
+    "message": "用 Foxdown 批量下载本页链接"
+  },
+  "menuSel": {
+    "message": "用 Foxdown 下载选中链接"
+  },
+  "taskComplete": {
+    "message": "下载完成"
+  },
+  "taskError": {
+    "message": "下载失败"
+  },
+  "openPanel": {
+    "message": "打开管理面板"
+  },
+  "openSettings": {
+    "message": "扩展设置"
+  },
+  "srvDefault": {
+    "message": "默认",
+    "description": "默认服务器名称"
+  },
+  "optServers": {
+    "message": "多服务器（URL 路由）"
+  },
+  "optServersHint": {
+    "message": "按顺序匹配「下载地址+文件名」，首个命中的服务器接收任务；规则为 * 或留空的项是默认服务器；列表第一项兜底"
+  },
+  "srvColName": {
+    "message": "名称"
+  },
+  "srvColUrl": {
+    "message": "地址"
+  },
+  "srvColPattern": {
+    "message": "URL 规则（逗号分隔通配符）"
+  },
+  "srvColToken": {
+    "message": "Token"
+  },
+  "optAddServer": {
+    "message": "添加服务器"
+  },
+  "optSniffMedia": {
+    "message": "嗅探网页中的媒体资源（视频 / 音频 / m3u8），在弹窗中列出"
+  },
+  "optAllowExternal": {
+    "message": "允许其他扩展发送下载请求（中间件 API，谨慎开启）"
+  },
+  "mediaTitle": {
+    "message": "本页媒体"
+  },
+  "mediaDownload": {
+    "message": "下载"
+  },
+  "deepSearchBtn": {
+    "message": "深度搜索",
+    "description": "弹窗中的深度搜索按钮"
+  },
+  "mediaPreview": {
+    "message": "预览",
+    "description": "媒体列表项的预览按钮"
+  },
+  "previewFailed": {
+    "message": "预览失败：无法加载该媒体（可能需要登录或防盗链）"
+  },
+  "previewUnsupported": {
+    "message": "该格式暂不支持预览"
+  },
+  "autoDownloaded": {
+    "message": "已自动下载"
+  },
+  "optSniffSection": {
+    "message": "嗅探与媒体"
+  },
+  "optDeepSearch": {
+    "message": "深度搜索：页面加载完成后自动扫描脚本与播放器变量中的媒体地址（也可在弹窗手动触发）"
+  },
+  "optSniffRules": {
+    "message": "嗅探正则过滤（每行一条通配符或 /正则/；留空 = 全部进入嗅探列表）"
+  },
+  "optSniffRulesHint": {
+    "message": "仅命中规则的 URL 会进入嗅探列表；* 匹配任意字符，? 匹配单个字符"
+  },
+  "optFileNameTemplate": {
+    "message": "文件名模板（留空 = 使用服务器默认命名）"
+  },
+  "optTemplateHint": {
+    "message": "可用变量：${title} 页面标题、${fileName} 原文件名（不含扩展名）、${ext} 扩展名、${host} 站点域名、${date} 日期（YYYYMMDD）"
+  },
+  "optAutoDownload": {
+    "message": "自动下载嗅探到的媒体（m3u8 直播流除外，同一地址只发一次）"
+  },
+  "optAutoDownloadMinSize": {
+    "message": "自动下载最小体积（MB，体积小于该值不自动下载）"
+  },
+  "optAskBeforeDownload": {
+    "message": "下载前弹出参数确认窗口（可修改文件名、分片数与目标服务器）"
+  },
+  "optPanelStyle": {
+    "message": "管理面板打开方式"
+  },
+  "panelStylePopup": {
+    "message": "弹窗（默认）"
+  },
+  "panelStyleNewtab": {
+    "message": "新标签页"
+  },
+  "panelStyleWindow": {
+    "message": "独立窗口"
+  },
+  "panelStyleSidepanel": {
+    "message": "侧边栏"
+  },
+  "confirmTitle": {
+    "message": "确认下载"
+  },
+  "confirmFileName": {
+    "message": "文件名"
+  },
+  "confirmReferer": {
+    "message": "来源页面（Referer）"
+  },
+  "confirmSplit": {
+    "message": "分片数（0 = 服务器默认）"
+  },
+  "confirmServer": {
+    "message": "目标服务器"
+  },
+  "confirmStart": {
+    "message": "开始下载"
+  },
+  "confirmCancel": {
+    "message": "取消"
+  },
+  "confirmMissing": {
+    "message": "任务不存在或已过期"
+  },
+  "captureLabel": {
+    "message": "接管浏览器下载"
+  },
+  "statActive": {
+    "message": "活跃任务"
+  },
+  "statWaiting": {
+    "message": "等待任务"
+  },
+  "statSpeed": {
+    "message": "总下载速度"
+  },
+  "statUpspeed": {
+    "message": "总上传速度"
+  },
+  "openPanelBtn": {
+    "message": "管理面板",
+    "description": "弹窗中的管理面板按钮"
+  },
+  "settingsBtn": {
+    "message": "设置",
+    "description": "弹窗中的设置按钮"
+  },
+  "stateConnected": {
+    "message": "已连接 $1",
+    "description": "弹窗底部状态：已连接服务器，$1 为服务器地址（可含名称）"
+  },
+  "stateFailed": {
+    "message": "连接失败：$1",
+    "description": "弹窗底部状态：连接失败，$1 为错误信息"
+  },
+  "noLinksFound": {
+    "message": "本页未找到可下载的链接"
+  },
+  "batchResult": {
+    "message": "成功 $1 个$2",
+    "description": "批量下载结果，$1 为成功数量，$2 为失败部分（batchResultFail 或空）"
+  },
+  "batchResultFail": {
+    "message": "，失败 $1 个",
+    "description": "批量下载结果的失败部分，$1 为失败数量"
+  },
+  "optTitle": {
+    "message": "Foxdown 连接器 - 设置",
+    "description": "设置页文档标题"
+  },
+  "optHeading": {
+    "message": "Foxdown 连接器设置"
+  },
+  "optServerSection": {
+    "message": "服务器"
+  },
+  "optServerUrl": {
+    "message": "服务器地址"
+  },
+  "optServerUrlHint": {
+    "message": "Foxdown 后端地址，默认 http://127.0.0.1:16801（下方多服务器列表为空时生效）"
+  },
+  "optApiToken": {
+    "message": "API Token（可空）"
+  },
+  "optApiTokenHint": {
+    "message": "若后端“设置 → API Token”非空，需在此填写相同令牌"
+  },
+  "optCaptureSection": {
+    "message": "接管规则"
+  },
+  "optEnabled": {
+    "message": "接管浏览器下载到 Foxdown（快捷键 Alt+Shift+D）"
+  },
+  "optDomainMode": {
+    "message": "域名过滤模式"
+  },
+  "domainModeOff": {
+    "message": "不过滤（所有站点）"
+  },
+  "domainModeBlacklist": {
+    "message": "黑名单：排除以下域名"
+  },
+  "domainModeWhitelist": {
+    "message": "白名单：仅接管以下域名"
+  },
+  "optDomainList": {
+    "message": "域名列表（每行一个，支持 * 通配符）"
+  },
+  "optDomainListHint": {
+    "message": "同时匹配页面域名与下载文件域名；* 匹配任意字符"
+  },
+  "optExtMode": {
+    "message": "文件后缀过滤模式"
+  },
+  "extModeOff": {
+    "message": "不过滤（按大小判断）"
+  },
+  "extModeWhitelist": {
+    "message": "白名单：仅接管以下后缀"
+  },
+  "extModeBlacklist": {
+    "message": "黑名单：排除以下后缀"
+  },
+  "optExtList": {
+    "message": "后缀列表（逗号或空格分隔）"
+  },
+  "optExtListHint": {
+    "message": "m3u8 / mpd 流媒体地址始终接管，不受后缀过滤影响"
+  },
+  "optMinSize": {
+    "message": "最小接管大小（MB，0 = 不限制）"
+  },
+  "optCaptureUnknownSize": {
+    "message": "无法获取大小时也接管"
+  },
+  "optFeatures": {
+    "message": "功能"
+  },
+  "optCaptureMagnet": {
+    "message": "点击页面磁力链接（magnet:）时直接接管"
+  },
+  "optNotifyComplete": {
+    "message": "下载完成 / 失败时显示系统通知"
+  },
+  "optAltBypassHint": {
+    "message": "按住 Alt 点击下载可临时跳过接管（旁路）"
+  },
+  "optConfigSection": {
+    "message": "配置管理"
+  },
+  "exportBtn": {
+    "message": "导出配置"
+  },
+  "importBtn": {
+    "message": "导入配置"
+  },
+  "saveBtn": {
+    "message": "保存"
+  },
+  "testBtn": {
+    "message": "测试连接"
+  },
+  "statusSaved": {
+    "message": "已保存。"
+  },
+  "statusTesting": {
+    "message": "正在连接…"
+  },
+  "testSuccess": {
+    "message": "连接成功：aria2=$1（$2），流媒体引擎=$3，ffmpeg=$4",
+    "description": "测试连接成功，$1=aria2 状态，$2=aria2 版本，$3=流媒体引擎，$4=ffmpeg"
+  },
+  "versionUnknown": {
+    "message": "未知"
+  },
+  "statusFailed": {
+    "message": "连接失败：$1",
+    "description": "测试连接失败，$1 为错误信息"
+  },
+  "importSuccess": {
+    "message": "导入成功。"
+  },
+  "importFailed": {
+    "message": "导入失败：$1",
+    "description": "导入配置失败，$1 为错误信息"
+  },
+  "domainListPh": {
+    "message": "例如：*.baidu.com\ngithub.com",
+    "description": "域名列表输入框占位符"
+  },
+  "extListPh": {
+    "message": "例如：zip exe mp4 pdf",
+    "description": "后缀列表输入框占位符"
+  },
+  "langTitle": {
+    "message": "语言",
+    "description": "Language settings section title"
+  },
+  "langLabel": {
+    "message": "界面语言",
+    "description": "Interface language select label"
+  },
+  "langAuto": {
+    "message": "跟随系统",
+    "description": "Option: follow the browser/system language"
+  },
+  "langHint": {
+    "message": "语言切换后立即生效，无需重载扩展。",
+    "description": "UI language applies immediately without reloading."
+  },
+  "langApplied": {
+    "message": "界面语言已更新。",
+    "description": "UI language applies immediately without reloading."
+  },
+  "extShortName": {
+    "message": "Foxdown",
+    "description": "Short name of the extension (max 12 chars)"
+  },
+  "actionTitle": {
+    "message": "Foxdown 下载管理",
+    "description": "Browser action toolbar tooltip (max 30 chars)"
+  },
+  "obTitle": {
+    "message": "Foxdown 安装引导"
+  },
+  "obWelcomeTitle": {
+    "message": "欢迎使用 Foxdown"
+  },
+  "obWelcomeSub": {
+    "message": "自动拦截浏览器下载，交给本地下载管理器 Foxdown 高速下载"
+  },
+  "obStep1": {
+    "message": "核心设置"
+  },
+  "obStep2": {
+    "message": "固定图标"
+  },
+  "obStep3": {
+    "message": "开始体验"
+  },
+  "obServerUrl": {
+    "message": "服务器地址"
+  },
+  "obTestBtn": {
+    "message": "测试连接"
+  },
+  "obTestOk": {
+    "message": "连接成功：aria2 版本 $1"
+  },
+  "obTestFail": {
+    "message": "请先启动 Foxdown 后端"
+  },
+  "obEnabled": {
+    "message": "接管浏览器下载"
+  },
+  "obLocale": {
+    "message": "界面语言"
+  },
+  "obPinTitle": {
+    "message": "将 Foxdown 固定到工具栏"
+  },
+  "obPinStep1": {
+    "message": "点击浏览器工具栏右侧的拼图图标（扩展程序）"
+  },
+  "obPinStep2": {
+    "message": "在列表中找到 Foxdown，点击图钉图标将其固定"
+  },
+  "obDemoTitle": {
+    "message": "试一试第一次下载"
+  },
+  "obDemoDesc": {
+    "message": "打开内置演示页，点击其中的下载链接，观察扩展如何将下载任务发送给 Foxdown。"
+  },
+  "obDemoBtn": {
+    "message": "打开演示页"
+  },
+  "obDemoHint": {
+    "message": "点击页面中的下载链接，观察扩展接管"
+  },
+  "obFinish": {
+    "message": "完成设置，开始使用"
+  },
+  "obDoneTitle": {
+    "message": "设置完成"
+  },
+  "obDoneDesc": {
+    "message": "一切就绪，可以关闭此页面了。"
+  },
+  "obBack": {
+    "message": "上一步"
+  },
+  "obNext": {
+    "message": "下一步"
+  },
+  "obOpenGuide": {
+    "message": "使用教程"
+  },
+  "obReopenGuide": {
+    "message": "重新打开安装引导"
+  },
+  "serverAddressInvalid": {
+    "message": "请输入 HTTP 或 HTTPS 地址，不要包含用户名、密码或查询参数。"
+  },
+  "serverTokenInvalid": {
+    "message": "请核对 Foxdown 设置中的 Web API Token。"
+  },
+  "serverNotFoxdown": {
+    "message": "这个地址未返回 Foxdown 服务信息。"
+  },
+  "serverEngineUnavailable": {
+    "message": "Foxdown 已响应，但 aria2 下载引擎尚不可用。"
+  },
+  "settingsSaveFailed": {
+    "message": "无法保存设置，请重试。"
+  },
+  "obTestRequired": {
+    "message": "请测试连接后继续。"
+  },
+  "obRoutingHint": {
+    "message": "在扩展设置中编辑默认服务器"
+  },
+  "obDownloadApp": {
+    "message": "下载 Foxdown 桌面应用"
+  }
+}

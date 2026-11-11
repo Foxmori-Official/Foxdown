@@ -1,0 +1,97 @@
+name: Desktop and extension builds
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-15, target: mac, arch: arm64, suffix: dmg }
+          - { runner: macos-15-intel, target: mac, arch: x64, suffix: dmg }
+          - { runner: windows-2025, target: win, arch: x64, suffix: exe }
+          - { runner: windows-11-arm, target: win, arch: arm64, suffix: exe }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          architecture: ${{ matrix.arch }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            web/package-lock.json
+      - run: npm ci
+      - run: npm --prefix server ci
+      - run: npm --prefix web ci
+      - run: npm test
+      - run: npm run test:web-build
+      - run: npm run engines
+      - run: npm run test:desktop-engine
+      - name: Build installer
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: node tools/pack-desktop.mjs --${{ matrix.target }} --${{ matrix.arch }}
+      - name: Verify packaged macOS app and browser extension
+        if: matrix.target == 'mac' && matrix.arch == 'arm64'
+        run: |
+          npx --no-install playwright install chromium
+          FOXDOWN_PACKAGED_EXE="$PWD/dist-electron/mac-arm64/Foxdown.app/Contents/MacOS/Foxdown" npm run test:desktop-extension
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Foxdown-${{ matrix.target }}-${{ matrix.arch }}
+          path: dist-electron/Foxdown-*.${{ matrix.suffix }}
+          if-no-files-found: error
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix server ci
+      - run: npm --prefix web ci
+      - run: npm test
+      - run: npm run pack:extension
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Foxdown-extension
+          path: Foxdown-extension.zip
+          if-no-files-found: error
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [desktop, extension]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Foxdown-*
+          merge-multiple: true
+          path: release
+      - name: Draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
+          (cd release && sha256sum Foxdown-* > SHA256SUMS.txt)
+          if gh release view "$RELEASE_TAG" --json isDraft >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true"
+            gh release upload "$RELEASE_TAG" release/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release/* --verify-tag --draft --generate-notes --title "Foxdown ${RELEASE_TAG#v}"
+          fi

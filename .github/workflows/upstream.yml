@@ -1,0 +1,32 @@
+name: Upstream changes
+on:
+  push:
+    branches: [main]
+    paths: ['docs/upstreams.json', 'tools/upstream-report.mjs', '.github/workflows/upstream.yml']
+  schedule:
+    - cron: '23 2 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Compare upstream releases and commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status=0
+          node tools/upstream-report.mjs upstream-report.md || status=$?
+          if test -f upstream-report.md; then cat upstream-report.md >> "$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: upstream-report
+          path: upstream-report.md
+          if-no-files-found: error

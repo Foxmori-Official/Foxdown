@@ -1,0 +1,473 @@
+{
+  "extName": {
+    "message": "Foxdown",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "브라우저 다운로드를 자동으로 가로채 로컬 다운로드 관리자 Foxdown으로 전송합니다(HTTP/BT/마그넷/m3u8 스트림)",
+    "description": "Extension description"
+  },
+  "cmdToggle": {
+    "message": "다운로드 캡처 켜기/끄기"
+  },
+  "cmdOpenPanel": {
+    "message": "Foxdown 관리 패널 열기"
+  },
+  "captureOn": {
+    "message": "캡처가 켜졌습니다"
+  },
+  "captureOff": {
+    "message": "캡처가 꺼졌습니다"
+  },
+  "sentToKimi": {
+    "message": "Foxdown으로 전송했습니다"
+  },
+  "sendFailed": {
+    "message": "전송에 실패하여 브라우저가 다운로드합니다"
+  },
+  "menuLink": {
+    "message": "Foxdown으로 링크 다운로드"
+  },
+  "menuMedia": {
+    "message": "Foxdown으로 이미지/동영상/오디오 다운로드"
+  },
+  "menuPage": {
+    "message": "Foxdown으로 이 페이지의 링크 일괄 다운로드"
+  },
+  "menuSel": {
+    "message": "Foxdown으로 선택한 링크 다운로드"
+  },
+  "taskComplete": {
+    "message": "다운로드 완료"
+  },
+  "taskError": {
+    "message": "다운로드 실패"
+  },
+  "openPanel": {
+    "message": "관리 패널 열기"
+  },
+  "openSettings": {
+    "message": "확장 프로그램 설정"
+  },
+  "srvDefault": {
+    "message": "기본값",
+    "description": "Default server name"
+  },
+  "optServers": {
+    "message": "다중 서버(URL 라우팅)"
+  },
+  "optServersHint": {
+    "message": "「다운로드 URL+파일 이름」을 순서대로 매칭하여 처음으로 일치하는 서버가 작업을 받습니다. 규칙이 * 이거나 비어 있는 항목은 기본 서버이며, 목록의 첫 번째 항목이 최종 폴백입니다"
+  },
+  "srvColName": {
+    "message": "이름"
+  },
+  "srvColUrl": {
+    "message": "주소"
+  },
+  "srvColPattern": {
+    "message": "URL 규칙(쉼표로 구분된 와일드카드)"
+  },
+  "srvColToken": {
+    "message": "토큰"
+  },
+  "optAddServer": {
+    "message": "서버 추가"
+  },
+  "optSniffMedia": {
+    "message": "웹페이지의 미디어 리소스(동영상 / 오디오 / m3u8)를 스니핑하여 팝업에 나열"
+  },
+  "optAllowExternal": {
+    "message": "다른 확장 프로그램의 다운로드 요청 허용(미들웨어 API, 주의해서 활성화)"
+  },
+  "mediaTitle": {
+    "message": "이 페이지의 미디어"
+  },
+  "mediaDownload": {
+    "message": "다운로드"
+  },
+  "deepSearchBtn": {
+    "message": "심층 검색",
+    "description": "Deep search button in the popup"
+  },
+  "mediaPreview": {
+    "message": "미리 보기",
+    "description": "Preview button of a media list item"
+  },
+  "previewFailed": {
+    "message": "미리 보기 실패: 이 미디어를 로드할 수 없습니다(로그인 또는 핫링크 보호가 필요할 수 있음)"
+  },
+  "previewUnsupported": {
+    "message": "이 형식은 미리 보기를 지원하지 않습니다"
+  },
+  "autoDownloaded": {
+    "message": "자동 다운로드됨"
+  },
+  "optSniffSection": {
+    "message": "스니핑 및 미디어"
+  },
+  "optDeepSearch": {
+    "message": "심층 검색: 페이지 로드 완료 후 스크립트와 플레이어 변수에서 미디어 주소를 자동으로 검색합니다(팝업에서 수동으로 실행할 수도 있음)"
+  },
+  "optSniffRules": {
+    "message": "스니핑 정규식 필터(한 줄에 와일드카드 하나 또는 /정규식/; 비우면 모두 스니핑 목록에 추가)"
+  },
+  "optSniffRulesHint": {
+    "message": "규칙에 매칭된 URL만 스니핑 목록에 추가됩니다. *는 임의의 문자, ?는 한 문자와 매칭"
+  },
+  "optFileNameTemplate": {
+    "message": "파일 이름 템플릿(비우면 서버 기본 이름 사용)"
+  },
+  "optTemplateHint": {
+    "message": "사용 가능한 변수: ${title} 페이지 제목, ${fileName} 원래 파일 이름(확장자 제외), ${ext} 확장자, ${host} 사이트 도메인, ${date} 날짜(YYYYMMDD)"
+  },
+  "optAutoDownload": {
+    "message": "스니핑된 미디어 자동 다운로드(m3u8 라이브 스트림 제외, 동일 주소는 한 번만 전송)"
+  },
+  "optAutoDownloadMinSize": {
+    "message": "자동 다운로드 최소 크기(MB, 이보다 작으면 자동 다운로드하지 않음)"
+  },
+  "optAskBeforeDownload": {
+    "message": "다운로드 전 확인 창 표시(파일 이름, 분할 수, 대상 서버 수정 가능)"
+  },
+  "optPanelStyle": {
+    "message": "관리 패널 열기 방식"
+  },
+  "panelStylePopup": {
+    "message": "팝업(기본값)"
+  },
+  "panelStyleNewtab": {
+    "message": "새 탭"
+  },
+  "panelStyleWindow": {
+    "message": "독립 창"
+  },
+  "panelStyleSidepanel": {
+    "message": "사이드 패널"
+  },
+  "confirmTitle": {
+    "message": "다운로드 확인"
+  },
+  "confirmFileName": {
+    "message": "파일 이름"
+  },
+  "confirmReferer": {
+    "message": "출처 페이지(Referer)"
+  },
+  "confirmSplit": {
+    "message": "분할 수(0 = 서버 기본값)"
+  },
+  "confirmServer": {
+    "message": "대상 서버"
+  },
+  "confirmStart": {
+    "message": "다운로드 시작"
+  },
+  "confirmCancel": {
+    "message": "취소"
+  },
+  "confirmMissing": {
+    "message": "작업이 없거나 만료되었습니다"
+  },
+  "captureLabel": {
+    "message": "브라우저 다운로드 캡처"
+  },
+  "statActive": {
+    "message": "활성 작업"
+  },
+  "statWaiting": {
+    "message": "대기 중인 작업"
+  },
+  "statSpeed": {
+    "message": "다운로드 속도"
+  },
+  "statUpspeed": {
+    "message": "업로드 속도"
+  },
+  "openPanelBtn": {
+    "message": "관리 패널",
+    "description": "Manager panel button in the popup"
+  },
+  "settingsBtn": {
+    "message": "설정",
+    "description": "Settings button in the popup"
+  },
+  "stateConnected": {
+    "message": "$1에 연결됨",
+    "description": "Popup footer status: connected, $1 is the server URL (may include name)"
+  },
+  "stateFailed": {
+    "message": "연결 실패: $1",
+    "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "noLinksFound": {
+    "message": "이 페이지에서 다운로드 가능한 링크를 찾을 수 없습니다"
+  },
+  "batchResult": {
+    "message": "성공 $1개$2",
+    "description": "Batch download result, $1 is the success count, $2 is the failure part (batchResultFail or empty)"
+  },
+  "batchResultFail": {
+    "message": ", 실패 $1개",
+    "description": "Failure part of the batch download result, $1 is the failure count"
+  },
+  "optTitle": {
+    "message": "Foxdown 커넥터 - 설정",
+    "description": "Options page document title"
+  },
+  "optHeading": {
+    "message": "Foxdown 커넥터 설정"
+  },
+  "optServerSection": {
+    "message": "서버"
+  },
+  "optServerUrl": {
+    "message": "서버 주소"
+  },
+  "optServerUrlHint": {
+    "message": "Foxdown 백엔드 주소, 기본값 http://127.0.0.1:16801(아래 다중 서버 목록이 비어 있을 때 적용)"
+  },
+  "optApiToken": {
+    "message": "API 토큰(선택 사항)"
+  },
+  "optApiTokenHint": {
+    "message": "백엔드의 \"설정 → API 토큰\"이 설정되어 있다면 여기에 동일한 토큰을 입력하세요"
+  },
+  "optCaptureSection": {
+    "message": "캡처 규칙"
+  },
+  "optEnabled": {
+    "message": "브라우저 다운로드를 Foxdown으로 캡처(단축키 Alt+Shift+D)"
+  },
+  "optDomainMode": {
+    "message": "도메인 필터 모드"
+  },
+  "domainModeOff": {
+    "message": "필터 없음(모든 사이트)"
+  },
+  "domainModeBlacklist": {
+    "message": "블랙리스트: 다음 도메인 제외"
+  },
+  "domainModeWhitelist": {
+    "message": "화이트리스트: 다음 도메인만 캡처"
+  },
+  "optDomainList": {
+    "message": "도메인 목록(한 줄에 하나, * 와일드카드 지원)"
+  },
+  "optDomainListHint": {
+    "message": "페이지 도메인과 다운로드 파일 도메인을 모두 매칭합니다. *는 임의의 문자와 매칭"
+  },
+  "optExtMode": {
+    "message": "파일 확장자 필터 모드"
+  },
+  "extModeOff": {
+    "message": "필터 없음(크기로 판단)"
+  },
+  "extModeWhitelist": {
+    "message": "화이트리스트: 다음 확장자만 캡처"
+  },
+  "extModeBlacklist": {
+    "message": "블랙리스트: 다음 확장자 제외"
+  },
+  "optExtList": {
+    "message": "확장자 목록(쉼표 또는 공백으로 구분)"
+  },
+  "optExtListHint": {
+    "message": "m3u8 / mpd 스트림 주소는 확장자 필터와 관계없이 항상 캡처됩니다"
+  },
+  "optMinSize": {
+    "message": "최소 캡처 크기(MB, 0 = 제한 없음)"
+  },
+  "optCaptureUnknownSize": {
+    "message": "크기를 알 수 없어도 캡처"
+  },
+  "optFeatures": {
+    "message": "기능"
+  },
+  "optCaptureMagnet": {
+    "message": "페이지의 마그넷 링크(magnet:) 클릭 시 바로 캡처"
+  },
+  "optNotifyComplete": {
+    "message": "다운로드 완료 / 실패 시 시스템 알림 표시"
+  },
+  "optAltBypassHint": {
+    "message": "Alt를 누른 채 다운로드를 클릭하면 캡처를 일시적으로 건너뜁니다(우회)"
+  },
+  "optConfigSection": {
+    "message": "구성 관리"
+  },
+  "exportBtn": {
+    "message": "구성 내보내기"
+  },
+  "importBtn": {
+    "message": "구성 가져오기"
+  },
+  "saveBtn": {
+    "message": "저장"
+  },
+  "testBtn": {
+    "message": "연결 테스트"
+  },
+  "statusSaved": {
+    "message": "저장했습니다."
+  },
+  "statusTesting": {
+    "message": "연결 중…"
+  },
+  "testSuccess": {
+    "message": "연결 성공: aria2=$1($2), 스트림 엔진=$3, ffmpeg=$4",
+    "description": "Test connection success, $1=aria2 status, $2=aria2 version, $3=stream engine, $4=ffmpeg"
+  },
+  "versionUnknown": {
+    "message": "알 수 없음"
+  },
+  "statusFailed": {
+    "message": "연결 실패: $1",
+    "description": "Test connection failed, $1 is the error message"
+  },
+  "importSuccess": {
+    "message": "가져오기 성공."
+  },
+  "importFailed": {
+    "message": "가져오기 실패: $1",
+    "description": "Config import failed, $1 is the error message"
+  },
+  "domainListPh": {
+    "message": "예: *.baidu.com\ngithub.com",
+    "description": "Domain list textarea placeholder"
+  },
+  "extListPh": {
+    "message": "예: zip exe mp4 pdf",
+    "description": "Extension list input placeholder"
+  },
+  "langTitle": {
+    "message": "언어",
+    "description": "Language settings section title"
+  },
+  "langLabel": {
+    "message": "인터페이스 언어",
+    "description": "Interface language select label"
+  },
+  "langAuto": {
+    "message": "시스템 따르기",
+    "description": "Option: follow the browser/system language"
+  },
+  "langHint": {
+    "message": "언어 변경이 즉시 적용됩니다.",
+    "description": "UI language applies immediately without reloading."
+  },
+  "langApplied": {
+    "message": "언어가 변경되었습니다.",
+    "description": "UI language applies immediately without reloading."
+  },
+  "extShortName": {
+    "message": "Foxdown",
+    "description": "Short name of the extension (max 12 chars)"
+  },
+  "actionTitle": {
+    "message": "Foxdown 다운로드 관리자",
+    "description": "Browser action toolbar tooltip (max 30 chars)"
+  },
+  "obTitle": {
+    "message": "Foxdown 설치 가이드"
+  },
+  "obWelcomeTitle": {
+    "message": "Foxdown에 오신 것을 환영합니다"
+  },
+  "obWelcomeSub": {
+    "message": "브라우저 다운로드를 자동으로 가로채 로컬 다운로드 관리자 Foxdown으로 고속 다운로드합니다."
+  },
+  "obStep1": {
+    "message": "핵심 설정"
+  },
+  "obStep2": {
+    "message": "아이콘 고정"
+  },
+  "obStep3": {
+    "message": "체험하기"
+  },
+  "obServerUrl": {
+    "message": "서버 주소"
+  },
+  "obTestBtn": {
+    "message": "연결 테스트"
+  },
+  "obTestOk": {
+    "message": "연결 성공: aria2 버전 $1"
+  },
+  "obTestFail": {
+    "message": "먼저 Foxdown 백엔드를 시작하세요"
+  },
+  "obEnabled": {
+    "message": "브라우저 다운로드 가로채기"
+  },
+  "obLocale": {
+    "message": "인터페이스 언어"
+  },
+  "obPinTitle": {
+    "message": "Foxdown을 도구 모음에 고정"
+  },
+  "obPinStep1": {
+    "message": "브라우저 도구 모음 오른쪽의 퍼즐 아이콘(확장 프로그램)을 클릭하세요"
+  },
+  "obPinStep2": {
+    "message": "목록에서 Foxdown을 찾아 핀 아이콘을 클릭해 고정하세요"
+  },
+  "obDemoTitle": {
+    "message": "첫 다운로드 체험"
+  },
+  "obDemoDesc": {
+    "message": "내장 데모 페이지를 열고 다운로드 링크를 클릭해 확장 프로그램이 작업을 Foxdown으로 보내는 것을 확인하세요."
+  },
+  "obDemoBtn": {
+    "message": "데모 페이지 열기"
+  },
+  "obDemoHint": {
+    "message": "페이지의 다운로드 링크를 클릭해 확장 프로그램이 가로채는지 확인하세요"
+  },
+  "obFinish": {
+    "message": "설정 완료 후 시작하기"
+  },
+  "obDoneTitle": {
+    "message": "설정 완료"
+  },
+  "obDoneDesc": {
+    "message": "모든 준비가 끝났습니다. 이 페이지를 닫아도 됩니다."
+  },
+  "obBack": {
+    "message": "이전"
+  },
+  "obNext": {
+    "message": "다음"
+  },
+  "obOpenGuide": {
+    "message": "사용 가이드"
+  },
+  "obReopenGuide": {
+    "message": "설치 가이드 다시 열기"
+  },
+  "serverAddressInvalid": {
+    "message": "인증 정보나 쿼리 매개변수가 없는 HTTP 또는 HTTPS 주소를 입력하세요."
+  },
+  "serverTokenInvalid": {
+    "message": "Foxdown 설정의 웹 API 토큰을 확인하세요."
+  },
+  "serverNotFoxdown": {
+    "message": "이 주소에서 Foxdown 서버 응답을 받지 못했습니다."
+  },
+  "serverEngineUnavailable": {
+    "message": "Foxdown에 연결했지만 aria2를 사용할 수 없습니다."
+  },
+  "settingsSaveFailed": {
+    "message": "설정을 저장할 수 없습니다. 다시 시도하세요."
+  },
+  "obTestRequired": {
+    "message": "계속하려면 연결을 테스트하세요."
+  },
+  "obRoutingHint": {
+    "message": "확장 프로그램 설정에서 기본 서버 편집"
+  },
+  "obDownloadApp": {
+    "message": "Foxdown 데스크톱 앱 다운로드"
+  }
+}

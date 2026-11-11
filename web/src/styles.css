@@ -1,0 +1,265 @@
+/* Foxmori paper, forest and sage palette, shared by the shell and controls. */
+:root {
+  color-scheme: light;
+  --kd-primary: #2e5943;
+  --kd-primary-hover: #254936;
+  --kd-primary-soft: #e7eddf;
+  --kd-primary-border: #a9b99f;
+  --kd-on-primary: #fffefa;
+  --kd-link: var(--kd-primary);
+  --kd-link-hover: var(--kd-primary-hover);
+  --kd-focus: #567750;
+
+  --kd-bg: #faf9f4;
+  --kd-card-bg: #fffefa;
+  --kd-hover-bg: #eaece2;
+  --kd-secondary-bg: #f1f3ea;
+  --kd-nav-bg: #efefe7;
+  --kd-code-bg: var(--kd-secondary-bg);
+  --kd-text-primary: #293d33;
+  --kd-text-secondary: #44584a;
+  --kd-text-tertiary: #596957;
+  --kd-text-muted: #667365;
+  --kd-text-content: var(--kd-text-secondary);
+  --kd-border: #e0e3d6;
+  --kd-border-secondary: #ebede4;
+  --kd-border-input: #d7ddce;
+  --kd-border-hover: #abb8a4;
+
+  --kd-success: #356649;
+  --kd-success-soft: #e7efe2;
+  --kd-warning: #815626;
+  --kd-warning-soft: #f6ead9;
+  --kd-danger: #a34139;
+  --kd-danger-dark: #8d312b;
+  --kd-danger-soft: #faeae4;
+  --kd-code-inline: #934e3b;
+  --kd-summary-bg: #304e3c;
+  --kd-summary-ink: #fffefa;
+  --kd-summary-muted: #d2dfc6;
+  --kd-summary-line: #ffffff29;
+
+  --kd-radius-card: 14px;
+  --kd-radius-ctrl: 8px;
+  --kd-radius-badge: 5px;
+  --kd-radius-icon: 10px;
+  --kd-space-1: 4px;
+  --kd-space-2: 8px;
+  --kd-space-3: 12px;
+  --kd-space-4: 16px;
+  --kd-space-5: 20px;
+  --kd-space-6: 24px;
+  --kd-space-8: 32px;
+  --kd-shadow-sm: 0 1px 2px #293d3308;
+  --kd-shadow-hover: 0 3px 12px #293d3310;
+  --kd-shadow-dialog: 0 18px 64px #21372c33;
+  --kd-overlay: #21372c66;
+  --kd-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', Helvetica, Arial, sans-serif;
+  --kd-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --kd-t1: 28px;
+  --kd-t2: 19px;
+  --kd-t3: 13px;
+  --kd-body: 14px;
+  --kd-meta: 13px;
+  --kd-caption: 12px;
+}
+
+html.dark {
+  color-scheme: dark;
+  --kd-primary: #adc795;
+  --kd-primary-hover: #c2d6ae;
+  --kd-primary-soft: #354c31;
+  --kd-primary-border: #617756;
+  --kd-on-primary: #1c291f;
+  --kd-focus: #adc795;
+
+  --kd-bg: #1c291f;
+  --kd-card-bg: #26342a;
+  --kd-hover-bg: #2e402e;
+  --kd-secondary-bg: #2c3c30;
+  --kd-nav-bg: #223025;
+  --kd-text-primary: #eeeddf;
+  --kd-text-secondary: #cdd5c2;
+  --kd-text-tertiary: #b0b9a3;
+  --kd-text-muted: #a2ae9a;
+  --kd-border: #414f3b;
+  --kd-border-secondary: #354335;
+  --kd-border-input: #4b5a46;
+  --kd-border-hover: #687b5f;
+
+  --kd-success: #b5cfa4;
+  --kd-success-soft: #334b36;
+  --kd-warning: #e1b87e;
+  --kd-warning-soft: #4a3829;
+  --kd-danger: #f1a99b;
+  --kd-danger-dark: #ffbfb2;
+  --kd-danger-soft: #4d342d;
+  --kd-code-inline: #eab197;
+  --kd-summary-bg: #2e4534;
+
+  --kd-shadow-sm: 0 1px 2px #0e191522;
+  --kd-shadow-hover: 0 3px 12px #0e191533;
+  --kd-shadow-dialog: 0 18px 64px #0e191566;
+  --kd-overlay: #101b15a6;
+}
+
+/* Map Element Plus variables once so async views and overlays share the palette. */
+:root, html.dark {
+  --el-color-primary: var(--kd-primary);
+  --el-color-primary-light-3: color-mix(in srgb, var(--kd-primary) 82%, var(--kd-card-bg));
+  --el-color-primary-light-5: color-mix(in srgb, var(--kd-primary) 62%, var(--kd-card-bg));
+  --el-color-primary-light-7: color-mix(in srgb, var(--kd-primary) 38%, var(--kd-card-bg));
+  --el-color-primary-light-8: var(--kd-primary-border);
+  --el-color-primary-light-9: var(--kd-primary-soft);
+  --el-color-primary-dark-2: var(--kd-primary-hover);
+  --el-color-success: var(--kd-success);
+  --el-color-success-light-9: var(--kd-success-soft);
+  --el-color-warning: var(--kd-warning);
+  --el-color-warning-light-9: var(--kd-warning-soft);
+  --el-color-danger: var(--kd-danger);
+  --el-color-danger-light-9: var(--kd-danger-soft);
+  --el-color-error: var(--kd-danger);
+  --el-color-error-light-9: var(--kd-danger-soft);
+  --el-color-info: var(--kd-text-tertiary);
+
+  --el-bg-color: var(--kd-card-bg);
+  --el-bg-color-page: var(--kd-bg);
+  --el-bg-color-overlay: var(--kd-card-bg);
+  --el-text-color-primary: var(--kd-text-primary);
+  --el-text-color-regular: var(--kd-text-content);
+  --el-text-color-secondary: var(--kd-text-secondary);
+  --el-text-color-placeholder: var(--kd-text-muted);
+  --el-text-color-disabled: var(--kd-text-muted);
+  --el-border-color: var(--kd-border-input);
+  --el-border-color-light: var(--kd-border);
+  --el-border-color-lighter: var(--kd-border-secondary);
+  --el-border-color-extra-light: var(--kd-border-secondary);
+  --el-border-color-hover: var(--kd-border-hover);
+  --el-fill-color: var(--kd-hover-bg);
+  --el-fill-color-light: var(--kd-secondary-bg);
+  --el-fill-color-lighter: var(--kd-secondary-bg);
+  --el-fill-color-extra-light: var(--kd-bg);
+  --el-fill-color-blank: var(--kd-card-bg);
+  --el-fill-color-dark: var(--kd-border);
+
+  --el-border-radius-base: var(--kd-radius-ctrl);
+  --el-border-radius-small: var(--kd-radius-badge);
+  --el-border-radius-round: 20px;
+  --el-font-family: var(--kd-font);
+  --el-font-size-base: var(--kd-body);
+  --el-box-shadow-light: var(--kd-shadow-hover);
+  --el-box-shadow: var(--kd-shadow-dialog);
+  --el-overlay-color-lighter: var(--kd-overlay);
+}
+
+/* ================= 基础 ================= */
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--kd-font);
+  font-size: var(--kd-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--kd-bg);
+  color: var(--kd-text-primary);
+  transition: background 0.3s, color 0.3s;
+}
+
+* { box-sizing: border-box; }
+
+a { color: var(--kd-link); text-decoration: none; }
+a:hover { color: var(--kd-link-hover); }
+
+/* 数字排版：速度/大小/计数统一等宽数字 */
+.kd-nums, .stat, .task-meta, .el-badge__content {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 焦点可见环（键盘导航，ui-ux-pro-max 要求） */
+:focus-visible {
+  outline: 2px solid var(--kd-focus);
+  outline-offset: 2px;
+  border-radius: var(--kd-radius-ctrl);
+}
+
+/* 尊重减少动效 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.35); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ================= Element Plus 控件尺度统一 ================= */
+/* 按钮三档：默认(页面级) 36 / size="default" 32 / size="small" 28 */
+.el-button { height: 32px; border-radius: var(--kd-radius-ctrl); font-weight: 500; transition: all 0.15s ease; }
+.el-button--large { height: 36px; padding: 8px 20px; font-size: 14px; }
+.el-button--small { height: 28px; padding: 5px 12px; }
+.el-button.is-circle { width: 28px; height: 28px; padding: 0; }
+.el-button.is-circle .el-icon { font-size: 15px; }
+
+.el-button.el-button--primary:not(.is-plain) {
+  --el-button-text-color: var(--kd-on-primary);
+  --el-button-hover-text-color: var(--kd-on-primary);
+  --el-button-active-text-color: var(--kd-on-primary);
+  --el-button-hover-bg-color: var(--kd-primary-hover);
+  --el-button-hover-border-color: var(--kd-primary-hover);
+}
+
+.el-radio-button.is-active {
+  --el-radio-button-checked-text-color: var(--kd-on-primary);
+}
+
+/* 输入控件统一 32px */
+.el-input__wrapper { min-height: 32px; border-radius: var(--kd-radius-ctrl); }
+.el-textarea__inner {
+  border: 1px solid var(--kd-border-input);
+  border-radius: var(--kd-radius-ctrl);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.el-textarea__inner:focus {
+  border-color: var(--kd-focus);
+  box-shadow: 0 0 0 3px var(--kd-primary-border);
+  outline: none;
+}
+.el-input__wrapper.is-focus { box-shadow: 0 0 0 3px var(--kd-primary-border); }
+.el-input-number .el-input__inner { line-height: 30px; }
+
+/* 弹窗：R-容器 + 品牌遮罩 + 标题层级 */
+.el-dialog {
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  border: 1px solid var(--kd-border);
+  border-radius: var(--kd-radius-card);
+  padding: var(--kd-space-5);
+  box-shadow: var(--kd-shadow-dialog);
+}
+.el-dialog__title { font-size: var(--kd-t2); font-weight: 600; color: var(--kd-text-primary); }
+.el-dialog__header { padding-bottom: var(--kd-space-3); }
+.el-overlay { background-color: var(--kd-overlay); }
+
+/* Tabs：激活指示品牌色 */
+.el-tabs__item { font-size: 14px; }
+.el-tabs__active-bar { background-color: var(--kd-primary); }
+
+/* Tag/Badge 圆角统一 R-徽章 */
+.el-tag { border-radius: var(--kd-radius-badge); }
+
+/* 进度条圆角 */
+.el-progress-bar__outer { border-radius: 4px; }
+
+.el-textarea__inner { resize: none; }
+.el-progress-bar__inner { border-radius: 4px; }
+
+/* 消息提示层级 */
+.el-message { border-radius: var(--kd-radius-ctrl); }
