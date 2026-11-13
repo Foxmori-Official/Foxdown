@@ -31,6 +31,14 @@
         </el-tab-pane>
       </el-tabs>
       <div class="actions">
+        <el-button
+          v-if="store.completeTasks.length || clearingCompleted"
+          :disabled="!store.connected"
+          :loading="clearingCompleted"
+          @click="onClearCompleted"
+        >
+          {{ t('tasks.clearCompleted') }}
+        </el-button>
         <el-button @click="onPauseAll" :disabled="!store.activeTasks.length">{{ t('tasks.pauseAll') }}</el-button>
         <el-button @click="onResumeAll" :disabled="!store.tasks.some(t => t.status === 'paused')">{{ t('tasks.resumeAll') }}</el-button>
         <el-button type="primary" @click="newTaskVisible = true">
@@ -56,7 +64,7 @@
 </template>
 
 <script setup>
-import { ElBadge, ElButton, ElIcon, ElTabPane, ElTabs } from 'element-plus'
+import { ElBadge, ElButton, ElIcon, ElMessage, ElMessageBox, ElTabPane, ElTabs } from 'element-plus'
 import 'element-plus/es/components/badge/style/css'
 import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/icon/style/css'
@@ -65,7 +73,6 @@ import 'element-plus/es/components/tabs/style/css'
 
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
 import { useTasksStore } from '../stores/tasks'
 import { formatSpeed } from '../utils/format'
 const TaskRow = defineAsyncComponent(() => import('../components/TaskRow.vue'))
@@ -75,6 +82,8 @@ const { t } = useI18n()
 const store = useTasksStore()
 const tab = ref('all')
 const newTaskVisible = ref(false)
+const clearingCompleted = ref(false)
+let confirmingClear = false
 
 const tabs = computed(() => [
   { key: 'all', label: t('tasks.tabAll'), count: 0 },
@@ -109,6 +118,32 @@ async function onResumeAll() {
     await store.resumeAll()
   } catch (e) {
     ElMessage.error(t('tasks.resumeAllFailed', { msg: e.message }))
+  }
+}
+
+async function onClearCompleted() {
+  if (confirmingClear || clearingCompleted.value || !store.completeTasks.length) return
+  confirmingClear = true
+  try {
+    await ElMessageBox.confirm(t('tasks.clearCompletedConfirm'), t('tasks.clearCompleted'), {
+      type: 'warning',
+      confirmButtonText: t('tasks.clearCompletedAction'),
+      cancelButtonText: t('common.cancel'),
+    })
+  } catch {
+    return
+  } finally {
+    confirmingClear = false
+  }
+  clearingCompleted.value = true
+  try {
+    const { removed, failed } = await store.clearCompleted()
+    if (failed) ElMessage.warning(t('tasks.clearCompletedPartial', { removed, failed }))
+    else ElMessage.success(t('tasks.clearCompletedDone', { count: removed }))
+  } catch (error) {
+    ElMessage.error(t('tasks.clearCompletedFailed', { msg: error.message }))
+  } finally {
+    clearingCompleted.value = false
   }
 }
 </script>

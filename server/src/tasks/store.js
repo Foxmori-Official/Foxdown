@@ -71,5 +71,8 @@ export class TaskStore extends EventEmitter {
 
   setMeta(gid, meta) { this.db.meta[gid] = { ...(this.db.meta[gid] || {}), ...meta }; this.save(); }
   getMeta(gid) { return this.db.meta[gid]; }
+  findDownloads(key) {
+    return Object.keys(this.db.meta).filter(id => this.db.meta[id]?.downloadKey === key);
+  }
   removeMeta(gid) { delete this.db.meta[gid]; this.save(); }
 }

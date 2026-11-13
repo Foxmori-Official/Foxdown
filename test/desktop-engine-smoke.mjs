@@ -16,6 +16,8 @@ const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'foxdown-smoke-'));
 const data = path.join(temp, 'data');
 const downloads = path.join(temp, 'downloads');
 const content = Buffer.from('Foxdown local download fixture\n'.repeat(2048));
+const replacement = Buffer.alloc(content.length, 0x42);
+let servedFile = content;
 const token = 'desktop-smoke-fixture';
 let backend;
 let fixture;
@@ -45,7 +47,7 @@ try {
   fixture = http.createServer(async (request, response) => {
     const name = new URL(request.url, 'http://localhost').pathname.slice(1);
     try {
-      const file = name === 'file.bin' ? content : await fs.readFile(path.join(temp, path.basename(name)));
+      const file = name === 'file.bin' ? servedFile : await fs.readFile(path.join(temp, path.basename(name)));
       const type = name.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl'
         : name.endsWith('.ts') ? 'video/mp2t' : 'application/octet-stream';
       response.writeHead(200, { 'Content-Type': type, 'Content-Length': file.length });
@@ -87,21 +89,56 @@ try {
   assert.equal((await fetch(origin + '/api/v1/settings')).status, 401);
   assert.equal((await fetch(origin + '/api/v1/demo-file')).status, 200);
 
-  const file = await api('/tasks', { url: fixtureOrigin + '/file.bin' });
-  const stream = await api('/tasks', { url: fixtureOrigin + '/sample.m3u8', stream: { mux: true } });
-  for (const task of [file, stream]) {
+  async function waitComplete(task) {
     for (let attempt = 0; ; attempt++) {
       const status = await api(`/tasks/${task.engine}/${task.id}`);
-      if (status.status === 'complete') break;
+      if (status.status === 'complete') return status;
       assert.ok(status.status !== 'error' && attempt < 60, JSON.stringify(status));
       await sleep(250);
     }
   }
+  const fileRequest = { url: fixtureOrigin + '/file.bin' };
+  const file = await api('/tasks', fileRequest);
+  const stream = await api('/tasks', { url: fixtureOrigin + '/sample.m3u8', stream: { mux: true } });
+  await Promise.all([waitComplete(file), waitComplete(stream)]);
+  servedFile = replacement;
+  const duplicate = await waitComplete(await api('/tasks', fileRequest));
+  assert.equal(duplicate.name, 'file.1.bin');
+  const named = await waitComplete(await api('/tasks', { ...fileRequest, options: { out: 'file.bin' } }));
+  assert.equal(named.name, 'file (1).bin');
   assert.deepEqual(await fs.readFile(path.join(downloads, 'file.bin')), content);
+  assert.deepEqual(await fs.readFile(path.join(downloads, duplicate.name)), replacement);
+  assert.deepEqual(await fs.readFile(path.join(downloads, named.name)), replacement);
+  const sidecar = path.join(downloads, 'file.bin.aria2');
+  await fs.writeFile(sidecar, 'unrelated resume data');
+  const withSidecar = await waitComplete(await api('/tasks', fileRequest));
+  assert.equal(withSidecar.name, 'file (2).bin');
+  assert.deepEqual(await fs.readFile(path.join(downloads, withSidecar.name)), replacement);
+  assert.equal(await fs.readFile(sidecar, 'utf8'), 'unrelated resume data');
   const mp4 = (await fs.readdir(downloads)).find(name => name.endsWith('.mp4'));
   assert.ok(mp4, 'HLS remux must produce an MP4');
   execFileSync(path.join(mediaBin, 'ffprobe' + exe), ['-v', 'error', path.join(downloads, mp4)], { stdio: 'pipe' });
-  console.log(`Native engine smoke passed (${process.platform}/${process.arch}): authenticated API, HTTP bytes and HLS → MP4.`);
+
+  const pending = await api('/tasks', { ...fileRequest, options: { startAt: Date.now() + 3600000, out: 'later.bin' } });
+  const failed = await api('/tasks', { url: fixtureOrigin + '/missing.bin' });
+  for (let attempt = 0; ; attempt++) {
+    if ((await api(`/tasks/aria2/${failed.id}`)).status === 'error') break;
+    assert.ok(attempt < 60, 'missing file should fail');
+    await sleep(250);
+  }
+  const filesBefore = await fs.readdir(downloads);
+  const bytesBefore = await Promise.all(filesBefore.map(name => fs.readFile(path.join(downloads, name))));
+  assert.deepEqual(await api('/tasks/clear-completed', { deleteFiles: true }), { removed: 5, failed: 0 });
+  const { tasks } = await api('/tasks');
+  assert.deepEqual(new Map(tasks.map(task => [task.id, task.status])), new Map([[pending.id, 'paused'], [failed.id, 'error']]));
+  assert.deepEqual(await fs.readdir(downloads), filesBefore);
+  assert.deepEqual(await Promise.all(filesBefore.map(name => fs.readFile(path.join(downloads, name)))), bytesBefore);
+  assert.deepEqual(await api('/tasks/clear-completed', {}), { removed: 0, failed: 0 });
+  await fs.writeFile(path.join(temp, 'missing.bin'), content);
+  const retried = await api(`/tasks/aria2/${failed.id}/action`, { action: 'retry' });
+  const retriedTask = await waitComplete({ ...retried, engine: 'aria2' });
+  assert.deepEqual(await fs.readFile(path.join(downloads, retriedTask.name)), content);
+  console.log(`Native engine smoke passed (${process.platform}/${process.arch}): HTTP duplicates, HLS → MP4 and clearing completed records with files intact.`);
 } finally {
   if (backend?.connected) {
     backend.send({ type: 'shutdown' }, () => {});

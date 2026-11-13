@@ -254,6 +254,16 @@ try {
   }
   assert.equal(length, 128 * 1024);
   await app.screenshot({ path: path.join(shots, 'tasks.png'), animations: 'disabled' });
+  const clearCompleted = app.getByRole('button', { name: 'Clear completed tasks', exact: true });
+  await clearCompleted.click();
+  const clearDialog = app.locator('.el-message-box');
+  await clearDialog.getByText('Downloaded files will stay on disk.', { exact: false }).waitFor();
+  await clearDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal(await result.isVisible(), true);
+  await clearCompleted.click();
+  await clearDialog.getByRole('button', { name: 'Clear records', exact: true }).click();
+  await result.waitFor({ state: 'hidden' });
+  assert.equal((await fs.stat(path.join(downloads, 'Foxdown-demo-file.bin'))).size, length);
   const options = await browser.newPage();
   await options.goto(extensionBase + '/options.html');
   await options.waitForFunction(() => document.getElementById('serverUrl').value.startsWith('http'));
@@ -417,6 +427,10 @@ try {
     }
     throw new Error('An intercepted download must display badge 1 on every tab');
   }, mediaTabId);
+  const repeatedCapture = await worker.evaluate(({ url, referer }) => sendToKimi(url, {
+    referer, filename: 'slow.bin', reuseActive: true,
+  }), { url: mediaOrigin + '/slow.bin', referer: mediaOrigin + '/watch' });
+  assert.equal(repeatedCapture.reused, true, 'A repeated automatic handoff should return the active task');
   for (let attempt = 0; ; attempt++) {
     const length = await fs.stat(path.join(downloads, 'slow.bin')).then(stat => stat.size).catch(() => 0);
     const tasks = await (await fetch(origin + '/api/v1/tasks', { headers: { Authorization: 'Bearer ' + token } })).json();

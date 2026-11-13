@@ -135,6 +135,9 @@ export const useTasksStore = defineStore('tasks', {
     async resumeAll() {
       await api.resumeAll()
     },
+    async clearCompleted() {
+      return api.clearCompleted()
+    },
     async reveal(task) {
       await api.reveal(task.dir)
     }

@@ -1,4 +1,45 @@
-import { sanitizeFilename, isMagnet, isTorrentUrl, isStreamUrl } from '../util/helpers.js';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { guessFilename, sanitizeFilename, isMagnet, isTorrentUrl, isStreamUrl } from '../util/helpers.js';
+
+const pendingCaptures = new WeakMap();
+
+function availableFilename(dir, name) {
+  const { name: base, ext } = path.parse(name);
+  for (let index = 0; index < 10000; index++) {
+    const candidate = index ? `${base} (${index})${ext}` : name;
+    const file = path.join(dir, candidate);
+    const occupied = [file, file + '.aria2'].some(target => fs.lstatSync(target, { throwIfNoEntry: false }));
+    if (!occupied) return candidate;
+  }
+  throw new Error('Could not find an unused download filename');
+}
+
+function partialDownloadName(dir, url) {
+  const filename = guessFilename(url);
+  if (!filename || filename !== sanitizeFilename(filename)) return '';
+  const file = path.join(dir, filename);
+  if (fs.lstatSync(file + '.aria2', { throwIfNoEntry: false })) return filename;
+  return '';
+}
+
+async function addCapturedFile(api, key, add) {
+  let pending = pendingCaptures.get(api);
+  if (!pending) pendingCaptures.set(api, pending = new Map());
+  if (pending.has(key)) return { ...await pending.get(key), reused: true };
+
+  const submission = (async () => {
+    for (const id of api.store.findDownloads(key)) {
+      const task = await api.rpc.tellStatus(id, ['status']).catch(() => null);
+      if (task && ['active', 'waiting'].includes(task.status)) return { id, engine: 'aria2', reused: true };
+    }
+    return add();
+  })();
+  pending.set(key, submission);
+  try { return await submission; }
+  finally { pending.delete(key); }
+}
 
 /**
  * 任务创建核心逻辑（REST 与 MCP 共用）。
@@ -65,23 +106,38 @@ export async function createTaskFromBody(api, b) {
     return { id: task.id, engine: 'stream' };
   }
 
-  let gid;
   if (hasSchedule) opt.pause = 'true';
-  if (b.metalinkBase64) {
-    const results = await api.rpc.addMetalink(b.metalinkBase64, opt);
-    gid = Array.isArray(results) ? results[0] : results;
-  } else if (b.torrentBase64) {
-    gid = await api.rpc.addTorrent(b.torrentBase64, [], opt);
-  } else if (isMagnet(url)) {
-    gid = await api.rpc.addUri([url], opt);
-  } else {
-    gid = await api.rpc.addUri(Array.isArray(b.urls) ? b.urls : [url], opt);
+  const torrent = isMagnet(url) || isTorrentUrl(url) || Boolean(b.torrentBase64);
+  const uris = Array.isArray(b.urls) && !isMagnet(url) ? b.urls : [url];
+  const plainFile = !torrent && !b.metalinkBase64;
+  const dir = opt.dir || api.settings?.downloadDir;
+  let downloadKey;
+  if (plainFile) {
+    // Let aria2 choose a new name instead of treating unrelated bytes as
+    // progress. Pausing and unpausing the same task still use its control file.
+    opt.continue = 'false';
+    downloadKey = createHash('sha256').update(JSON.stringify([
+      uris, dir ? path.resolve(dir) : '', opt.out || '', opt.header || [], opt.referer || '',
+      opt['user-agent'] || '', opt.checksum || '',
+    ])).digest('hex');
   }
-  api.store.setMeta(gid, {
-    name: opt.out || '',
-    createdAt: Date.now(),
-    kind: isMagnet(url) || b.torrentBase64 ? 'torrent' : (isTorrentUrl(url) ? 'torrent' : 'file'),
-  });
-  if (hasSchedule) api.scheduler.schedule('aria2', gid, startAt);
-  return { id: gid, engine: 'aria2' };
+  const add = async () => {
+    if (plainFile && dir) {
+      const name = opt.out || partialDownloadName(dir, url);
+      if (name) opt.out = availableFilename(dir, name);
+    }
+    let gid;
+    if (b.metalinkBase64) {
+      const results = await api.rpc.addMetalink(b.metalinkBase64, opt);
+      gid = Array.isArray(results) ? results[0] : results;
+    } else if (b.torrentBase64) {
+      gid = await api.rpc.addTorrent(b.torrentBase64, [], opt);
+    } else {
+      gid = await api.rpc.addUri(uris, opt);
+    }
+    api.store.setMeta(gid, { name: opt.out || '', createdAt: Date.now(), kind: torrent ? 'torrent' : 'file', downloadKey });
+    if (hasSchedule) api.scheduler.schedule('aria2', gid, startAt);
+    return { id: gid, engine: 'aria2' };
+  };
+  return plainFile && b.reuseActive === true && !hasSchedule ? addCapturedFile(api, downloadKey, add) : add();
 }

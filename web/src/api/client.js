@@ -43,6 +43,7 @@ export const api = {
     request('POST', `/tasks/${engine}/${encodeURIComponent(id)}/action`, { action, deleteFiles }),
   pauseAll: () => request('POST', '/tasks/pause-all'),
   resumeAll: () => request('POST', '/tasks/resume-all'),
+  clearCompleted: () => request('POST', '/tasks/clear-completed'),
   getStats: () => request('GET', '/stats'),
   getSettings: () => request('GET', '/settings'),
   saveSettings: (patch) => request('PUT', '/settings', patch),

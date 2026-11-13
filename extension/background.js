@@ -231,7 +231,7 @@ function defaultServer(servers) {
 // ============================================================
 // 任务发送
 // ============================================================
-async function postTask(server, url, { referer, headers, extraOptions } = {}) {
+async function postTask(server, url, { referer, headers, extraOptions, reuseActive } = {}) {
   await failureReady;
   pendingSends++;
   void paintBadge();
@@ -241,8 +241,10 @@ async function postTask(server, url, { referer, headers, extraOptions } = {}) {
     const options = { ...(extraOptions || {}) };
     if (referer && referer !== 'about:blank') options.referer = referer;
     if (headers?.length) options.headers = headers;
+    const body = { url, options };
+    if (reuseActive) body.reuseActive = true;
     const res = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/tasks', {
-      method: 'POST', headers: h, body: JSON.stringify({ url, options }), signal: AbortSignal.timeout(15000),
+      method: 'POST', headers: h, body: JSON.stringify(body), signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const result = await res.json();
@@ -277,7 +279,7 @@ async function resolvePageTitle(referer) {
   } catch { return ''; }
 }
 
-async function sendToKimi(url, { referer, filename, headersOverride, extraOptions, pageTitle } = {}) {
+async function sendToKimi(url, { referer, filename, headersOverride, extraOptions, pageTitle, reuseActive } = {}) {
   const c = await cfg();
   const servers = resolveServers(c);
   // 路由匹配目标：下载 URL + 文件名（Aria2-Explorer 同款拼接）
@@ -290,8 +292,9 @@ async function sendToKimi(url, { referer, filename, headersOverride, extraOption
     const out = renderFileNameTemplate(c.fileNameTemplate, { url, title });
     if (out) opts.out = out;
   }
-  await postTask(srv, url, { referer, headers, extraOptions: opts });
-  notify(i18n('sentToKimi'), filename || opts.out || url);
+  const result = await postTask(srv, url, { referer, headers, extraOptions: opts, reuseActive });
+  if (!result.reused) notify(i18n('sentToKimi'), filename || opts.out || url);
+  return result;
 }
 
 // ============================================================
@@ -733,15 +736,16 @@ async function maybeAutoDownload(media) {
   autoSending.add(media.url);
   try {
     const headers = sniffHeadersToLines(media.headers);
-    await sendToKimi(media.url, {
+    const result = await sendToKimi(media.url, {
       referer: media.headers?.referer,
       filename: media.filename,
-      headersOverride: headers
+      headersOverride: headers,
+      reuseActive: true
     });
     autoSentSet.add(media.url);
     if (autoSentSet.size > 1000) autoSentSet.delete(autoSentSet.values().next().value);
     await chrome.storage.session.set({ [AUTO_SENT_KEY]: [...autoSentSet] }).catch(() => {});
-    notify(i18n('autoDownloaded'), media.filename || media.url);
+    if (!result.reused) notify(i18n('autoDownloaded'), media.filename || media.url);
   } catch (e) {
     notify(i18n('sendFailed'), String(e.message || e));
   } finally {
@@ -811,7 +815,7 @@ chrome.downloads.onDeterminingFilename.addListener((item) => {
       return;
     }
     try {
-      await sendToKimi(url, { referer: item.referrer, filename: item.filename });
+      await sendToKimi(url, { referer: item.referrer, filename: item.filename, reuseActive: true });
       await chrome.downloads.cancel(item.id).catch(() => {});
       chrome.downloads.erase({ id: item.id });
     } catch (e) {

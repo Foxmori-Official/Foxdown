@@ -52,6 +52,7 @@ node cli/foxdown.mjs add "https://example.com/file.zip"
 | GET | `/api/v1/tasks/:engine/:id` | 单个任务详情 |
 | POST | `/api/v1/tasks/:engine/:id/action` | `{action: pause|resume|retry|delete, deleteFiles?: bool}` → `{ok}` |
 | POST | `/api/v1/tasks/pause-all` / `resume-all` | 全局控制 |
+| POST | `/api/v1/tasks/clear-completed` | 清空已完成任务记录，保留磁盘文件。返回 `{removed, failed}` |
 | GET | `/api/v1/stats` | `{downloadSpeed, uploadSpeed, numActive, numWaiting, numStopped}` |
 | GET | `/api/v1/settings` | 当前设置，包含 Web API 令牌和 aria2 RPC 密钥 |
 | PUT | `/api/v1/settings` | 部分更新；改 aria2 关键项会自动重启引擎 → `{ok, restarted}` |

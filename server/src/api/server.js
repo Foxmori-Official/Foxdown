@@ -40,14 +40,13 @@ function isAuthorized(req, token, queryToken) {
 }
 
 function mapAria2Task(t, meta = {}) {
-  let name = meta.name || '';
-  if (!name && t.bittorrent?.info?.name) name = t.bittorrent.info.name;
+  let name = t.bittorrent?.info?.name || '';
   if (!name && t.files?.length) {
     const p = t.files[0].path;
     if (p) name = path.basename(p);
-    else if (t.files[0].uris?.length) name = guessFilename(t.files[0].uris[0].uri);
+    else name = meta.name || guessFilename(t.files[0].uris?.[0]?.uri);
   }
-  if (!name) name = t.gid;
+  if (!name) name = meta.name || t.gid;
   const isBt = !!t.bittorrent;
   return {
     id: t.gid,
@@ -160,6 +159,31 @@ export class ApiServer {
     return all;
   }
 
+  async _clearCompletedTasks() {
+    const completed = new Set();
+    const pageSize = 200;
+    for (let offset = 0; ; offset += pageSize) {
+      const page = await this.rpc.tellStopped(offset, pageSize, ['gid', 'status']);
+      for (const task of page) if (task.status === 'complete') completed.add(task.gid);
+      if (page.length < pageSize) break;
+    }
+    let removed = 0;
+    let failed = 0;
+    for (const id of completed) {
+      try {
+        await this.rpc.removeDownloadResult(id);
+        this.store.removeMeta(id);
+        removed++;
+      } catch { failed++; }
+    }
+    for (const task of this.store.listStreamTasks().filter(task => task.status === 'complete')) {
+      this.store.removeStreamTask(task.id);
+      this.store.removeMeta(task.id);
+      removed++;
+    }
+    return { removed, failed };
+  }
+
   /** 按 id 找任务（先 aria2 后 stream），返回 {engine, task} 或 null */
   async _findTask(id) {
     const { engine } = await this._findEngine(id);
@@ -187,11 +211,20 @@ export class ApiServer {
         case 'retry': {
           const t = await this.rpc.tellStatus(id);
           const uris = t.files?.[0]?.uris?.map(u => u.uri) || [];
-          const opt = {};
+          const meta = this.store.getMeta(id);
+          const opt = await this.rpc.getOption(id);
+          delete opt.gid;
+          delete opt.pause;
           if (t.dir) opt.dir = t.dir;
-          await this.rpc.removeDownloadResult(id).catch(() => {});
+          if (meta?.kind === 'file' && t.files?.[0]?.path) {
+            opt.out = path.basename(t.files[0].path);
+            opt.continue = 'false';
+          }
+          if (typeof opt.header === 'string') opt.header = opt.header.split(/\r?\n/).filter(Boolean);
           const gid = await this.rpc.addUri(uris, opt);
-          this.store.setMeta(gid, { createdAt: Date.now() });
+          await this.rpc.removeDownloadResult(id).catch(() => {});
+          this.store.removeMeta(id);
+          this.store.setMeta(gid, { ...meta, createdAt: Date.now() });
           return { id: gid };
         }
         case 'delete': {
@@ -384,6 +417,12 @@ export class ApiServer {
     r.post('/api/v1/tasks/resume-all', async (req, res) => {
       try { await this.rpc.unpauseAll(); await this.stream.resumeAll(); res.json({ ok: true }); }
       catch (e) { res.status(400).json({ error: e.message }); }
+    });
+    r.post('/api/v1/tasks/clear-completed', async (req, res) => {
+      try {
+        res.json(await this._clearCompletedTasks());
+        this.pushState().catch(() => {});
+      } catch (e) { res.status(503).json({ error: e.message }); }
     });
 
     // ---- stats ----
