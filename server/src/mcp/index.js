@@ -1,4 +1,4 @@
-import { ARIA2_BIN, FFMPEG_BIN, FFPROBE_BIN, NM3U8_BIN, DOWNLOAD_DIR, DATA_DIR, hasExternalStreamEngine } from '../config.js';
+import { APP_VERSION, ARIA2_BIN, FFMPEG_BIN, FFPROBE_BIN, NM3U8_BIN, DOWNLOAD_DIR, DATA_DIR, hasExternalStreamEngine } from '../config.js';
 import { isStreamUrl } from '../util/helpers.js';
 
 /**
@@ -11,7 +11,7 @@ const PROTOCOL_VERSION = '2025-03-26';
 
 const SERVER_INFO = {
   name: 'foxdown',
-  version: '0.0.1',
+  version: APP_VERSION,
 };
 
 const INSTRUCTIONS = 'Foxdown is a download manager for HTTP/HTTPS, FTP/SFTP, BitTorrent, magnet and HLS/DASH streams. ' +

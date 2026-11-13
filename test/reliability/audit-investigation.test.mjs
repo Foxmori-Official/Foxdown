@@ -85,6 +85,14 @@ test('audit fixes preserve authorized settings, extension handoff, and persisted
     assert.equal((await request('/api/v1/settings', { rpcSecret: 'new-fixture-secret' }, {}, 'PUT')).status, 200);
     assert.equal(connections, 1);
   });
+  await t.test('MCP initialization reports the installed server package version', async () => {
+    const response = await request('/mcp', { jsonrpc: '2.0', id: 1, method: 'initialize' });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    const pkg = JSON.parse(await fs.readFile(new URL('../../server/package.json', import.meta.url), 'utf8'));
+    assert.equal(body.result.serverInfo.version, pkg.version);
+    assert.equal(body.result.serverInfo.name, 'foxdown');
+  });
   await t.test('unpaired extensions cannot read credentials, modify settings, execute MCP or test hooks', async () => {
     const origin = { Origin: extension };
     assert.equal((await request('/api/v1/health', undefined, origin)).status, 200);

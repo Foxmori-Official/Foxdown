@@ -223,6 +223,9 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
         run: |
           test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF" = 'refs/heads/main' ]; then
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$GITHUB_SHA"
+          fi
           version="${RELEASE_TAG#v}"
           test -s "release/Foxdown-$version-mac-arm64.dmg"
           test -s "release/Foxdown-$version-mac-x64.dmg"

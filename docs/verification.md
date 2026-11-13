@@ -96,7 +96,7 @@ API 只接受 `auto`、`zh-CN`、`en`。扩展 ZIP 仅含 `_locales/en`、`_loca
 
 ## 验证与边界
 
-- `npm test`：105 项 Node 可靠性／回归检查通过，另含扩展逻辑、页面、双语及单位换算检查。
+- `npm test`：106 项 Node 可靠性／回归检查通过，另含扩展逻辑、页面、双语及单位换算检查。
 - `npm run test:web-build`：生产构建及 3 项资源预算检查通过。
 - `npm run test:desktop-engine`：真实 aria2 重名与重试、清空记录保留文件、多分片 HLS、AES-128、并发重名转封装、DASH 双轨及纯音频通过。
 - `npm run test:desktop-multiconnection`：两份大文件、8 连接、Range、暂停恢复与 SHA-256 通过。
