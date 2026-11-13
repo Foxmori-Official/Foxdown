@@ -7,6 +7,17 @@ REST、MCP 和 WebSocket 都校验浏览器 Origin，允许与服务 Host 相同
 
 修改 `postScript` 需要同源 Web UI，或携带有效 Bearer 令牌。仅查询参数中的令牌不能用于修改脚本。
 
+## 命令行
+
+启动 Foxdown 后，可以查看任务或提交下载：
+
+```sh
+node cli/foxdown.mjs list
+node cli/foxdown.mjs add "https://example.com/file.zip"
+```
+
+`FOXDOWN_SERVER` 指定服务地址，`FOXDOWN_TOKEN` 指定访问令牌。MCP JSON-RPC 接口位于 `POST /mcp`，使用相同的 Web API 令牌；工具和请求格式见下文。容器部署见 [Docker 文档](docker.md)。
+
 ## 统一任务模型（Task）
 
 ```json

@@ -1,46 +1,63 @@
-# Foxdown
+<div align="center">
+  <img src="../extension/icons/icon-source.png" alt="Foxdown app icon" width="80" height="80">
+  <h1>Foxdown</h1>
+  <p>A download manager for macOS and Windows, with browser download capture and page resource discovery</p>
+  <p><a href="https://github.com/Foxmori-Official/Foxdown/releases/latest">Download</a> · <a href="#quick-install">Installation</a> · <a href="../README.md">简体中文</a></p>
+</div>
 
-Foxdown is a desktop download manager for HTTP, BitTorrent, magnet links, and HLS/DASH streams. Its Chrome and Edge extension hands browser downloads and discovered media to the desktop app.
+## Quick install
 
-[简体中文](../README.md) · [API](api.md) · [Docker](docker.md) · [维护与更新](updates.md) · [UI review](design-review.md) · [Privacy](../PRIVACY.md)
+### Desktop app
 
-## Install Foxdown
+1. Download the installer matching your OS and architecture from [GitHub Releases](https://github.com/Foxmori-Official/Foxdown/releases/latest).
+2. On macOS, open the DMG and drag Foxdown to Applications. On Windows, run the EXE installer.
+3. Launch Foxdown, wait for **Connected**, and create a task with a download link. Files are saved to `Downloads/Foxdown` by default.
 
 | Platform | Installer |
-|---|---|
+| --- | --- |
 | macOS 13+, Apple Silicon | `Foxdown-*-mac-arm64.dmg` |
 | macOS 13+, Intel | `Foxdown-*-mac-x64.dmg` |
 | Windows, Intel or AMD | `Foxdown-*-win-x64.exe` |
 | Windows 11 on Arm | `Foxdown-*-win-arm64.exe` |
 
-Get published installers from [Releases](https://github.com/Foxmori-Official/Foxdown/releases). Development builds are available as artifacts on successful [Desktop and extension builds](https://github.com/Foxmori-Official/Foxdown/actions/workflows/desktop.yml) runs.
+Installers bundle aria2, FFmpeg, and FFprobe. No engine download or Node.js installation is needed at first launch. Current macOS builds are ad-hoc signed and not notarized; Windows builds have no publisher signature. The Windows ARM64 app runs its bundled engines through Windows 11 x64 emulation. See the [desktop guide](electron.md) for installation prompts, data locations, and upgrades.
 
-The installers include aria2, FFmpeg, and FFprobe. Launch Foxdown to open the task list. Engine setup works offline. The default download folder is `Downloads/Foxdown`. Open **Settings → Application** for startup, browser extension, and update options.
+### Browser extension
 
-The Windows ARM64 app uses x64 download engines through Windows 11 emulation. GitHub Actions builds are unsigned on Windows and ad-hoc signed on macOS. See the [desktop guide](electron.md) for build and data locations.
+1. Keep the desktop app running. Download `Foxdown-extension.zip` from the same release and extract it.
+2. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the folder containing `manifest.json`.
+3. Follow the setup guide to test `http://127.0.0.1:16801`. If you configured a Web API token in Foxdown, enter the same token.
+4. Pin the extension and test a download on the guide’s demo page. Confirm the task appears in Foxdown.
 
-## Browser extension
+Refresh open pages after updating the extension. This README describes the current source; see the corresponding [release notes](https://github.com/Foxmori-Official/Foxdown/releases) for features in a downloaded build.
 
-1. Install and open the desktop app. Wait for **Connected**.
-2. Download and extract `Foxdown-extension.zip`. In Chrome or Edge, open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the extracted folder containing `manifest.json`.
-3. In the setup guide, test `http://127.0.0.1:16801`. If you set a Web API token in Foxdown, enter the same token in the guide.
-4. Pin the extension and open the demo. Click the download link, then check the **All** tab in Foxdown. If your capture rules exclude the demo, use the extension’s link context menu to send it manually.
+## What you can do
 
-Open **Extension settings** to change download capture, server routing, notifications, or media detection. The setup guide is available again from the extension menu.
+- **Manage file downloads.** Use multiple connections and segments, pause and resume tasks, submit batches, and retry failed downloads.
+- **Download torrents and magnet links.** Add a torrent file or magnet link and monitor the task in the desktop app.
+- **Save streams.** Download HLS/DASH streams, select audio and video tracks, and remux completed downloads to MP4.
+- **Capture browser downloads.** Apply domain, file-type, and size rules, or send a link from its context menu. Failed handoffs fall back to the browser.
+- **Find page resources.** Detection is enabled by default. Reload a page or play media, then use **Page resources** to inspect media and attachments, preview them, or select downloads.
 
-The toolbar badge shows ongoing downloads. A red `X` indicates a failed task, failed handoff or unreachable service. Open the extension to see the error details. **Page resources** has automatic detection enabled by default. Play media or reload a page to find media and attachments, or open the resource window from the settings dashboard.
+The extension settings dashboard opens the resource window and shows connection status. Toolbar badges provide a quick status check:
 
-## CLI and MCP
+| Badge | Meaning |
+| --- | --- |
+| Blue number | Resources found in the current tab, shown when no downloads are ongoing |
+| Green number | Total number of ongoing and waiting downloads |
+| Red `X` | A failed task, failed handoff, or unreachable service; open the extension for details |
 
-With Foxdown running, use `node cli/foxdown.mjs list` to view tasks or `node cli/foxdown.mjs add "https://example.com/file.zip"` to submit a download. Set `FOXDOWN_SERVER` and `FOXDOWN_TOKEN` for a remote service.
+## Privacy
 
-MCP tools are available through JSON-RPC at `POST /mcp` with the same Web API token. See the [API guide](api.md) for tools and requests, and the [Docker guide](docker.md) for container deployment.
+The desktop service listens on loopback by default. Task state and settings are stored in the OS user data directory; extension settings are stored locally in the browser. The extension forwards download links and required headers to your selected download service. Read the [privacy policy](../PRIVACY.md) and [API guide](api.md) before configuring a remote server.
 
-## Develop and verify
+## Build from source
 
-Use Node.js 22 on macOS or Windows. Release builds prepare and verify engine binaries before bundling them in the installers.
+Use Node.js 22 and npm on macOS or Windows:
 
 ```sh
+git clone https://github.com/Foxmori-Official/Foxdown.git
+cd Foxdown
 npm ci
 npm --prefix server ci
 npm --prefix web ci
@@ -49,33 +66,12 @@ npm run build:web
 npm run dev-electron
 ```
 
-- `npm test` runs task, API, extension, and localization checks.
-- `npm run engines` installs verified local engine binaries. Run `npm run test:desktop-engine` to test HTTP downloads and HLS-to-MP4 remuxing against a loopback fixture.
-- `npm run test:web-build` checks the production bundle.
-- `npx playwright install chromium`, then `npm run test:desktop-extension`, verifies Electron startup and a real browser extension download. Set `FOXDOWN_PACKAGED_EXE` to a built application executable to test the installer contents.
-- `npm run pack:extension` builds `Foxdown-extension.zip`. To load from the source directory, run `npm run assets` first.
-- `npm run pack -- --mac --arm64` or `npm run pack -- --win --x64` packages a desktop build on the corresponding OS. Use `--x64` or `--arm64` to select the architecture.
-- `npm start` starts the standalone local API and web interface after engines and the web build are ready. The default URL is `http://127.0.0.1:16801`.
+Engines are downloaded and verified during the build. See the [desktop development guide](electron.md) for tests and packaging commands, and the [update and release guide](updates.md) for maintenance. Development builds are available from successful [GitHub Actions runs](https://github.com/Foxmori-Official/Foxdown/actions/workflows/desktop.yml).
 
-## Reference projects
+More: [CLI, API, and MCP](api.md) · [Docker deployment](docker.md) · [Download and resource detection verification](download-and-detection-verification.md)
 
-| Project | What Foxdown uses or takes inspiration from |
-|---|---|
-| [aria2](https://github.com/aria2/aria2) | Download engine and JSON-RPC for HTTP, FTP, SFTP, Metalink, and BitTorrent |
-| [Motrix](https://github.com/agalwood/Motrix) | Desktop engine management, session recovery, tracker settings, and the pinned aria2 builds |
-| [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) | Stream selectors, segment filtering, remuxing and the optional external stream engine |
-| [Gopeed](https://github.com/GopeedLab/gopeed) | Resolve/create API, shared task model, CLI and MCP patterns |
-| [Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer) | Browser capture, confirmation dialog, multi-server URL rules and fallback |
-| [Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension) | Browser download handoff and request-header forwarding |
-| [cat-catch](https://github.com/xifangczy/cat-catch) | Media discovery, deep search, filtering and preview |
-| [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) | Windows FFmpeg and FFprobe distributions |
-| [ffmpeg-macos-builds](https://github.com/dfloresc/ffmpeg-macos-builds) | macOS LGPL FFmpeg and FFprobe with shared libraries and source notices |
-| [hls.js](https://github.com/video-dev/hls.js) | HLS playback in the extension’s media preview |
+## Acknowledgements and license
 
-The [update guide](updates.md) explains how to compare upstream changes, select a compatible fix, run the platform checks, and prepare a release.
+Foxdown’s project code uses the [MIT license](../LICENSE). Thanks to the authors and contributors of [aria2](https://github.com/aria2/aria2), [Motrix](https://github.com/agalwood/Motrix), [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE), [Gopeed](https://github.com/GopeedLab/gopeed), [Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer), [Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension), and [cat-catch](https://github.com/xifangczy/cat-catch).
 
-## Data and licenses
-
-The desktop service listens on loopback. Foxdown stores task state and settings under the OS user data directory. Browser capture forwards headers needed by the selected download. Use the privacy policy and API guide when configuring a remote server.
-
-Foxdown’s project code is licensed under [MIT](../LICENSE). Engine setup fetches third-party binaries from their upstream projects. Each upstream supplies its own license and distribution terms. [Third-party notices](third-party.md)
+External engines, binary distributions, and third-party code retain their own licenses. See the [third-party credits and reference notes](third-party.md) for specific uses, design references, and distribution sources.
