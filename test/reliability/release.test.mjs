@@ -17,7 +17,7 @@ function fixture(t) {
   };
   for (const file of ['package.json', 'server/package.json', 'web/package.json', 'extension/manifest.json']) write(file, { version: '0.0.1' });
   for (const file of ['package-lock.json', 'server/package-lock.json', 'web/package-lock.json']) write(file, { version: '0.0.1', packages: { '': { version: '0.0.1' } } });
-  write('docs/releases/v0.0.1.md', '## 简体中文\n\n首个版本。\n\n## English\n\nInitial release.\n');
+  write('docs/releases/v0.0.1.md', '## 简体中文\n\n首个版本。\n');
   const output = path.join(root, 'outputs');
   const run = overrides => spawnSync(process.execPath, [script], {
     cwd: root, encoding: 'utf8', env: { ...process.env, GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main',
@@ -32,7 +32,7 @@ test('ordinary main changes do not create a release', t => {
   assert.match(fs.readFileSync(f.output, 'utf8'), /^release_tag=\n/);
 });
 
-test('release commits and version tags select the matching bilingual release', t => {
+test('release commits and version tags select the matching Chinese-only release', t => {
   const f = fixture(t);
   for (const env of [{ HEAD_COMMIT_MESSAGE: 'release: v0.0.1\n\n构建首个版本。' }, { GITHUB_REF: 'refs/tags/v0.0.1' }, { GITHUB_EVENT_NAME: 'workflow_dispatch', RELEASE_INPUT: 'v0.0.1' }]) {
     const result = f.run(env);
@@ -48,9 +48,9 @@ test('a mismatched release tag or package version blocks the release', t => {
   assert.notEqual(f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' }).status, 0);
 });
 
-test('Chinese-first release notes also support Windows line endings', t => {
+test('Chinese-only release notes also support Windows line endings', t => {
   const f = fixture(t);
-  f.write('docs/releases/v0.0.1.md', '\uFEFF## 简体中文\r\n\r\n首个版本。\r\n\r\n## English\r\n\r\nInitial release.\r\n');
+  f.write('docs/releases/v0.0.1.md', '\uFEFF## 简体中文\r\n\r\n首个版本。\r\n');
   const result = f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' });
   assert.equal(result.status, 0, result.stderr);
 });

@@ -202,4 +202,4 @@ jobs:
             gh release create "$RELEASE_TAG" release/* --verify-tag --draft --notes-file "docs/releases/$RELEASE_TAG.md" --title "Foxdown $RELEASE_TAG"
           fi
           echo "### $RELEASE_TAG 构建完成" >> "$GITHUB_STEP_SUMMARY"
-          echo '已生成四个平台安装包、浏览器扩展和 SHA-256 校验清单，发布说明以中文为主、英文为次。' >> "$GITHUB_STEP_SUMMARY"
+          echo '已生成四个平台安装包、浏览器扩展和 SHA-256 校验清单，发布说明使用简体中文。' >> "$GITHUB_STEP_SUMMARY"
