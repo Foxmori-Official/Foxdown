@@ -1,5 +1,6 @@
 export default {
   common: {
+    browse: 'Browse…',
     connectionTitle: "Connect to Foxdown",
     connectionToken: "API token (required)",
     connectionRetry: "Retry connection",
@@ -149,7 +150,7 @@ export default {
     trackerAutoUpdate: 'Auto-update trackers on startup',
     trackerUpdateNow: 'Update trackers now',
     seedRatio: 'Seed ratio',
-    seedRatioHint: 'Stop seeding after reaching ratio; 0 means seed forever',
+    seedRatioHint: 'Stop at this ratio or the time limit; 0 removes the ratio limit',
     seedTime: 'Seed time (minutes)',
     streamThreads: 'Download threads',
     streamRetry: 'Retry count',
@@ -173,6 +174,7 @@ export default {
     trackersUpdated: 'Updated {count} trackers',
     trackerUpdateFailed: 'Failed to update trackers: {msg}',
     groupProxy: 'Proxy',
+    webApiAddress: 'Connection URL',
     groupRpc: 'RPC / Remote Access',
     groupPost: 'Post-processing',
     minSplitSize: 'Min split size',
@@ -218,7 +220,7 @@ export default {
     webhookTest: 'Send test request',
     webhookTestResult: 'Test request sent, got status {status}',
     webhookTestFailed: 'Test request failed: {msg}',
-    postScriptHint: 'Injected variables: RDOWN_EVENT / RDOWN_TASK_ID / RDOWN_TASK_NAME / RDOWN_FILE / RDOWN_FILE_COUNT ($1 = event, $2 = task ID)',
+    postScriptHint: 'Injected variables: FOXDOWN_EVENT / FOXDOWN_TASK_ID / FOXDOWN_TASK_NAME / FOXDOWN_FILE / FOXDOWN_FILE_COUNT ($1 = event, $2 = task ID)',
     speedProfilesLabel: 'Speed presets',
     discard: 'Discard changes',
     factoryReset: 'Factory reset',

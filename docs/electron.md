@@ -34,6 +34,8 @@ npm run pack -- --win --arm64
 
 在对应系统执行命令，产物位于 `dist-electron/`。Windows ARM64 的 Electron 进程为 ARM64，下载引擎通过 Windows 11 的 x64 模拟层运行。macOS 安装包支持 macOS 13 或更新版本，需要配置发布者签名和公证才能获得正式分发体验。当前构建使用临时签名，Windows 构建未做发布者签名。
 
+首次打开时，如 macOS 提示无法验证开发者，确认安装包来源后，可在「系统设置 → 隐私与安全性」中对 Foxdown 选择「仍要打开」。操作步骤见 [Apple 支持](https://support.apple.com/en-euro/guide/mac-help/mh40617/27/mac/27)。
+
 打包后，运行时后端和 Web UI 在应用资源目录 `runtime/` 中。日志和会话位于用户可写目录。安装文件路径与下载路径分开。
 
 ## macOS 提示组件将不兼容未来系统

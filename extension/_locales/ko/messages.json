@@ -81,7 +81,7 @@
     "message": "다른 확장 프로그램의 다운로드 요청 허용(미들웨어 API, 주의해서 활성화)"
   },
   "mediaTitle": {
-    "message": "이 페이지의 미디어"
+    "message": "페이지 리소스"
   },
   "mediaDownload": {
     "message": "다운로드"
@@ -93,6 +93,9 @@
   "mediaPreview": {
     "message": "미리 보기",
     "description": "Preview button of a media list item"
+  },
+  "previewClose": {
+    "message": "미리 보기 닫기"
   },
   "previewFailed": {
     "message": "미리 보기 실패: 이 미디어를 로드할 수 없습니다(로그인 또는 핫링크 보호가 필요할 수 있음)"
@@ -172,6 +175,15 @@
   "captureLabel": {
     "message": "브라우저 다운로드 캡처"
   },
+  "dashboardHeading": {
+    "message": "대시보드"
+  },
+  "dashboardConnected": {
+    "message": "연결됨"
+  },
+  "dashboardUnavailable": {
+    "message": "서비스 연결 불가"
+  },
   "statActive": {
     "message": "활성 작업"
   },
@@ -199,6 +211,15 @@
   "stateFailed": {
     "message": "연결 실패: $1",
     "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "batchChoose": {
+    "message": "다운로드할 링크 선택"
+  },
+  "batchFilter": {
+    "message": "링크 또는 확장자로 필터링"
+  },
+  "batchSelectVisible": {
+    "message": "표시된 링크 선택"
   },
   "noLinksFound": {
     "message": "이 페이지에서 다운로드 가능한 링크를 찾을 수 없습니다"
@@ -469,5 +490,32 @@
   },
   "obDownloadApp": {
     "message": "Foxdown 데스크톱 앱 다운로드"
+  },
+  "badgeSummary": {
+    "message": "진행 $1 · 대기 $2 · 실패 $3"
+  },
+  "handoffFailed": {
+    "message": "다운로드 전송 실패"
+  },
+  "pageResourcesCount": {
+    "message": "이 페이지의 리소스: $1"
+  },
+  "clearErrorHint": {
+    "message": "전송 오류 지우기"
+  },
+  "sniffEnabledShort": {
+    "message": "자동 감지"
+  },
+  "sniffEmpty": {
+    "message": "감지가 켜져 있습니다. 미디어를 재생하거나 페이지를 새로 고치면 미디어와 첨부 파일이 표시됩니다."
+  },
+  "sniffDisabled": {
+    "message": "감지가 꺼져 있습니다. 자동 감지를 켜 주세요."
+  },
+  "sniffNoPage": {
+    "message": "웹 페이지를 열면 리소스를 볼 수 있습니다."
+  },
+  "downloadErrors": {
+    "message": "다운로드 문제 $1개"
   }
 }

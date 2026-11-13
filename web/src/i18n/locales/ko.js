@@ -1,5 +1,6 @@
 export default {
   common: {
+    browse: '찾아보기…',
     connectionTitle: "Foxdown 연결",
     connectionToken: "API 토큰(필수)",
     connectionRetry: "연결 다시 시도",
@@ -149,7 +150,7 @@ export default {
     trackerAutoUpdate: '시작 시 트래커 자동 업데이트',
     trackerUpdateNow: '지금 트래커 업데이트',
     seedRatio: '시드 비율',
-    seedRatioHint: '비율 도달 후 시딩 중지, 0이면 계속 시딩',
+    seedRatioHint: '비율 또는 시간 제한에 도달하면 중지, 0은 비율 제한 없음',
     seedTime: '시드 시간(분)',
     streamThreads: '다운로드 스레드 수',
     streamRetry: '재시도 횟수',
@@ -173,6 +174,7 @@ export default {
     trackersUpdated: '트래커 {count}개 업데이트됨',
     trackerUpdateFailed: '트래커 업데이트 실패: {msg}',
     groupProxy: '프록시',
+    webApiAddress: '연결 주소',
     groupRpc: 'RPC / 원격 접속',
     groupPost: '후처리',
     minSplitSize: '최소 분할 크기',
@@ -218,7 +220,7 @@ export default {
     webhookTest: '테스트 요청 보내기',
     webhookTestResult: '테스트 요청 전송됨, 상태 코드 {status}',
     webhookTestFailed: '테스트 요청 실패: {msg}',
-    postScriptHint: '주입 변수: RDOWN_EVENT / RDOWN_TASK_ID / RDOWN_TASK_NAME / RDOWN_FILE / RDOWN_FILE_COUNT ($1 = 이벤트, $2 = 작업 ID)',
+    postScriptHint: '주입 변수: FOXDOWN_EVENT / FOXDOWN_TASK_ID / FOXDOWN_TASK_NAME / FOXDOWN_FILE / FOXDOWN_FILE_COUNT ($1 = 이벤트, $2 = 작업 ID)',
     speedProfilesLabel: '속도 프리셋',
     discard: '변경 사항 취소',
     factoryReset: '공장 초기화',

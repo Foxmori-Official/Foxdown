@@ -2,7 +2,7 @@
 
 Foxdown is a desktop download manager for HTTP, BitTorrent, magnet links, and HLS/DASH streams. Its Chrome and Edge extension hands browser downloads and discovered media to the desktop app.
 
-[简体中文](../README.md) · [API](api.md) · [维护与更新](updates.md) · [UI review](design-review.md) · [Privacy](../PRIVACY.md)
+[简体中文](../README.md) · [API](api.md) · [Docker](docker.md) · [维护与更新](updates.md) · [UI review](design-review.md) · [Privacy](../PRIVACY.md)
 
 ## Install Foxdown
 
@@ -27,6 +27,14 @@ The Windows ARM64 app uses x64 download engines through Windows 11 emulation. Gi
 4. Pin the extension and open the demo. Click the download link, then check the **All** tab in Foxdown. If your capture rules exclude the demo, use the extension’s link context menu to send it manually.
 
 Open **Extension settings** to change download capture, server routing, notifications, or media detection. The setup guide is available again from the extension menu.
+
+The toolbar badge shows ongoing downloads. A red `X` indicates a failed task, failed handoff or unreachable service. Open the extension to see the error details. **Page resources** has automatic detection enabled by default. Play media or reload a page to find media and attachments, or open the resource window from the settings dashboard.
+
+## CLI and MCP
+
+With Foxdown running, use `node cli/foxdown.mjs list` to view tasks or `node cli/foxdown.mjs add "https://example.com/file.zip"` to submit a download. Set `FOXDOWN_SERVER` and `FOXDOWN_TOKEN` for a remote service.
+
+MCP tools are available through JSON-RPC at `POST /mcp` with the same Web API token. See the [API guide](api.md) for tools and requests, and the [Docker guide](docker.md) for container deployment.
 
 ## Develop and verify
 

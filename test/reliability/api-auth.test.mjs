@@ -143,4 +143,65 @@ test('isolated REST and WebSocket authentication / state delivery', { timeout: 1
     await once(ws, 'open');
     const close = once(ws, 'close'); ws.close(); await close;
   });
+  await t.test('untrusted and opaque browser origins cannot read or change local state', async () => {
+    for (const origin of ['https://untrusted.example', 'null', 'http://127.0.0.1:1']) {
+      const headers = { Origin: origin, 'Content-Type': 'application/json' };
+      for (const method of ['GET', 'OPTIONS', 'PUT']) {
+        const response = await fetch(`${base}/api/v1/settings`, {
+          method, headers, body: method === 'PUT' ? JSON.stringify({ postScript: 'blocked-script' }) : undefined,
+        });
+        assert.equal(response.status, 403);
+        assert.equal(response.headers.has('access-control-allow-origin'), false);
+      }
+      assert.equal((await fetch(`${base}/mcp`, {
+        method: 'POST', headers, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      })).status, 403);
+    }
+    assert.equal((await fetch(`${base}/api/v1/settings`, { headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
+    assert.equal(settings.postScript, undefined);
+  });
+  await t.test('a rebound Host is rejected even with its matching Origin or no Origin', async () => {
+    const hostname = 'rebound.example:' + server.address().port;
+    for (const headers of [{ Host: hostname }, { Host: hostname, Origin: 'http://' + hostname }]) {
+      const status = await new Promise((resolve, reject) => {
+        http.get(`${base}/api/v1/settings`, { headers }, res => { res.resume(); resolve(res.statusCode); }).once('error', reject);
+      });
+      assert.equal(status, 401);
+    }
+  });
+  await t.test('extension access remains available and only the Web UI or Bearer token can set a script', async () => {
+    const origin = 'chrome-extension://' + 'a'.repeat(32);
+    const allowed = await fetch(`${base}/api/v1/settings`, { method: 'OPTIONS', headers: { Origin: origin } });
+    assert.equal(allowed.status, 204);
+    assert.equal(allowed.headers.get('access-control-allow-origin'), origin);
+    const patch = (postScript, headers, suffix = '') => fetch(`${base}/api/v1/settings${suffix}`, {
+      method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ postScript }),
+    });
+    assert.equal((await patch('blocked-script', { Origin: origin })).status, 403);
+    assert.equal((await patch('blocked-script', {})).status, 403);
+    assert.equal((await patch('ui-script', { Origin: base })).status, 200);
+    assert.equal(settings.postScript, 'ui-script');
+    settings.apiToken = 'script-fixture-token';
+    try {
+      assert.equal((await patch('blocked-script', {}, '?token=script-fixture-token')).status, 403);
+      assert.equal((await patch('authorized-script', { Authorization: 'Bearer script-fixture-token' })).status, 200);
+      assert.equal(settings.postScript, 'authorized-script');
+    } finally { settings.apiToken = ''; }
+  });
+  await t.test('WebSocket shares the Origin and DNS rebinding checks', async () => {
+    for (const [headers, expected] of [
+      [{ Origin: 'https://untrusted.example' }, 403],
+      [{ Host: 'rebound.example', Origin: 'http://rebound.example' }, 401],
+    ]) {
+      const socket = connect(wsbase, { headers });
+      const status = await new Promise((resolve, reject) => {
+        socket.once('open', () => reject(new Error('unexpected WebSocket connection')));
+        socket.once('unexpected-response', (_request, response) => {
+          response.resume(); socket.terminate(); resolve(response.statusCode);
+        });
+        socket.on('error', () => {});
+      });
+      assert.equal(status, expected);
+    }
+  });
 });

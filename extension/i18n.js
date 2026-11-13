@@ -1,6 +1,6 @@
 // Foxdown Connector - 手动语言切换覆盖层
 // Chrome 原生 chrome.i18n 只能跟随浏览器语言、无法运行时切换；
-// 本文件从 chrome.storage.sync 读取 { locale }（'auto' = 跟随系统），
+// 本文件从 chrome.storage.local 读取 { locale }（'auto' = 跟随系统），
 // 非 auto 时 fetch 对应 _locales/<目录>/messages.json 作为 OVERRIDE，
 // i18n() 优先取 OVERRIDE，其次 chrome.i18n.getMessage，最后回退 key 本身。
 // auto 时先用 resolveUiLocale 做地区/前缀解析（Chrome 原生只做"精确目录→default"，
@@ -32,13 +32,13 @@
     return keys.find((k) => k.toLowerCase().split('-')[0] === prefix) || null;
   }
 
-  // 从 chrome.storage.sync 读取语言设置并（必要时）载入覆盖消息表
+  // 从 chrome.storage.local 读取语言设置并（必要时）载入覆盖消息表
   async function loadI18nOverride() {
     const generation = ++loadGeneration;
     OVERRIDE = null;
     activeLocale = resolveUiLocale(chrome.i18n.getUILanguage?.()) || 'en';
     try {
-      const s = await chrome.storage.sync.get({ locale: 'auto' });
+      const s = await readSettings({ locale: 'auto' });
       let pref = s && s.locale;
       if (!pref || pref === 'auto') {
         pref = resolveUiLocale(chrome.i18n.getUILanguage && chrome.i18n.getUILanguage());

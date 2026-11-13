@@ -81,7 +81,7 @@
     "message": "允许其他扩展发送下载请求（中间件 API，谨慎开启）"
   },
   "mediaTitle": {
-    "message": "本页媒体"
+    "message": "本页资源"
   },
   "mediaDownload": {
     "message": "下载"
@@ -93,6 +93,9 @@
   "mediaPreview": {
     "message": "预览",
     "description": "媒体列表项的预览按钮"
+  },
+  "previewClose": {
+    "message": "关闭预览"
   },
   "previewFailed": {
     "message": "预览失败：无法加载该媒体（可能需要登录或防盗链）"
@@ -172,6 +175,15 @@
   "captureLabel": {
     "message": "接管浏览器下载"
   },
+  "dashboardHeading": {
+    "message": "仪表盘"
+  },
+  "dashboardConnected": {
+    "message": "已连接"
+  },
+  "dashboardUnavailable": {
+    "message": "服务不可达"
+  },
   "statActive": {
     "message": "活跃任务"
   },
@@ -199,6 +211,15 @@
   "stateFailed": {
     "message": "连接失败：$1",
     "description": "弹窗底部状态：连接失败，$1 为错误信息"
+  },
+  "batchChoose": {
+    "message": "选择要下载的链接"
+  },
+  "batchFilter": {
+    "message": "按链接或后缀筛选"
+  },
+  "batchSelectVisible": {
+    "message": "选择当前显示的链接"
   },
   "noLinksFound": {
     "message": "本页未找到可下载的链接"
@@ -469,5 +490,32 @@
   },
   "obDownloadApp": {
     "message": "下载 Foxdown 桌面应用"
+  },
+  "badgeSummary": {
+    "message": "下载中 $1 · 等待 $2 · 失败 $3"
+  },
+  "handoffFailed": {
+    "message": "发送下载任务失败"
+  },
+  "pageResourcesCount": {
+    "message": "本页发现 $1 个资源"
+  },
+  "clearErrorHint": {
+    "message": "清除发送失败提示"
+  },
+  "sniffEnabledShort": {
+    "message": "自动嗅探"
+  },
+  "sniffEmpty": {
+    "message": "嗅探已开启。播放视频、音频或刷新网页后，发现的媒体和附件会显示在这里。"
+  },
+  "sniffDisabled": {
+    "message": "嗅探已关闭，开启自动嗅探后可发现本页资源。"
+  },
+  "sniffNoPage": {
+    "message": "打开一个网页，即可查看它的资源。"
+  },
+  "downloadErrors": {
+    "message": "$1 个下载问题"
   }
 }

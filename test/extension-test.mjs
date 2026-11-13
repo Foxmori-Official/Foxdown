@@ -18,7 +18,7 @@ const calls = {
 let fetchImpl = null; // 测试可注入的 fetch 实现
 const chrome = {
   storage: {
-    sync: {
+    local: {
       get: async (defaults) => ({ ...defaults, ...storageData }),
       set: async (obj) => Object.assign(storageData, obj),
     },
@@ -66,14 +66,18 @@ const chrome = {
   },
   commands: { onCommand: { addListener: () => {} } },
   i18n: { getMessage: (k) => k },
-  tabs: { create: (o) => { calls.tabsCreate.push(o); return Promise.resolve({ id: 1 }); }, sendMessage: async () => [] },
+  tabs: { query: async () => [], create: (o) => { calls.tabsCreate.push(o); return Promise.resolve({ id: 1 }); }, sendMessage: async () => [] },
 };
 
 const sandbox = {
-  chrome, console, setInterval, setTimeout, clearInterval, clearTimeout,
+  chrome, console, importScripts: () => {},
+  readSettings: defaults => chrome.storage.local.get(defaults),
+  writeSettings: patch => chrome.storage.local.set(patch),
+  setInterval, setTimeout, clearInterval, clearTimeout,
   navigator: { userAgent: 'Mozilla/5.0 TestAgent' },
   URL, Map, Set, Date, JSON, RegExp, Promise, AbortSignal,
   fetch: async (...args) => {
+    if (args[1]?.method !== 'POST') return { ok: true, json: async () => ({ tasks: [] }) };
     calls.fetch.push(args);
     if (fetchImpl) return fetchImpl(...args);
     throw new Error('no fetch in test');
@@ -84,7 +88,7 @@ vm.createContext(sandbox);
 
 const code = fs.readFileSync(path.join(EXT, 'background.js'), 'utf8');
 const libCode = fs.readFileSync(path.join(EXT, 'lib.js'), 'utf8');
-vm.runInContext(libCode + '\n' + code + '\n;globalThis.__test = { shouldCapture, matchWildcard, buildHeaders, storeRequestHeaders, consumeRequestHeaders, routeServer, resolveServers, defaultServer, sniffMatch, sanitizeExternalOptions, wildcardToRegex, matchSniffRegexRules, renderFileNameTemplate, shouldAutoDownload, deepSearchScanSource, addDeepSearchMedia, maybeAutoDownload, sniffedMedia, autoSentSet, pendingConfirms, addPendingConfirm, getPendingConfirm, removePendingConfirm, resolveConfirmServers, confirmPendingDownload, cancelPendingDownload, normalizePanelStyle, applyPanelStyle, openPanel };', sandbox);
+vm.runInContext(libCode + '\n' + code + '\n;globalThis.__test = { shouldCapture, matchWildcard, buildHeaders, storeRequestHeaders, consumeRequestHeaders, routeServer, resolveServers, defaultServer, sniffMatch, sanitizeExternalOptions, wildcardToRegex, matchSniffRegexRules, renderFileNameTemplate, shouldAutoDownload, scanDeepSearch, addDeepSearchMedia, maybeAutoDownload, sniffedMedia, autoSentSet, pendingConfirms, addPendingConfirm, getPendingConfirm, removePendingConfirm, resolveConfirmServers, confirmPendingDownload, cancelPendingDownload, normalizePanelStyle, applyPanelStyle, openPanel };', sandbox);
 const T = sandbox.__test;
 
 let pass = 0, fail = 0;
@@ -200,7 +204,7 @@ assert(T.sniffMatch('chrome-extension://abc/y.m3u8', '', 'other') === null, '非
 
 console.log('== 外部请求 options 白名单（sanitizeExternalOptions）==');
 const extOpts = T.sanitizeExternalOptions({ dir: '/dl', out: 'f.zip', split: 16, headers: ['X: y'], evil: 'rm -rf' });
-assert(extOpts.dir === '/dl' && extOpts.out === 'f.zip' && extOpts.split === 16, '白名单键保留');
+assert(!('dir' in extOpts) && extOpts.out === 'f.zip' && extOpts.split === 16, '外部请求仅可设置安全文件名和白名单选项');
 assert(!('headers' in extOpts) && !('evil' in extOpts), '非白名单键被丢弃');
 
 // ==================== v3.1 新增 ====================
@@ -239,18 +243,22 @@ assert(!T.shouldAutoDownload(liveM3u8, adCfg, new Set()), 'm3u8 直播流（体�
 assert(!T.shouldAutoDownload(bigMp4, adCfg, new Set([bigMp4.url])), '同一 URL 只自动发一次');
 assert(!T.shouldAutoDownload({ url: 'blob:https://a.com/x', size: 99 * 1048576, type: 'MP4' }, adCfg, new Set()), '非 http(s) 地址不自动下载');
 
-console.log('== 深度搜索（addDeepSearchMedia / deepSearchScanSource）==');
+console.log('== 深度搜索（addDeepSearchMedia / scanDeepSearch）==');
 const added = T.addDeepSearchMedia(991, ['https://a.com/v/master.m3u8', 'https://a.com/v/clip.mp4', 'not-a-url', 'magnet:?xt=1'], 'https://a.com/page');
 assert(added === 2, '深度搜索结果过滤后入列表（2 条有效）');
 assert(T.addDeepSearchMedia(991, ['https://a.com/v/master.m3u8'], 'https://a.com/page') === 0, '重复 URL 不再入列表');
 const dsEntry = T.sniffedMedia.get(991)?.get('https://a.com/v/master.m3u8');
 assert(dsEntry?.source === 'deepSearch' && dsEntry?.type === 'HLS', '深度搜索条目标记 source=deepSearch');
 assert(dsEntry?.headers?.referer === 'https://a.com/page', '深度搜索条目携带页面 referer');
-assert(T.deepSearchScanSource.includes('document.scripts') && T.deepSearchScanSource.includes('__INITIAL_STATE__'), '扫描源码覆盖内联脚本与播放器全局变量');
-assert(T.deepSearchScanSource.includes('kimi-deep-search-result'), '扫描源码通过 postMessage 回传结果');
+sandbox.document = { scripts: [{ textContent: 'const video = "https://a.com/from-script.mp4";' }] };
+sandbox.window = { __INITIAL_STATE__: { video: 'https://a.com/from-state.mp4' } };
+sandbox.location = { href: 'https://a.com/page', protocol: 'https:' };
+const scan = T.scanDeepSearch();
+assert(scan.urls.includes('https://a.com/from-script.mp4') && scan.urls.includes('https://a.com/from-state.mp4'), '扫描直接返回内联脚本与播放器全局变量中的媒体');
+assert(scan.href === 'https://a.com/page', '扫描返回来源页面');
 
 console.log('== 自动下载集成（maybeAutoDownload 防重复）==');
-await chrome.storage.sync.set({ autoDownloadSniffed: true, autoDownloadMinSizeMB: 1 });
+await chrome.storage.local.set({ autoDownloadSniffed: true, autoDownloadMinSizeMB: 1 });
 const adMedia = { url: 'https://a.com/auto.mp4', size: 5 * 1048576, type: 'MP4', filename: 'auto.mp4', headers: {} };
 await T.maybeAutoDownload(adMedia);
 assert(!T.autoSentSet.has(adMedia.url), '自动下载失败释放防重标记，允许重试');
@@ -263,7 +271,7 @@ assert(calls.fetch.length === sentBefore, '同一 URL 重复触发不重复发�
 fetchImpl = null;
 await T.maybeAutoDownload({ url: 'https://a.com/tiny.mp4', size: 100, type: 'MP4', filename: 'tiny.mp4', headers: {} });
 assert(!T.autoSentSet.has('https://a.com/tiny.mp4'), '体积不足的媒体不进入防重集合');
-await chrome.storage.sync.set({ autoDownloadSniffed: false, autoDownloadMinSizeMB: 10 });
+await chrome.storage.local.set({ autoDownloadSniffed: false, autoDownloadMinSizeMB: 10 });
 
 // ==================== v3.2 新增 ====================
 console.log('== 下载前确认：pendingConfirm 生命周期 ==');
@@ -286,7 +294,7 @@ const rc2 = T.resolveConfirmServers({ servers }, 'https://other.com/y.zip', 'y.z
 assert(rc2.matchedIndex === 0, '未命中时预选默认服务器（pattern *）');
 
 console.log('== 下载前确认：接管流程挂起 + 确认/取消 ==');
-await chrome.storage.sync.set({ askBeforeDownload: true, enabled: true, servers });
+await chrome.storage.local.set({ askBeforeDownload: true, enabled: true, servers });
 const fetchBefore = calls.fetch.length;
 listeners.onDeterminingFilename(item({ id: 555, url: 'https://a.com/big.zip', finalUrl: 'https://a.com/big.zip', filename: 'big.zip', referrer: 'https://a.com/page' }));
 assert(await until(() => calls.windowsCreate.length === 1), '开启 askBeforeDownload 后弹确认窗口（windows.create）');
@@ -315,7 +323,7 @@ assert((await T.getPendingConfirm(tok2)) === null, '取消后待确认任务已�
 const eResp = await new Promise(res => listeners.onMessage({ type: 'getPendingConfirm', token: 'nope' }, {}, res));
 assert(eResp?.error === 'expired', '过期任务查询返回 expired 错误');
 fetchImpl = null;
-await chrome.storage.sync.set({ askBeforeDownload: false });
+await chrome.storage.local.set({ askBeforeDownload: false });
 
 console.log('== 管理面板多形态（panelOpenStyle）==');
 assert(T.normalizePanelStyle('window') === 'window' && T.normalizePanelStyle('bogus') === 'popup' && T.normalizePanelStyle('') === 'popup', '非法面板形态回退 popup');
@@ -333,10 +341,10 @@ assert(wp?.type === 'popup' && wp?.width === 1100 && wp?.height === 720 && wp?.u
 await T.openPanel('sidepanel', { windowId: 7 });
 assert(calls.sidePanelOpen.at(-1)?.windowId === 7, 'sidepanel 形态调用 sidePanel.open');
 assert(typeof listeners.actionOnClicked === 'function', 'action.onClicked 已注册（非 popup 形态点击分发入口）');
-await chrome.storage.sync.set({ panelOpenStyle: 'sidepanel' });
+await chrome.storage.local.set({ panelOpenStyle: 'sidepanel' });
 listeners.actionOnClicked({ windowId: 9 });
 assert(await until(() => calls.sidePanelOpen.at(-1)?.windowId === 9), '点击图标按配置形态分发（sidepanel）');
-await chrome.storage.sync.set({ panelOpenStyle: 'popup' });
+await chrome.storage.local.set({ panelOpenStyle: 'popup' });
 
 console.log(`\n结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail ? 1 : 0);

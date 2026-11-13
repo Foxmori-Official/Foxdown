@@ -1,5 +1,6 @@
 export default {
   common: {
+    browse: 'Examinar…',
     connectionTitle: "Conectar con Foxdown",
     connectionToken: "Token de API (obligatorio)",
     connectionRetry: "Reintentar conexión",
@@ -149,7 +150,7 @@ export default {
     trackerAutoUpdate: 'Actualizar trackers automáticamente al iniciar',
     trackerUpdateNow: 'Actualizar trackers ahora',
     seedRatio: 'Ratio de compartición',
-    seedRatioHint: 'Dejar de compartir al alcanzar el ratio; 0 = compartir siempre',
+    seedRatioHint: 'Compartir hasta alcanzar el ratio o el tiempo límite, 0 elimina el límite de ratio',
     seedTime: 'Tiempo de compartición (minutos)',
     streamThreads: 'Hilos de descarga',
     streamRetry: 'Reintentos',
@@ -173,6 +174,7 @@ export default {
     trackersUpdated: '{count} trackers actualizados',
     trackerUpdateFailed: 'Error al actualizar trackers: {msg}',
     groupProxy: 'Proxy',
+    webApiAddress: 'URL de conexión',
     groupRpc: 'RPC / Acceso remoto',
     groupPost: 'Postprocesado',
     minSplitSize: 'Tamaño mínimo de segmento',
@@ -218,7 +220,7 @@ export default {
     webhookTest: 'Enviar solicitud de prueba',
     webhookTestResult: 'Solicitud de prueba enviada, código {status}',
     webhookTestFailed: 'La solicitud de prueba falló: {msg}',
-    postScriptHint: 'Variables inyectadas: RDOWN_EVENT / RDOWN_TASK_ID / RDOWN_TASK_NAME / RDOWN_FILE / RDOWN_FILE_COUNT ($1 = evento, $2 = ID de tarea)',
+    postScriptHint: 'Variables inyectadas: FOXDOWN_EVENT / FOXDOWN_TASK_ID / FOXDOWN_TASK_NAME / FOXDOWN_FILE / FOXDOWN_FILE_COUNT ($1 = evento, $2 = ID de tarea)',
     speedProfilesLabel: 'Preajustes de velocidad',
     discard: 'Descartar cambios',
     factoryReset: 'Restablecer de fábrica',

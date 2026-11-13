@@ -1,5 +1,5 @@
 // Foxdown Connector - 共享纯函数库 v3.1
-// 被 background.js（importScripts）、content.js（深度搜索注入源码）与测试共同使用。
+// 被 background.js（importScripts）与测试共同使用。
 // 本文件不依赖 chrome.* API，全部为可单测的纯函数。
 
 // ============================================================
@@ -66,14 +66,19 @@ function renderFileNameTemplate(template, data) {
   if (!host) { try { host = new URL(d.url).hostname; } catch { host = ''; } }
   const now = d.now != null ? new Date(d.now) : new Date();
   const p2 = n => String(n).padStart(2, '0');
+  const title = String(d.title ?? '').replace(/[/\\]/g, '_');
   const vars = {
-    title: String(d.title ?? '').replace(/[/\\]/g, '_'),
-    fileName,
+    title,
+    filename: fileName,
+    savename: fileName || title,
     ext,
     host,
     date: `${now.getFullYear()}${p2(now.getMonth() + 1)}${p2(now.getDate())}`
   };
-  return template.replace(/\$\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  return template.replace(/\$?\{(\w+)\}|<(\w+)>/g, (match, brace, angle) => {
+    const key = (brace || angle).toLowerCase();
+    return Object.hasOwn(vars, key) ? vars[key] : match;
+  });
 }
 
 // ============================================================
@@ -95,15 +100,14 @@ function shouldAutoDownload(media, cfg, sentSet) {
 }
 
 // ============================================================
-// 深度搜索：页面主上下文扫描函数源码（参考 cat-catch catch-script/search.js
-// 末尾的 script 文本扫描段）。content.js 以 <script> 文本节点注入法把它
-// 注入页面主上下文执行，结果经 window.postMessage 回传。
-// 保持为字符串以便注入与测试断言其内容。
+// 深度搜索：这个函数由 chrome.scripting 在页面主上下文运行。
+// 保持函数独立，Chrome 将返回值直接交给扩展。
 // ============================================================
-const deepSearchScanSource = String(function __KIMI_DEEP_SEARCH__() {
+function scanDeepSearch() {
   try {
     var MEDIA_RE = /["']((?:https?:)?\/\/[^"'\s<>]+?\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|ts|aac|ogg|webm|mkv|mov|wav|flac)(?:\?[^"'\s<>]*)?)["']/gi;
     var found = new Set();
+    var remaining = 4000;
     function add(u) {
       if (!u) return;
       u = u.replace(/\\/g, '').trim();
@@ -114,11 +118,11 @@ const deepSearchScanSource = String(function __KIMI_DEEP_SEARCH__() {
     function scanText(text) {
       if (!text) return;
       var m; MEDIA_RE.lastIndex = 0;
-      while ((m = MEDIA_RE.exec(text)) !== null) add(m[1] || m[0]);
+      while (found.size < 200 && (m = MEDIA_RE.exec(text)) !== null) add(m[1] || m[0]);
     }
     // 1) 扫描内联脚本文本（cat-catch search.js 同款做法）
     var scripts = document.scripts || [];
-    for (var i = 0; i < scripts.length; i++) {
+    for (var i = 0; i < scripts.length && found.size < 200 && i < 400; i++) {
       if (!scripts[i].src && scripts[i].textContent) scanText(scripts[i].textContent);
     }
     // 2) 扫描常见播放器/框架全局变量（深度受限遍历，字符串值过 URL 正则）
@@ -127,17 +131,22 @@ const deepSearchScanSource = String(function __KIMI_DEEP_SEARCH__() {
       'playInfo', 'videoInfo', '__VIDEO_INFO__', 'flashvars', '__INITIAL_DATA__'];
     function walk(obj, depth) {
       if (!obj || depth > 6) return;
-      if (typeof obj === 'string') { scanText(obj); return; }
+      if (typeof obj === 'string') {
+        if (/^(?:https?:)?\/\//i.test(obj) && /\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|ts|aac|ogg|webm|mkv|mov|wav|flac)(?:[?#]|$)/i.test(obj)) add(obj);
+        else scanText(obj);
+        return;
+      }
       if (typeof obj !== 'object') return;
       for (var k in obj) {
+        if (--remaining < 0 || found.size >= 200) break;
         try { walk(obj[k], depth + 1); } catch (e) {}
       }
     }
     for (var g = 0; g < GLOBALS.length; g++) {
       try { if (window[GLOBALS[g]]) walk(window[GLOBALS[g]], 0); } catch (e) {}
     }
-    window.postMessage({ type: 'kimi-deep-search-result', urls: Array.from(found) }, location.origin);
+    return { urls: Array.from(found), href: location.href };
   } catch (e) {
-    window.postMessage({ type: 'kimi-deep-search-result', urls: [] }, location.origin);
+    return { urls: [], href: location.href };
   }
-});
+}

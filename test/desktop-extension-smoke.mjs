@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
@@ -35,6 +36,7 @@ await fs.writeFile(path.join(data, 'settings.json'), JSON.stringify({
 }));
 let desktop;
 let browser;
+let mediaFixture;
 try {
   const packagedDirectory = process.platform === 'darwin'
     ? (process.arch === 'arm64' ? 'mac-arm64' : 'mac')
@@ -46,7 +48,7 @@ try {
   if (!packaged) env.FOXDOWN_BIN_DIR = engineDir;
   desktop = await playwright._electron.launch({
     executablePath: packaged || require('electron'),
-    args: packaged ? [] : [root],
+    args: [...(packaged ? [] : [root]), '--user-data-dir=' + path.join(temp, 'desktop-profile')],
     cwd: root,
     env,
   });
@@ -95,6 +97,14 @@ try {
       .map(element => ({ className: element.className, width: element.clientWidth, content: element.scrollWidth })));
     assert.deepEqual(overflow, [], 'Settings must fit the desktop window without horizontal scrolling');
   }
+  await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).click();
+  await app.locator('#sec-rpc .el-switch').click();
+  await app.locator('.el-message-box').waitFor();
+  await delay(700);
+  const pendingSettings = await (await fetch(origin + '/api/v1/settings', { headers: { Authorization: 'Bearer ' + token } })).json();
+  assert.equal(pendingSettings.rpcListenAll, false, 'An unconfirmed switch must not autosave remote RPC access');
+  await app.locator('.el-message-box').getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal(await app.locator('#sec-rpc').getByRole('switch').getAttribute('aria-checked'), 'false');
   await app.getByRole('tab', { name: 'Application', exact: true }).click();
   await app.getByText('Open Foxdown at login', { exact: true }).waitFor();
   await app.getByRole('tab', { name: 'General', exact: true }).click();
@@ -143,6 +153,39 @@ try {
   });
   assert.equal(generalLayout.nestedScrollers, 0, 'Settings must use the main workspace scroll only');
   if (generalLayout.height >= 800) assert.ok(generalLayout.scrollHeight <= generalLayout.clientHeight + 1, JSON.stringify(generalLayout));
+  await desktop.evaluate(({ dialog }, selected) => {
+    globalThis.fixtureOpenDialog = dialog.showOpenDialog;
+    globalThis.fixtureDialogCalls = [];
+    dialog.showOpenDialog = async (_window, options) => {
+      fixtureDialogCalls.push(options);
+      return options.properties.includes('openFile') ? { canceled: true, filePaths: [] } : { canceled: false, filePaths: [selected] };
+    };
+  }, downloads);
+  try {
+    await app.locator('#sec-basic').getByRole('button', { name: 'Browse…', exact: true }).click();
+    assert.equal(await app.locator('#sec-basic .el-input input').first().inputValue(), downloads);
+    await app.getByRole('tab', { name: 'Post-processing', exact: true }).click();
+    await app.locator('#sec-post').getByRole('button', { name: 'Browse…', exact: true }).click();
+    assert.equal(await app.locator('#sec-post .el-input input').last().inputValue(), '');
+    await app.getByRole('button', { name: 'Tasks', exact: true }).click();
+    await app.getByRole('button', { name: 'New Task', exact: true }).click();
+    const newTask = app.getByRole('dialog');
+    await newTask.locator('.el-collapse-item__header').click();
+    await newTask.getByRole('button', { name: 'Browse…', exact: true }).click();
+    assert.equal(await newTask.locator('.el-collapse-item__content .el-input input').first().inputValue(), downloads);
+    await newTask.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await settingsToggle.click();
+    await app.getByRole('tab', { name: 'General', exact: true }).click();
+  } finally {
+    await desktop.evaluate(({ dialog }) => {
+      dialog.showOpenDialog = fixtureOpenDialog;
+      delete globalThis.fixtureOpenDialog;
+    });
+  }
+  const dialogCalls = await desktop.evaluate(() => fixtureDialogCalls);
+  assert.deepEqual(dialogCalls.map(call => call.properties), [
+    ['openDirectory', 'createDirectory'], ['openFile'], ['openDirectory', 'createDirectory'],
+  ]);
   await app.screenshot({ path: path.join(shots, 'settings.png'), animations: 'disabled' });
   await app.getByRole('button', { name: 'Tasks', exact: true }).click();
   await app.getByRole('tab', { name: 'All', exact: true, selected: true }).waitFor();
@@ -217,6 +260,18 @@ try {
   assert.equal(await options.locator('#serverUrl').inputValue(), origin);
   await options.locator('#test').click();
   await options.locator('#status.ok').filter({ hasText: /1\.36\.0/ }).waitFor();
+  await options.waitForFunction(() => document.getElementById('dashboardConnection').textContent === 'Connected');
+  assert.match(await options.locator('#dashboardDownload').innerText(), /^\d+(?:\.\d+)? (?:B|KB|MB|GB)\/s$/);
+  const settingsLayout = await options.evaluate(() => {
+    const left = document.querySelector('.dashboard').getBoundingClientRect();
+    const right = document.querySelector('.settings-content').getBoundingClientRect();
+    return { leftEdge: left.right, rightEdge: right.left, columns: getComputedStyle(document.querySelector('.settings-layout')).gridTemplateColumns };
+  });
+  assert.ok(settingsLayout.leftEdge < settingsLayout.rightEdge, JSON.stringify(settingsLayout));
+  await options.screenshot({ path: path.join(shots, 'options-dashboard.png'), animations: 'disabled' });
+  await options.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Settings must fit a narrow viewport');
+  await options.setViewportSize({ width: 1120, height: 820 });
   await options.locator('#enabled').uncheck();
   await options.locator('#save').click();
   const popup = await browser.newPage();
@@ -224,9 +279,175 @@ try {
   await popup.waitForFunction(() => document.getElementById('state').textContent.length > 0);
   assert.equal(await popup.locator('#capture').isChecked(), false);
   await popup.screenshot({ path: path.join(shots, 'extension-popup.png'), animations: 'disabled' });
+
+  // Exercise the real Chrome APIs used by the review fixes, including header
+  // modification for a protected media resource and user-selected batch links.
+  const mediaPath = path.join(temp, 'preview.webm');
+  const ffmpeg = path.join(packageBin, process.platform === 'darwin' ? 'media/bin/ffmpeg' : 'ffmpeg.exe');
+  execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=128x96:r=10',
+    '-t', '1', '-c:v', 'libvpx', mediaPath], { stdio: 'pipe', timeout: 20000 });
+  const mediaBytes = await fs.readFile(mediaPath);
+  const previewRequests = [];
+  const slowFile = Buffer.alloc(32 * 1024 * 1024, 0x66);
+  let mediaOrigin;
+  mediaFixture = http.createServer((request, response) => {
+    const pathname = new URL(request.url, 'http://localhost').pathname;
+    if (pathname === '/watch') {
+      response.setHeader('Content-Type', 'text/html');
+      response.end(`<!doctype html><title>Media fixture</title>
+        <a href="/archive.zip">Archive</a><a href="/navigation.html">Navigation</a>
+        <a href="/slow.bin" download>Slow download</a><img src="/favicon.png">
+        <script>
+          window.__INITIAL_STATE__ = {video: '${mediaOrigin}/hidden.mp4'};
+          fetch('/preview.webm');
+        </script>`);
+    } else if (pathname === '/preview.webm') {
+      previewRequests.push({ referer: request.headers.referer });
+      if (request.headers.referer !== mediaOrigin + '/watch') return response.writeHead(403).end();
+      response.writeHead(200, { 'Content-Type': 'video/webm', 'Content-Length': mediaBytes.length });
+      response.end(mediaBytes);
+    } else if (pathname === '/slow.bin') {
+      const range = request.headers.range?.match(/^bytes=(\d+)-(\d*)$/);
+      let offset = range ? Number(range[1]) : 0;
+      const end = range?.[2] ? Number(range[2]) : slowFile.length - 1;
+      response.writeHead(range ? 206 : 200, {
+        'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment; filename="slow.bin"',
+        'Content-Length': end - offset + 1, 'Accept-Ranges': 'bytes',
+        ...(range ? { 'Content-Range': `bytes ${offset}-${end}/${slowFile.length}` } : {}),
+      });
+      const timer = setInterval(() => {
+        if (response.writableNeedDrain) return;
+        const next = Math.min(offset + 64 * 1024, end + 1);
+        response.write(slowFile.subarray(offset, next));
+        offset = next;
+        if (offset > end) { clearInterval(timer); response.end(); }
+      }, 100);
+      response.once('close', () => clearInterval(timer));
+    } else if (pathname === '/archive.zip') {
+      response.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Length': 7 });
+      response.end('fixture');
+    } else response.writeHead(404).end();
+  });
+  mediaFixture.listen(0, '127.0.0.1');
+  await once(mediaFixture, 'listening');
+  mediaOrigin = 'http://127.0.0.1:' + mediaFixture.address().port;
+  const watch = await browser.newPage();
+  await watch.goto(mediaOrigin + '/watch');
+  await watch.evaluate(origin => window.postMessage({
+    type: 'kimi-deep-search-result', urls: [origin + '/forged.mp4'],
+  }, location.origin), mediaOrigin);
+  const mediaTabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0].id, mediaOrigin + '/watch');
+  await popup.waitForFunction(async ({ tabId, url }) => {
+    const media = await chrome.runtime.sendMessage({ type: 'getSniffedMedia', tabId });
+    return media.some(entry => entry.url === url && entry.source === 'network');
+  }, { tabId: mediaTabId, url: mediaOrigin + '/preview.webm' });
+  await popup.waitForFunction(async tabId => {
+    const media = await chrome.runtime.sendMessage({ type: 'getSniffedMedia', tabId });
+    return media.length > 0 && await chrome.action.getBadgeText({ tabId }) === String(media.length);
+  }, mediaTabId);
+  assert.deepEqual(await worker.evaluate(tabId => chrome.action.getBadgeBackgroundColor({ tabId }), mediaTabId), [37, 99, 235, 255]);
+  await options.bringToFront();
+  const resourceWindow = browser.waitForEvent('page');
+  await options.locator('#dashboardResources').click();
+  const resources = await resourceWindow;
+  await resources.waitForURL(new RegExp('popup\\.html\\?tabId=' + mediaTabId));
+  await resources.locator('.media-item').filter({ hasText: 'preview.webm' }).waitFor();
+  assert.equal(await resources.locator('#sniffCapture').isChecked(), true);
+  await resources.close();
+  await popup.evaluate(() => loadMedia());
+  await popup.locator('#mediaBox').waitFor();
+  assert.equal(await popup.locator('#sniffCapture').isChecked(), true);
+  await popup.locator('.media-item').filter({ hasText: 'preview.webm' }).waitFor();
+  await popup.evaluate(async tabId => {
+    const media = await chrome.runtime.sendMessage({ type: 'getSniffedMedia', tabId });
+    await previewMedia(media.find(entry => entry.url.endsWith('/preview.webm')), tabId);
+  }, mediaTabId);
+  await popup.locator('#previewPlayer video').waitFor();
+  try { await popup.waitForFunction(() => document.querySelector('#previewPlayer video')?.readyState >= 2, null, { timeout: 10000 }); }
+  catch (error) {
+    console.error('Preview requests', previewRequests);
+    console.error('Preview rules', await worker.evaluate(() => chrome.declarativeNetRequest.getSessionRules()));
+    console.error('Preview state', await popup.locator('#previewPlayer video').evaluate(player => ({
+      readyState: player.readyState, error: player.error && { code: player.error.code, message: player.error.message },
+    })));
+    throw error;
+  }
+  assert.ok(previewRequests.length >= 2);
+  assert.ok(previewRequests.every(request => request.referer === mediaOrigin + '/watch'));
+  await popup.locator('#previewClose').click();
+  await worker.evaluate(async () => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if ((await chrome.declarativeNetRequest.getSessionRules()).length === 0) return;
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    throw new Error('Preview header rules were not removed after closing the player');
+  });
+  await popup.evaluate(tabId => chrome.runtime.sendMessage({ type: 'triggerDeepSearch', tabId }), mediaTabId);
+  const scanned = await popup.evaluate(tabId => chrome.runtime.sendMessage({ type: 'getSniffedMedia', tabId }), mediaTabId);
+  assert.ok(scanned.some(entry => entry.url === mediaOrigin + '/hidden.mp4' && entry.source === 'deepSearch'));
+  assert.ok(!scanned.some(entry => entry.url === mediaOrigin + '/forged.mp4'));
+  const links = await worker.evaluate(tabId => chrome.tabs.sendMessage(tabId, { type: 'kimi-collect-links' }), mediaTabId);
+  assert.ok(links.includes(mediaOrigin + '/archive.zip'));
+  assert.ok(!links.includes(mediaOrigin + '/navigation.html') && !links.includes(mediaOrigin + '/favicon.png'));
+  const batchPage = browser.waitForEvent('page');
+  await worker.evaluate(({ links, referer }) => confirmPageLinks(links, referer), { links, referer: mediaOrigin + '/watch' });
+  const batch = await batchPage;
+  await batch.waitForURL(/popup\.html\?mode=batch/);
+  await batch.locator('#batchFilter').fill('.zip');
+  await batch.locator('#batchAll').check();
+  await batch.locator('#batchStart').click();
+  for (let attempt = 0; ; attempt++) {
+    const contents = await fs.readFile(path.join(downloads, 'archive.zip'), 'utf8').catch(() => '');
+    if (contents === 'fixture') break;
+    assert.ok(attempt < 60, 'Confirmed batch selection must reach the download service');
+    await delay(100);
+  }
+  await batch.locator('#batchCancel').click();
+  console.log('Review regression checks passed in Chromium: protected preview Referer, rule cleanup, direct deep-search results and confirmed batch download.');
+
+  await worker.evaluate(() => writeSettings({ enabled: true, notifyComplete: false }));
+  await watch.getByRole('link', { name: 'Slow download', exact: true }).click({ noWaitAfter: true });
+  await worker.evaluate(async tabId => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const [global, local] = await Promise.all([
+        chrome.action.getBadgeText({}), chrome.action.getBadgeText({ tabId }),
+      ]);
+      if (global === '1' && local === '1') return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error('An intercepted download must display badge 1 on every tab');
+  }, mediaTabId);
+  for (let attempt = 0; ; attempt++) {
+    const length = await fs.stat(path.join(downloads, 'slow.bin')).then(stat => stat.size).catch(() => 0);
+    const tasks = await (await fetch(origin + '/api/v1/tasks', { headers: { Authorization: 'Bearer ' + token } })).json();
+    if (length === slowFile.length && tasks.tasks.some(task => task.name === 'slow.bin' && task.status === 'complete')) break;
+    assert.ok(attempt < 200, 'The intercepted slow file must finish downloading');
+    await delay(100);
+  }
+  await worker.evaluate(url => sendToKimi(url), mediaOrigin + '/missing.bin');
+  await worker.evaluate(async () => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if (await chrome.action.getBadgeText({}) === 'X') return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    throw new Error('A failed backend task must display X even with notifications disabled');
+  });
+  await popup.evaluate(() => loadTaskStatus());
+  await popup.locator('#taskErrors').waitFor();
+  assert.match(await popup.locator('#taskErrorList').innerText(), /missing\.bin/);
+  await popup.evaluate(async () => { await load(); await loadTaskStatus(); await loadMedia(); });
+  await popup.locator('body').screenshot({ path: path.join(shots, 'resource-and-error-status.png'), animations: 'disabled' });
+  const failedTasks = await (await fetch(origin + '/api/v1/tasks', { headers: { Authorization: 'Bearer ' + token } })).json();
+  const failedTask = failedTasks.tasks.find(task => task.name === 'missing.bin' && task.status === 'error');
+  assert.ok(failedTask);
+  await fetch(origin + '/api/v1/tasks/aria2/' + failedTask.id + '/action', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', deleteFiles: true }),
+  });
+  console.log('Live status passed: per-tab blue resource counts, browser interception badge 1, failed task X, visible error details and default page-resource detection.');
   // A failed backend handoff must resume the browser's download.
   const closedPort = await freePort();
-  await worker.evaluate(serverUrl => chrome.storage.sync.set({ enabled: true, serverUrl }), 'http://127.0.0.1:' + closedPort);
+  await worker.evaluate(serverUrl => chrome.storage.local.set({ enabled: true, serverUrl }), 'http://127.0.0.1:' + closedPort);
   const priorIds = await worker.evaluate(async () => (await chrome.downloads.search({})).map(item => item.id));
   await demo.locator('a[href="/api/v1/demo-file"]').click({ noWaitAfter: true });
   let fallback;
@@ -242,5 +463,7 @@ try {
 } finally {
   await browser?.close();
   await desktop?.close();
+  mediaFixture?.closeAllConnections();
+  mediaFixture?.close();
   await fs.rm(temp, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
 }

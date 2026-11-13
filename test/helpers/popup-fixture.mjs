@@ -34,13 +34,13 @@ export function popupFixture() {
   };
   const window = { addEventListener: () => {}, close: () => {} };
   const chrome = {
-    storage: { sync: { get: defaults => controls.storage(defaults) }, onChanged: { addListener: () => {} } },
+    storage: { local: { get: defaults => controls.storage(defaults) }, onChanged: { addListener: () => {} } },
     runtime: { getURL: file => `chrome-extension://test/${file}`, sendMessage: message => controls.message(message) },
     i18n: { getUILanguage: () => 'en' },
-    tabs: { query: async () => [{ id: 1 }] },
+    tabs: { query: async () => [{ id: 1, active: true, url: 'https://example.invalid/page' }] },
   };
   const context = vm.createContext({
-    window, document, chrome, console, URL, URLSearchParams, AbortController,
+    window, document, chrome, console, readSettings: defaults => controls.storage(defaults), URL, URLSearchParams, AbortController,
     location: { search: '?mode=confirm&token=test' },
     i18n: (key, value) => key + (value ? ':' + value : ''), loadI18nOverride: async () => {},
     setTimeout: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, delay }); return id; },

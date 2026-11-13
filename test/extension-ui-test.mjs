@@ -189,6 +189,9 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
   } else if (page === 'popup') {
     reg('capture', 'input', { type: 'checkbox' }); reg('captureLabel', 'span', { 'data-i18n': 'captureLabel' });
     reg('active', 'span'); reg('waiting', 'span'); reg('speed', 'span'); reg('upspeed', 'span'); reg('state', 'span');
+    reg('sniffCapture', 'input', { type: 'checkbox' });
+    reg('mediaPage', 'div'); reg('mediaEmpty', 'p');
+    reg('taskErrors', 'div'); reg('taskErrorTitle', 'strong'); reg('taskErrorList', 'ul'); reg('clearHandoffError', 'button');
     reg('mediaBox', 'div'); reg('mediaHead', 'div'); reg('mediaList', 'div'); reg('deepSearch', 'button');
     reg('open', 'button'); reg('options', 'button'); reg('guide', 'button');
     reg('previewBox', 'div'); reg('previewPlayer', 'div'); reg('previewName', 'div'); reg('previewErr', 'div');
@@ -198,26 +201,21 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
 
   // ---- chrome mock（i18n.getMessage 读真实 en messages.json，模拟 default_locale 兜底）----
   const EN = JSON.parse(read(path.join('_locales', 'en', 'messages.json')));
-  const sync = { ...storage };
-  const local = {};
+  const local = { ...storage };
   const onChanged = [];
   const sent = [];
   const createdTabs = [];
   const msgQueue = [...messages];
   const chrome = {
     storage: {
-      sync: {
-        get: async (defaults) => ({ ...defaults, ...sync }),
-        set: async (obj) => {
-          Object.assign(sync, obj);
-          const changes = {};
-          for (const k of Object.keys(obj)) changes[k] = { newValue: obj[k] };
-          for (const fn of onChanged) fn(changes, 'sync');
-        },
-      },
       local: {
         get: async (defaults) => ({ ...defaults, ...local }),
-        set: async (obj) => Object.assign(local, obj),
+        set: async (obj) => {
+          Object.assign(local, obj);
+          const changes = {};
+          for (const k of Object.keys(obj)) changes[k] = { newValue: obj[k] };
+          for (const fn of onChanged) fn(changes, 'local');
+        },
       },
       onChanged: { addListener: (fn) => onChanged.push(fn) },
     },
@@ -226,6 +224,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
       openOptionsPage: () => { sent.push({ __openOptions: true }); },
       sendMessage: async (m) => {
         sent.push(m);
+        if (m.type === 'getDownloadStatus') return { errors: [], unavailable: 0 };
         const next = msgQueue.shift();
         if (typeof next === 'function') return next(m);
         return next;
@@ -273,7 +272,9 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
     __closed: false,
   };
   const sandbox = {
-    console, chrome, fetch, window, document: null, location: { search: locationSearch },
+    console, chrome, fetch, window, document: null,
+    readSettings: defaults => chrome.storage.local.get(defaults),
+    writeSettings: patch => chrome.storage.local.set(patch), location: { search: locationSearch },
     URLSearchParams, URL, El, AbortController, AbortSignal, clearTimeout,
     setInterval: () => 0, clearInterval: () => {},
     setTimeout: (fn) => { fn(); return 0; },
@@ -294,7 +295,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
   vm.createContext(sandbox);
   vm.runInContext(read('connection.js'), sandbox);
   vm.runInContext(read('i18n.js'), sandbox); // 先装 i18n 覆盖层
-  return { sandbox, byId, body, chrome, sync, local, sent, createdTabs, window, msgQueue };
+  return { sandbox, byId, body, chrome, local, sent, createdTabs, window, msgQueue };
 }
 
 const run = (sb, file) => vm.runInContext(read(file), sb.sandbox);
@@ -347,10 +348,10 @@ console.log('== onboarding：带令牌验证、保存与打开已验证服务器
   await t.byId.serverUrl.dispatch('input');
   await t.byId.testBtn.dispatch('click');
   assert(t.byId.nextBtn.disabled && t.byId.testState.textContent === msg('en', 'serverTokenInvalid'), '缺少令牌时提示核对 Web API Token');
-  assert(!t.sync.serverUrl, '验证失败时不保存地址');
+  assert(!t.local.serverUrl, '验证失败时不保存地址');
   t.byId.apiToken.value = 'fixture-token';
   await t.byId.testBtn.dispatch('click');
-  assert(t.sync.serverUrl === server && t.sync.apiToken === 'fixture-token', '验证成功后保存地址和令牌');
+  assert(t.local.serverUrl === server && t.local.apiToken === 'fixture-token', '验证成功后保存地址和令牌');
   assert(t.byId.testState.className.includes('ok') && t.byId.testState.textContent.includes('1.37.0'), '连接测试成功 → 绿字含 aria2 版本');
   await t.byId.nextBtn.dispatch('click');
   await t.byId.nextBtn.dispatch('click');
@@ -358,7 +359,7 @@ console.log('== onboarding：带令牌验证、保存与打开已验证服务器
   assert(t.createdTabs.at(-1).url === server + '/demo.html', '演示页使用通过验证的地址');
   t.byId.enabled.checked = false;
   await t.byId.enabled.dispatch('change', { target: t.byId.enabled });
-  assert(t.sync.enabled === false, '接管开关即存 storage.sync');
+  assert(t.local.enabled === false, '接管开关即存 storage.local');
 }
 
 console.log('== onboarding：连接失败提示 ==');
@@ -392,7 +393,7 @@ console.log('== options：表单回填与收集保存 ==');
   t.byId.minSizeMB.value = '12';
   t.byId.sniffRegexRules.value = 'x.com\n\ny.com';
   await t.byId.save.dispatch('click');
-  const saved = t.sync;
+  const saved = t.local;
   assert(saved.serverUrl === 'http://10.0.0.9:16801', 'save()：serverUrl 尾斜杠清理');
   assert(saved.minSizeMB === 12 && Array.isArray(saved.sniffRegexRules) && saved.sniffRegexRules.length === 2, 'save()：数字转换 + 正则行→数组');
   assert(saved.servers.length === 1 && saved.servers[0].pattern === '*.example.com' && saved.servers[0].url === 'http://s1:16801', 'save()：多服务器收集（url 尾斜杠清理）');
@@ -415,7 +416,7 @@ console.log('== options：多服务器增删 ==');
   rows = t.body.querySelectorAll('#serverList .server-row');
   assert(rows.length === 1 && rows[0].querySelector('.srv-url').value === 'http://b:16801/', '删除第一行后剩 B 机行');
   await t.byId.save.dispatch('click');
-  assert(t.sync.servers.length === 1 && t.sync.servers[0].name === 'B机' && t.sync.servers[0].url === 'http://b:16801' && t.sync.servers[0].pattern === '*', 'collectServers：name/url/pattern 收集与默认值');
+  assert(t.local.servers.length === 1 && t.local.servers[0].name === 'B机' && t.local.servers[0].url === 'http://b:16801' && t.local.servers[0].pattern === '*', 'collectServers：name/url/pattern 收集与默认值');
 }
 
 console.log('== options：连接测试（多服务器优先） ==');
@@ -458,8 +459,8 @@ console.log('== options：导入配置 ==');
   t.byId.importFile.files = [{ content: cfg }];
   await t.byId.importFile.dispatch('change', { target: t.byId.importFile });
   await new Promise(r => setTimeout(r, 30)); // 等 reader.onload 内的 load() 完成
-  assert(t.sync.serverUrl === 'http://imported:16801' && t.sync.minSizeMB === 3, '导入：已知字段写入 storage');
-  assert(!('junkField' in t.sync), '导入：未知字段被丢弃');
+  assert(t.local.serverUrl === 'http://imported:16801' && t.local.minSizeMB === 3, '导入：已知字段写入 storage');
+  assert(!('junkField' in t.local), '导入：未知字段被丢弃');
   assert(t.byId.serverUrl.value === 'http://imported:16801', '导入后表单重刷');
 }
 
@@ -470,13 +471,13 @@ console.log('== options：语言切换即时生效（i18n 集成） ==');
   await new Promise(r => setTimeout(r, 30));
   t.byId.locale.value = 'de';
   await t.byId.locale.dispatch('change', { target: t.byId.locale });
-  assert(t.sync.locale === 'de', '语言切换即存 storage.sync');
+  assert(t.local.locale === 'de', '语言切换即存 storage.local');
   assert(t.sandbox.document.documentElement.lang === 'de' && t.sandbox.document.title === msg('de', 'optTitle'), '设置页 HTML lang 与标题同步切换');
   assert(t.byId.langLabelEl.textContent === msg('de', 'langLabel'), 'data-i18n 元素原地刷成德语文案');
   assert(t.byId.domainListPhEl.placeholder === msg('de', 'domainListPh'), 'data-i18n-ph 占位符刷成德语');
   t.byId.locale.value = 'ru-XX'; // 不支持值
   await t.byId.locale.dispatch('change', { target: t.byId.locale });
-  assert(t.sync.locale === 'ru-XX', '不支持语言值照存（用户显式选择）');
+  assert(t.local.locale === 'ru-XX', '不支持语言值照存（用户显式选择）');
   assert(t.byId.langLabelEl.textContent === msg('en', 'langLabel'), '覆盖层解析不到 → 回退英语文案');
   assert(t.sandbox.document.documentElement.lang === 'en', '不支持语言时 HTML lang 同样回退英语');
 }
@@ -510,7 +511,7 @@ console.log('== popup：接管开关与统计渲染 ==');
   assert(t.byId.state.textContent.includes('127.0.0.1:16801'), '状态：已连接（含服务器地址）');
   t.byId.capture.checked = false;
   await t.byId.capture.dispatch('change', { target: t.byId.capture });
-  assert(t.sync.enabled === false, '接管开关 → storage.sync.set');
+  assert(t.local.enabled === false, '接管开关 → storage.local.set');
   assert(t.sent.some(m => m.type === 'capture-toggled' && m.enabled === false), '接管开关 → 通知 background（capture-toggled）');
 }
 
@@ -532,7 +533,7 @@ console.log('== popup：本页媒体列表 ==');
   });
   run(t, 'popup.js');
   await new Promise(r => setTimeout(r, 30));
-  assert(t.body.querySelectorAll('.media-item').length === 20, '媒体列表：最多渲染 20 条');
+  assert(t.body.querySelectorAll('.media-item').length === 25, '媒体列表：显示全部已捕获资源');
   const first = t.body.querySelectorAll('.media-item')[0];
   assert(first.querySelector('.mname').textContent === 'v24.mp4', '媒体列表：最新（v24）排最前');
   assert(first.querySelector('.msize').textContent.endsWith('KB'), '媒体列表：大小格式化');
@@ -542,12 +543,22 @@ console.log('== popup：本页媒体列表 ==');
   assert(t.sent.some(m => m.type === 'downloadSniffed' && m.url === 'https://x.com/v24.mp4') && dlBtn.textContent === '✓', '下载按钮 → downloadSniffed 消息 + 成功态 ✓');
 }
 
-console.log('== popup：嗅探关闭时隐藏媒体区 ==');
+console.log('== popup：嗅探关闭时仍显示入口 ==');
 {
   const t = makeSandbox({ page: 'popup', storage: { sniffEnabled: false } });
   run(t, 'popup.js');
   await new Promise(r => setTimeout(r, 30));
-  assert(t.byId.mediaBox.style.display === 'none' && t.byId.deepSearch.style.display === 'none', 'sniffEnabled=false → 媒体区与深度搜索隐藏');
+  assert(t.byId.mediaBox.style.display !== 'none' && t.byId.sniffCapture.checked === false &&
+    t.byId.deepSearch.style.display === 'none', 'sniffEnabled=false → 保留资源入口并显示关闭状态');
+}
+
+console.log('== popup：默认嗅探入口与空状态 ==');
+{
+  const t = makeSandbox({ page: 'popup', messages: [[]] });
+  run(t, 'popup.js');
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert(t.byId.sniffCapture.checked === true && t.byId.mediaBox.style.display !== 'none', '新配置默认开启自动嗅探且资源入口可见');
+  assert(t.byId.mediaEmpty.textContent === msg('en', 'sniffEmpty'), '未捕获资源时显示播放媒体或刷新网页的提示');
 }
 
 console.log('== popup：下载前确认模式 ==');
@@ -591,7 +602,7 @@ console.log('== popup：语言变更事件重刷文案 ==');
   run(t, 'popup.js');
   await new Promise(r => setTimeout(r, 30));
   assert(t.byId.captureLabel.textContent === msg('ja', 'captureLabel'), '启动即按 storage 语言（ja）应用文案');
-  await t.chrome.storage.sync.set({ locale: 'ko' }); // 触发 onChanged
+  await t.chrome.storage.local.set({ locale: 'ko' }); // 触发 onChanged
   await new Promise(r => setTimeout(r, 30));
   assert(t.byId.captureLabel.textContent === msg('ko', 'captureLabel'), 'storage.onChanged(locale) → popup 原地重刷韩语文案');
   assert(t.sandbox.document.documentElement.lang === 'ko', 'popup HTML lang 跟随即时切换');

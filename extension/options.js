@@ -72,7 +72,7 @@ $('addServer').addEventListener('click', () => {
 });
 
 async function load() {
-  const s = await chrome.storage.sync.get(DEFAULTS);
+  const s = await readSettings(DEFAULTS);
   for (const k of FIELDS) {
     const el = $(k);
     if (!el) continue;
@@ -128,7 +128,7 @@ async function save() {
     const settings = collect();
     settings.serverUrl = normalizeServerUrl(settings.serverUrl);
     for (const server of settings.servers) server.url = normalizeServerUrl(server.url);
-    await chrome.storage.sync.set(settings);
+    await writeSettings(settings);
     setStatus(i18n('statusSaved'), true);
   } catch (error) {
     setStatus(i18n(error.message === 'serverAddressInvalid' ? 'serverAddressInvalid' : 'settingsSaveFailed'), false);
@@ -157,11 +157,11 @@ async function test() {
 }
 
 $('export').addEventListener('click', async () => {
-  const all = await chrome.storage.sync.get(DEFAULTS);
+  const all = await readSettings(DEFAULTS);
   const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `rdown-config-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `foxdown-config-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
 });
@@ -178,7 +178,7 @@ $('importFile').addEventListener('change', (e) => {
       for (const k of FIELDS) if (k in data) clean[k] = data[k];
       if (Array.isArray(data.servers)) clean.servers = data.servers;
       if (Array.isArray(data.sniffRegexRules)) clean.sniffRegexRules = data.sniffRegexRules;
-      await chrome.storage.sync.set(clean);
+      await writeSettings(clean);
       await load();
       setStatus(i18n('importSuccess'), true);
     } catch (err) { setStatus(i18n('importFailed', String(err.message || err)), false); }
@@ -214,7 +214,7 @@ async function applyI18nTexts() {
 // 重新加载覆盖层并原地重刷全部文案；background 侧由 storage.onChanged 重建菜单/事件流）
 $('locale').addEventListener('change', async (e) => {
   const locale = e.target.value || 'auto';
-  await chrome.storage.sync.set({ locale });
+  await writeSettings({ locale });
   await applyI18nTexts();
   setStatus(i18n('langApplied'), true);
 });
@@ -223,7 +223,7 @@ $('locale').addEventListener('change', async (e) => {
 (async () => {
   await applyI18nTexts();
   try {
-    const s = await chrome.storage.sync.get({ locale: 'auto' });
+    const s = await readSettings({ locale: 'auto' });
     $('locale').value = s.locale || 'auto';
   } catch (e) {}
   load();

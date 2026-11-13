@@ -1,6 +1,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
+import { isIP } from 'node:net';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import { API_PORT, API_HOST, WEB_DIST, loadSettings, saveSettings, hasFfmpeg, hasExternalStreamEngine } from '../config.js';
@@ -12,6 +13,31 @@ const ARIA2_KEYS = [
   'uploadSpeed', 'connections', 'dir', 'files', 'bittorrent', 'infoHash', 'errorCode',
   'errorMessage', 'followedBy', 'following', 'belongsTo', 'numSeeders', 'seeder',
 ];
+
+function isLoopbackRequest(req) {
+  const host = req.headers.host?.match(/^(\[::1\]|localhost\.?|127(?:\.\d{1,3}){3})(?::\d+)?$/i)?.[1];
+  const peer = req.socket.remoteAddress?.replace(/^::ffff:/, '');
+  const loopbackV4 = address => address?.startsWith('127.') && isIP(address) === 4;
+  return (host === '[::1]' || /^localhost\.?$/i.test(host || '') || loopbackV4(host)) &&
+    (peer === '::1' || loopbackV4(peer));
+}
+
+function isSameOrigin(req) {
+  const { host, origin } = req.headers;
+  // A reverse proxy may terminate TLS, but must preserve the public Host.
+  return Boolean(host && (origin === `http://${host}` || origin === `https://${host}`));
+}
+
+function allowsBrowserRequest(req) {
+  const { origin } = req.headers;
+  if (!origin) return req.headers['sec-fetch-site'] !== 'cross-site';
+  return isSameOrigin(req) || /^chrome-extension:\/\/[a-p]{32}$/.test(origin);
+}
+
+function isAuthorized(req, token, queryToken) {
+  if (!token) return isLoopbackRequest(req);
+  return (req.headers.authorization?.replace(/^Bearer /i, '') || queryToken) === token;
+}
 
 function mapAria2Task(t, meta = {}) {
   let name = meta.name || '';
@@ -72,24 +98,22 @@ export class ApiServer {
     this.hooks = hooks;
     this.speedHistory = speedHistory;
     this.app = express();
+    this._setupMiddleware();
     this.app.use(express.json({ limit: '64mb' }));
     this.app.use(express.text({ type: ['text/plain'], limit: '8mb' }));
-    this._setupMiddleware();
     this._setupRoutes();
   }
 
   _auth(req, res, next) {
-    const token = this.settings.apiToken;
-    if (!token) return next();
-    const got = req.headers.authorization?.replace(/^Bearer /i, '') || req.query.token || '';
-    if (got === token) return next();
+    if (isAuthorized(req, this.settings.apiToken, req.query.token)) return next();
     res.status(401).json({ error: 'unauthorized' });
   }
 
   _setupMiddleware() {
-    // CORS for the browser extension and dev-time vite server
-    this.app.use((req, res, next) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+    this.app.use(['/api', '/mcp'], (req, res, next) => {
+      res.vary('Origin');
+      if (!allowsBrowserRequest(req)) return res.status(403).json({ error: 'forbidden origin' });
+      if (req.headers.origin) res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
       res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
       if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -399,6 +423,13 @@ export class ApiServer {
     r.put('/api/v1/settings', async (req, res) => {
       try {
         const patch = req.body || {};
+        if (Object.hasOwn(patch, 'postScript') && patch.postScript !== this.settings.postScript) {
+          const bearer = req.headers.authorization?.match(/^Bearer (.+)$/i)?.[1];
+          if (!isSameOrigin(req) && !(bearer && bearer === this.settings.apiToken)) {
+            return res.status(403).json({ error: 'changing postScript requires the Web UI or a Bearer token' });
+          }
+          if (typeof patch.postScript !== 'string') return res.status(400).json({ error: 'postScript must be a string' });
+        }
         const restartNeeded = [
           'maxConcurrentDownloads', 'maxConnectionPerServer', 'split', 'minSplitSize',
           'maxOverallDownloadLimit', 'maxOverallUploadLimit', 'continueDownloads',
@@ -503,11 +534,10 @@ export class ApiServer {
     const wss = new WebSocketServer({
       server, path: '/ws',
       verifyClient: (info, done) => {
-        const token = this.settings.apiToken;
         try {
+          if (!allowsBrowserRequest(info.req)) return done(false, 403, 'Forbidden origin');
           const url = new URL(info.req.url, 'http://localhost');
-          const got = info.req.headers.authorization?.replace(/^Bearer /i, '') || url.searchParams.get('token') || '';
-          done(!token || got === token, 401, 'Unauthorized');
+          done(isAuthorized(info.req, this.settings.apiToken, url.searchParams.get('token')), 401, 'Unauthorized');
         } catch { done(false, 400, 'Bad request'); }
       },
     });

@@ -39,7 +39,11 @@
           </el-form-item>
 
           <el-form-item :label="t('settings.downloadDir')">
-            <el-input v-model="form.downloadDir" :placeholder="t('settings.downloadDirPlaceholder')" />
+            <el-input v-model="form.downloadDir" :placeholder="t('settings.downloadDirPlaceholder')">
+              <template v-if="desktop?.selectDirectory" #append>
+                <el-button @click="pickPath('downloadDir', desktop.selectDirectory)">{{ t('common.browse') }}</el-button>
+              </template>
+            </el-input>
           </el-form-item>
           <el-form-item :label="t('settings.maxConcurrent')">
             <el-input-number v-model="form.maxConcurrentDownloads" :min="1" :max="20" class="num-stepper" />
@@ -85,6 +89,7 @@
                 :key="idx"
                 size="small"
                 :type="activeSpeedProfile === idx ? 'primary' : 'default'"
+                :aria-pressed="activeSpeedProfile === idx"
                 :loading="profileApplying === idx"
                 @click="applyProfile(idx)"
               >
@@ -140,6 +145,22 @@
           <div class="group-header">
             <h2 class="group-title">{{ t('settings.groupRpc') }}</h2>
           </div>
+          <h3 class="group-subtitle">Foxdown Web API</h3>
+          <el-form-item :label="t('settings.webApiAddress')">
+            <div class="secret-bar">
+              <el-input :model-value="webApiAddress" readonly />
+              <el-button size="small" @click="copyValue(webApiAddress)">{{ t('settings.rpcSecretCopy') }}</el-button>
+            </div>
+          </el-form-item>
+          <el-form-item :label="t('settings.apiToken')">
+            <el-input
+              v-model="form.apiToken"
+              type="password"
+              show-password
+              :placeholder="t('settings.apiTokenPlaceholder')"
+            />
+          </el-form-item>
+          <h3 class="group-subtitle">aria2 RPC</h3>
           <el-form-item :label="t('settings.rpcPort')">
             <el-input
               v-model.number="form.rpcPort"
@@ -149,15 +170,7 @@
             />
           </el-form-item>
           <el-form-item :label="t('settings.rpcListenAll')">
-            <el-switch v-model="form.rpcListenAll" @change="onRpcListenAllChange" />
-          </el-form-item>
-          <el-form-item :label="t('settings.apiToken')">
-            <el-input
-              v-model="form.apiToken"
-              type="password"
-              show-password
-              :placeholder="t('settings.apiTokenPlaceholder')"
-            />
+            <el-switch :model-value="form.rpcListenAll" @update:model-value="onRpcListenAllChange" />
           </el-form-item>
           <el-form-item :label="t('settings.rpcSecret')">
             <div class="secret-bar">
@@ -242,7 +255,7 @@
             </div>
           </el-form-item>
           <el-form-item :label="t('settings.seedRatio')">
-            <el-input-number v-model="form.seedRatio" :min="0" :max="10" :step="0.1" class="num-stepper" />
+            <el-input-number v-model="form.seedRatio" :disabled="!form.seedTime" :min="0" :max="10" :step="0.1" class="num-stepper" />
             <span class="hint">{{ t('settings.seedRatioHint') }}</span>
           </el-form-item>
           <el-form-item :label="t('settings.seedTime')">
@@ -281,7 +294,11 @@
             <span class="hint hint-block">{{ t('settings.webhookHint') }}</span>
           </el-form-item>
           <el-form-item :label="t('settings.postScript')">
-            <el-input v-model="form.postScript" :placeholder="t('settings.postScriptPlaceholder')" />
+            <el-input v-model="form.postScript" :placeholder="t('settings.postScriptPlaceholder')">
+              <template v-if="desktop?.selectFile" #append>
+                <el-button @click="pickPath('postScript', desktop.selectFile)">{{ t('common.browse') }}</el-button>
+              </template>
+            </el-input>
             <span class="hint hint-block">{{ t('settings.postScriptHint') }}</span>
           </el-form-item>
           <el-form-item :label="t('settings.autoExtract')">
@@ -298,7 +315,7 @@
           <el-form-item :label="t('settings.proxyEnabled')">
             <el-switch v-model="form.proxyEnabled" />
           </el-form-item>
-          <div class="proxy-fields" :class="{ 'proxy-off': !form.proxyEnabled }">
+          <div class="proxy-fields">
             <el-form-item :label="t('settings.proxyServer')">
               <el-input v-model="form.proxyServer" :disabled="!form.proxyEnabled" :placeholder="t('settings.proxyServerPlaceholder')" />
             </el-form-item>
@@ -380,6 +397,7 @@ const store = useSettingsStore()
 const saving = ref(false)
 const saveError = ref('')
 const desktop = window.foxdownDesktop
+const webApiAddress = window.location.origin
 const loginAtStartup = ref(null)
 const savingStartup = ref(false)
 async function setStartup(value) {
@@ -399,7 +417,6 @@ const webhookTesting = ref(false)
 const secretCopying = ref(false)
 const secretRegenerating = ref(false)
 const profileApplying = ref(-1)
-const activeSpeedProfile = ref(-1)
 const savePatternInput = ref(null)
 const dlUnit = ref('MB')
 const ulUnit = ref('MB')
@@ -582,7 +599,6 @@ function fillForm() {
   form.apiToken = s.apiToken ?? ''
   form.theme = s.theme ?? 'auto'
   form.locale = s.locale || 'auto'
-  activeSpeedProfile.value = s.activeSpeedProfile ?? -1
 }
 
 // ---- Save 层：UI 显示值 -> 存储格式 ----
@@ -694,10 +710,10 @@ watch(() => store.settings.theme, theme => {
 })
 
 // 限速输入与预设不符时取消高亮；恰好等于某档预设时高亮该档
-watch([() => form.dlLimit, () => form.ulLimit, dlUnit, ulUnit], () => {
+const activeSpeedProfile = computed(() => {
   const d = speedDisplayToBytes(form.dlLimit, dlUnit.value)
   const u = speedDisplayToBytes(form.ulLimit, ulUnit.value)
-  activeSpeedProfile.value = speedProfiles.value.findIndex(
+  return speedProfiles.value.findIndex(
     (p) => (p.down || 0) === d && (p.up || 0) === u
   )
 })
@@ -750,16 +766,18 @@ async function factoryReset() {
 }
 
 async function onRpcListenAllChange(val) {
-  if (!val) return
+  if (!val) {
+    form.rpcListenAll = false
+    return
+  }
   try {
     await ElMessageBox.confirm(t('settings.rpcListenAllConfirm'), t('settings.rpcListenAllConfirmTitle'), {
       confirmButtonText: t('common.confirm'),
       cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
-  } catch {
-    form.rpcListenAll = false // 取消则回弹为关
-  }
+    form.rpcListenAll = true
+  } catch { /* The setting stays off when the confirmation is dismissed. */ }
 }
 
 function insertVar(v) {
@@ -812,7 +830,6 @@ async function applyProfile(index) {
   profileApplying.value = index
   try {
     await api.applySpeedProfile(index)
-    activeSpeedProfile.value = index
     store.settings.activeSpeedProfile = index
     // 同步显示该预设的限速值（引擎端已即时生效；保存后才会写入设置文件）
     const p = speedProfiles.value[index] || { down: 0, up: 0 }
@@ -828,23 +845,34 @@ async function applyProfile(index) {
   }
 }
 
-async function copySecret() {
-  secretCopying.value = true
+async function copyValue(value) {
   try {
-    await navigator.clipboard.writeText(form.rpcSecret || '')
+    await navigator.clipboard.writeText(value)
     ElMessage.success(t('settings.rpcSecretCopied'))
   } catch (e) {
     ElMessage.error(t('settings.copyFailed', { msg: e.message }))
-  } finally {
-    secretCopying.value = false
   }
+}
+
+async function copySecret() {
+  secretCopying.value = true
+  await copyValue(form.rpcSecret || '')
+  secretCopying.value = false
 }
 
 function copyWsUrl() {
   const port = form.rpcPort || 16800
   const host = form.rpcListenAll ? location.hostname : '127.0.0.1'
-  navigator.clipboard.writeText(`ws://${host}:${port}/jsonrpc`).catch(() => {})
-  ElMessage.success(t('settings.rpcSecretCopied'))
+  return copyValue(`ws://${host}:${port}/jsonrpc`)
+}
+
+async function pickPath(field, select) {
+  try {
+    const selected = await select(form[field])
+    if (selected) form[field] = selected
+  } catch (error) {
+    ElMessage.error(error.message)
+  }
 }
 
 async function regenerateSecret() {
@@ -993,13 +1021,10 @@ async function regenerateSecret() {
   line-height: 1.6;
 }
 
-/* 代理联动：关闭时整组禁用并半透明 */
-.proxy-fields {
-  transition: opacity 150ms ease;
-}
-
-.proxy-fields.proxy-off {
-  opacity: 0.5;
+.group-subtitle {
+  margin: 16px 0 8px;
+  font-size: var(--kd-caption);
+  color: var(--kd-text-secondary);
 }
 
 /* Tracker：等宽、每行一个、横向滚动 */

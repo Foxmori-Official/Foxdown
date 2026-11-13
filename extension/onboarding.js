@@ -54,7 +54,7 @@ async function testConnection() {
     const token = $('apiToken').value.trim();
     const health = await checkServerHealth(url, token);
     if (!routedServer) {
-      try { await chrome.storage.sync.set({ serverUrl: url, apiToken: token }); }
+      try { await writeSettings({ serverUrl: url, apiToken: token }); }
       catch { throw new Error('settingsSaveFailed'); }
     }
     $('serverUrl').value = url;
@@ -89,12 +89,12 @@ $('finishBtn').addEventListener('click', async () => {
 });
 
 $('enabled').addEventListener('change', async event => {
-  try { await chrome.storage.sync.set({ enabled: event.target.checked }); }
+  try { await writeSettings({ enabled: event.target.checked }); }
   catch { event.target.checked = !event.target.checked; setStatus('settingsSaveFailed', 'err'); }
 });
 $('locale').addEventListener('change', async event => {
   try {
-    await chrome.storage.sync.set({ locale: event.target.value || 'auto' });
+    await writeSettings({ locale: event.target.value || 'auto' });
     await applyI18nTexts();
     invalidateConnection();
   } catch { setStatus('settingsSaveFailed', 'err'); }
@@ -103,7 +103,7 @@ $('locale').addEventListener('change', async event => {
 (async () => {
   await applyI18nTexts();
   try {
-    const settings = await chrome.storage.sync.get({ serverUrl: DEFAULT_SERVER, apiToken: '', enabled: true, locale: 'auto', servers: [] });
+    const settings = await readSettings({ serverUrl: DEFAULT_SERVER, apiToken: '', enabled: true, locale: 'auto', servers: [] });
     routedServer = preferredServer(settings.servers);
     $('serverUrl').value = routedServer?.url || settings.serverUrl || DEFAULT_SERVER;
     $('apiToken').value = routedServer ? (routedServer.token || '') : settings.apiToken;

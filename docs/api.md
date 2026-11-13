@@ -1,8 +1,11 @@
 # Foxdown API 契约（v1）
 
 Base: `http://127.0.0.1:16801`。REST 前缀 `/api/v1`。实时推送：WebSocket `ws://127.0.0.1:16801/ws`。
-鉴权：若 settings.apiToken 非空，需 `Authorization: Bearer <token>` 或 `?token=`；默认空（仅监听 127.0.0.1）。
-CORS 全开（供浏览器扩展使用）。
+鉴权由 settings.apiToken 控制。配置令牌后，请求需携带 `Authorization: Bearer <token>` 或 `?token=`。令牌为空时，服务只接受来自回环地址、Host 为回环地址或 localhost 的请求。
+
+REST、MCP 和 WebSocket 都校验浏览器 Origin，允许与服务 Host 相同的 Web UI 和 Chrome／Edge 扩展来源。扩展访问远程服务时仍需令牌。反向代理应保留客户端访问时的 Host，Vite 开发环境使用仓库内置代理。
+
+修改 `postScript` 需要同源 Web UI，或携带有效 Bearer 令牌。仅查询参数中的令牌不能用于修改脚本。
 
 ## 统一任务模型（Task）
 
@@ -39,7 +42,7 @@ CORS 全开（供浏览器扩展使用）。
 | POST | `/api/v1/tasks/:engine/:id/action` | `{action: pause|resume|retry|delete, deleteFiles?: bool}` → `{ok}` |
 | POST | `/api/v1/tasks/pause-all` / `resume-all` | 全局控制 |
 | GET | `/api/v1/stats` | `{downloadSpeed, uploadSpeed, numActive, numWaiting, numStopped}` |
-| GET | `/api/v1/settings` | 当前设置（隐藏 rpcSecret） |
+| GET | `/api/v1/settings` | 当前设置，包含 Web API 令牌和 aria2 RPC 密钥 |
 | PUT | `/api/v1/settings` | 部分更新；改 aria2 关键项会自动重启引擎 → `{ok, restarted}` |
 | POST | `/api/v1/trackers/update` | 拉取最新 BT tracker 并应用 → `{ok, count}` |
 | POST | `/api/v1/reveal` | `{path}` 在系统文件管理器中定位 |
@@ -101,3 +104,9 @@ streamLiveRecordLimitMin(0), preferExternalStreamEngine(true),
 savePattern("<SaveName>"), webhookUrl(""), postScript(""), autoExtract(false),
 speedProfiles([全速/办公/夜间]), activeSpeedProfile(-1),
 apiToken(""), theme("auto"), locale("zh-CN")
+
+`seedTime=0` 表示下载完成后立即停止做种。设为正数时，做种时间和分享率中的任一条件满足后停止。`seedRatio=0` 取消分享率限制，仍受做种时间限制。
+
+流媒体命名支持 `{SaveName}`、`<SaveName>`、`${fileName}` 三种变量语法。两端共用 SaveName／fileName、Host／host 和 Date／date。扩展的 title、ext 与桌面引擎的 Resolution、Codecs 等变量来自各自可获得的数据。
+
+后处理脚本接收 `FOXDOWN_EVENT`、`FOXDOWN_TASK_ID`、`FOXDOWN_TASK_NAME`、`FOXDOWN_FILE` 和 `FOXDOWN_FILE_COUNT`。`RDOWN_*` 同名变量继续可用。

@@ -81,7 +81,7 @@
     "message": "Allow download requests from other extensions (middleware API, enable with caution)"
   },
   "mediaTitle": {
-    "message": "Media on this page"
+    "message": "Page resources"
   },
   "mediaDownload": {
     "message": "Download"
@@ -93,6 +93,9 @@
   "mediaPreview": {
     "message": "Preview",
     "description": "Preview button of a media list item"
+  },
+  "previewClose": {
+    "message": "Close preview"
   },
   "previewFailed": {
     "message": "Preview failed: cannot load this media (login or hotlink protection may be required)"
@@ -172,6 +175,15 @@
   "captureLabel": {
     "message": "Capture browser downloads"
   },
+  "dashboardHeading": {
+    "message": "Dashboard"
+  },
+  "dashboardConnected": {
+    "message": "Connected"
+  },
+  "dashboardUnavailable": {
+    "message": "Service unavailable"
+  },
   "statActive": {
     "message": "Active tasks"
   },
@@ -199,6 +211,15 @@
   "stateFailed": {
     "message": "Connection failed: $1",
     "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "batchChoose": {
+    "message": "Choose links to download"
+  },
+  "batchFilter": {
+    "message": "Filter by link or file extension"
+  },
+  "batchSelectVisible": {
+    "message": "Select visible links"
   },
   "noLinksFound": {
     "message": "No downloadable links found on this page"
@@ -469,5 +490,32 @@
   },
   "obDownloadApp": {
     "message": "Download the Foxdown desktop app"
+  },
+  "badgeSummary": {
+    "message": "Downloading $1 · Waiting $2 · Failed $3"
+  },
+  "handoffFailed": {
+    "message": "Failed to send download"
+  },
+  "pageResourcesCount": {
+    "message": "Resources on this page: $1"
+  },
+  "clearErrorHint": {
+    "message": "Clear send failure"
+  },
+  "sniffEnabledShort": {
+    "message": "Auto-detect"
+  },
+  "sniffEmpty": {
+    "message": "Detection is on. Play media or reload the page to discover video, audio and downloadable attachments."
+  },
+  "sniffDisabled": {
+    "message": "Detection is off. Turn on auto-detect to find page resources."
+  },
+  "sniffNoPage": {
+    "message": "Open a web page to discover its resources."
+  },
+  "downloadErrors": {
+    "message": "$1 download issues"
   }
 }

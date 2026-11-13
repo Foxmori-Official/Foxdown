@@ -1,5 +1,6 @@
 export default {
   common: {
+    browse: '浏览…',
     connectionTitle: "连接 Foxdown",
     connectionToken: "API Token（必填）",
     connectionRetry: "重试连接",
@@ -149,7 +150,7 @@ export default {
     trackerAutoUpdate: '启动时自动更新 tracker',
     trackerUpdateNow: '立即更新 tracker',
     seedRatio: '做种分享率',
-    seedRatioHint: '达到分享率后停止做种，0 表示持续做种',
+    seedRatioHint: '达到分享率或做种时间后停止，0 表示不限制分享率',
     seedTime: '做种时间（分钟）',
     streamThreads: '下载线程数',
     streamRetry: '重试次数',
@@ -173,6 +174,7 @@ export default {
     trackersUpdated: '已更新 {count} 条 tracker',
     trackerUpdateFailed: '更新 tracker 失败：{msg}',
     groupProxy: '代理',
+    webApiAddress: '连接地址',
     groupRpc: 'RPC / 远程访问',
     groupPost: '后处理',
     minSplitSize: '最小分片大小',
@@ -218,7 +220,7 @@ export default {
     webhookTest: '发送测试请求',
     webhookTestResult: '测试请求已发送，返回状态码 {status}',
     webhookTestFailed: '测试请求失败：{msg}',
-    postScriptHint: '注入变量：RDOWN_EVENT / RDOWN_TASK_ID / RDOWN_TASK_NAME / RDOWN_FILE / RDOWN_FILE_COUNT（$1 = 事件，$2 = 任务 ID）',
+    postScriptHint: '注入变量：FOXDOWN_EVENT / FOXDOWN_TASK_ID / FOXDOWN_TASK_NAME / FOXDOWN_FILE / FOXDOWN_FILE_COUNT（$1 = 事件，$2 = 任务 ID）',
     speedProfilesLabel: '限速预设',
     discard: '放弃更改',
     factoryReset: '恢复出厂设置',

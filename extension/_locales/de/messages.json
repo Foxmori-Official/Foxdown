@@ -81,7 +81,7 @@
     "message": "Download-Anfragen von anderen Erweiterungen zulassen (Middleware-API, mit Vorsicht aktivieren)"
   },
   "mediaTitle": {
-    "message": "Medien dieser Seite"
+    "message": "Seitenressourcen"
   },
   "mediaDownload": {
     "message": "Herunterladen"
@@ -93,6 +93,9 @@
   "mediaPreview": {
     "message": "Vorschau",
     "description": "Preview button of a media list item"
+  },
+  "previewClose": {
+    "message": "Vorschau schließen"
   },
   "previewFailed": {
     "message": "Vorschau fehlgeschlagen: Dieses Medium kann nicht geladen werden (möglicherweise Anmeldung oder Hotlink-Schutz erforderlich)"
@@ -172,6 +175,15 @@
   "captureLabel": {
     "message": "Browser-Downloads abfangen"
   },
+  "dashboardHeading": {
+    "message": "Dashboard"
+  },
+  "dashboardConnected": {
+    "message": "Verbunden"
+  },
+  "dashboardUnavailable": {
+    "message": "Dienst nicht erreichbar"
+  },
   "statActive": {
     "message": "Aktive Aufgaben"
   },
@@ -199,6 +211,15 @@
   "stateFailed": {
     "message": "Verbindung fehlgeschlagen: $1",
     "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "batchChoose": {
+    "message": "Links zum Download auswählen"
+  },
+  "batchFilter": {
+    "message": "Nach Link oder Dateiendung filtern"
+  },
+  "batchSelectVisible": {
+    "message": "Sichtbare Links auswählen"
   },
   "noLinksFound": {
     "message": "Keine herunterladbaren Links auf dieser Seite gefunden"
@@ -469,5 +490,32 @@
   },
   "obDownloadApp": {
     "message": "Foxdown-Desktop-App herunterladen"
+  },
+  "badgeSummary": {
+    "message": "Aktiv $1 · Wartend $2 · Fehler $3"
+  },
+  "handoffFailed": {
+    "message": "Download konnte nicht gesendet werden"
+  },
+  "pageResourcesCount": {
+    "message": "Ressourcen auf dieser Seite: $1"
+  },
+  "clearErrorHint": {
+    "message": "Sendefehler löschen"
+  },
+  "sniffEnabledShort": {
+    "message": "Automatisch erkennen"
+  },
+  "sniffEmpty": {
+    "message": "Erkennung aktiv. Medien abspielen oder die Seite neu laden, um Medien und Anhänge zu finden."
+  },
+  "sniffDisabled": {
+    "message": "Erkennung aus. Zum Finden von Ressourcen aktivieren."
+  },
+  "sniffNoPage": {
+    "message": "Eine Webseite öffnen, um Ressourcen zu finden."
+  },
+  "downloadErrors": {
+    "message": "$1 Downloadprobleme"
   }
 }

@@ -6,7 +6,7 @@
 //   2) 多服务器 URL 路由（参考 Aria2-Explorer getRpcServer/rpcList 模式）
 //   3) 第三方扩展中间件 API（参考 Aria2-Explorer externally_connectable + onMessageExternal 模式）
 // v3.1 新增（融合 cat-catch 核心能力）：
-//   1) 深度搜索 deepSearch（内容脚本注入页面主上下文扫描 script 文本/播放器全局变量）
+//   1) 深度搜索 deepSearch（在页面主上下文扫描 script 文本/播放器全局变量）
 //   2) 嗅探正则过滤 sniffRegexRules（cat-catch init.js wildcardToRegex 方案）
 //   3) 文件名模板 fileNameTemplate（cat-catch templates.js 变量体系精简版）
 //   4) 自动下载嗅探媒体 autoDownloadSniffed + 体积阈值（Set 防重复）
@@ -17,10 +17,11 @@
 //      非 popup 形态运行时 chrome.action.setPopup({popup:''}) 清空，图标点击走 onClicked 分发
 
 // 共享纯函数（lib.js）：wildcardToRegex / matchSniffRegexRules /
-// renderFileNameTemplate / shouldAutoDownload / deepSearchScanSource
+// renderFileNameTemplate / shouldAutoDownload / scanDeepSearch
 // 手动语言切换覆盖层（i18n.js）：全局 i18n() / loadI18nOverride()
 // 测试环境已在同一上下文预加载 lib.js，importScripts 失败可忽略
 try { importScripts('lib.js'); } catch (e) {}
+importScripts('settings.js');
 try { importScripts('i18n.js'); } catch (e) {}
 // i18n.js 未加载时（如测试环境）的兜底：等价原生 chrome.i18n 行为
 if (typeof globalThis.i18n !== 'function') {
@@ -58,8 +59,7 @@ const STREAM_RE = /\.(m3u8|mpd)(\?|#|$)/i;
 // i18n 全局函数由 i18n.js 提供（见文件顶部兜底）
 
 async function cfg() {
-  const s = await chrome.storage.sync.get(DEFAULTS);
-  return { ...DEFAULTS, ...s };
+  return readSettings(DEFAULTS);
 }
 
 // ============================================================
@@ -88,15 +88,14 @@ function storeRequestHeaders(details) {
 function consumeRequestHeaders(url) {
   const hit = requestHeaderMap.get(url);
   if (hit) requestHeaderMap.delete(url);
-  return hit?.headers || null;
+  return hit && Date.now() - hit.ts <= HEADER_TTL ? hit.headers : null;
 }
 
-setInterval(() => {
+function sweepRequestHeaders() {
   const now = Date.now();
   for (const [k, v] of requestHeaderMap) if (now - v.ts > HEADER_TTL) requestHeaderMap.delete(k);
   for (const [k, v] of sniffHeaderMap) if (now - v.ts > HEADER_TTL) sniffHeaderMap.delete(k);
-  void sweepPendingConfirms().catch(() => {});
-}, 30000);
+}
 
 // 导航/子框架/下载触发的请求都缓存（extraHeaders 才能看到 Cookie/Referer）
 chrome.webRequest.onBeforeSendHeaders.addListener(
@@ -233,16 +232,34 @@ function defaultServer(servers) {
 // 任务发送
 // ============================================================
 async function postTask(server, url, { referer, headers, extraOptions } = {}) {
-  const h = { 'Content-Type': 'application/json' };
-  if (server.token) h['Authorization'] = 'Bearer ' + server.token;
-  const options = { ...(extraOptions || {}) };
-  if (referer && referer !== 'about:blank') options.referer = referer;
-  if (headers?.length) options.headers = headers;
-  const res = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/tasks', {
-    method: 'POST', headers: h, body: JSON.stringify({ url, options }), signal: AbortSignal.timeout(15000)
-  });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+  await failureReady;
+  pendingSends++;
+  void paintBadge();
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (server.token) h.Authorization = 'Bearer ' + server.token;
+    const options = { ...(extraOptions || {}) };
+    if (referer && referer !== 'about:blank') options.referer = referer;
+    if (headers?.length) options.headers = headers;
+    const res = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/tasks', {
+      method: 'POST', headers: h, body: JSON.stringify({ url, options }), signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const result = await res.json();
+    if (handoffFailure?.url === url) {
+      handoffFailure = null;
+      await chrome.storage.session.remove('foxdown-handoff-error').catch(() => {});
+    }
+    return result;
+  } catch (error) {
+    handoffFailure = { url, name: extraOptions?.out || url, error: String(error.message || error) };
+    await chrome.storage.session.set({ 'foxdown-handoff-error': handoffFailure }).catch(() => {});
+    throw error;
+  } finally {
+    pendingSends--;
+    void refreshBadge();
+    void paintBadge();
+  }
 }
 
 function notify(title, message) {
@@ -342,7 +359,11 @@ chrome.windows.onRemoved?.addListener((windowId) => {
 });
 const pendingRestore = restorePendingConfirms().catch(() => {});
 chrome.alarms.create('rdown-pending-cleanup', { periodInMinutes: 1 });
-chrome.alarms.onAlarm.addListener(a => { if (a.name === 'rdown-pending-cleanup') void sweepPendingConfirms().catch(() => {}); });
+chrome.alarms.onAlarm.addListener(a => {
+  if (a.name !== 'rdown-pending-cleanup') return;
+  sweepRequestHeaders();
+  void sweepPendingConfirms().catch(() => {});
+});
 
 function newToken() {
   try {
@@ -385,6 +406,20 @@ async function removePendingConfirm(token) {
   try { await chrome.storage.session?.remove(PENDING_KEY_PREFIX + token); } catch {}
 }
 
+async function openConfirmation(token, mode = 'confirm') {
+  const win = await chrome.windows.create({
+    url: chrome.runtime.getURL('popup.html') + '?mode=' + mode + '&token=' + token,
+    type: 'popup', width: mode === 'batch' ? 560 : 360, height: 520, focused: true,
+  });
+  const entry = pendingConfirms.get(token);
+  if (!entry || win?.id == null) return;
+  entry.windowId = win.id;
+  await chrome.storage.session?.set({ [PENDING_KEY_PREFIX + token]: entry });
+  if (chrome.windows.get) {
+    try { await chrome.windows.get(win.id); } catch { await cancelPendingDownload(token); }
+  }
+}
+
 // 确认弹窗服务器下拉：全部服务器 + 按 v3 路由逻辑预选项（routeServer 命中者）
 function resolveConfirmServers(c, url, filename) {
   const servers = resolveServers(c);
@@ -398,6 +433,7 @@ function confirmPendingDownload(token, options = {}) {
 }
 async function confirmPendingDownloadNow(token, { filename, split, serverIndex } = {}) {
   const entry = await getPendingConfirm(token);
+  if (entry?.urls) return { error: 'invalid download confirmation' };
   if (!entry) return { error: 'expired' };
   const c = await cfg();
   const servers = resolveServers(c);
@@ -449,9 +485,10 @@ async function cancelPendingDownloadNow(token) {
 // ============================================================
 const MEDIA_EXTS = new Set([
   'm3u8', 'mpd', 'mp4', 'm4s', 'm4v', 'm4a', 'ts', 'aac', 'mp3',
-  'flv', 'flac', 'ogg', 'ogv', 'webm', 'mkv', 'avi', 'mov', 'wav'
+  'flv', 'flac', 'ogg', 'ogv', 'webm', 'mkv', 'avi', 'mov', 'wav',
+  'm3u', 'mpeg', 'mpg', 'wmv', 'asf', 'opus', 'weba', 'wma',
 ]);
-const MEDIA_CT_RE = /mpegurl|dash\+xml|^video\/|^audio\//;
+const MEDIA_CT_RE = /mpegurl|dash\+xml|^video\/|^audio\/|^application\/(?:ogg|m4s)$/;
 const sniffHeaderMap = new Map();   // requestId -> { headers, ts }
 const sniffedMedia = new Map();     // tabId -> Map<url, {url, type, size, contentType, filename, headers, ts, source}>
 const SNIFF_HDR_MAX = 5000;
@@ -460,7 +497,42 @@ let sniffEnabledCache = true;
 let sniffRulesCache = [];           // sniffRegexRules 缓存（[{url, state}]）
 let deepSearchCache = false;        // deepSearch 自动执行开关缓存
 const autoSentSet = new Set();      // 自动下载防重复：同一 URL 只自动发一次
-cfg().then(c => {
+const autoSending = new Set();
+const MEDIA_KEY_PREFIX = 'foxdown-media-';
+const AUTO_SENT_KEY = 'foxdown-auto-sent';
+const deepSearches = new Map();
+
+const mediaRestore = (async () => {
+  const entries = await chrome.storage.session.get(null);
+  for (const [key, value] of Object.entries(entries)) {
+    if (!Array.isArray(value)) continue;
+    if (key === AUTO_SENT_KEY) {
+      for (const url of value) autoSentSet.add(url);
+    } else if (key.startsWith(MEDIA_KEY_PREFIX)) {
+      const tabId = Number(key.slice(MEDIA_KEY_PREFIX.length));
+      sniffedMedia.set(tabId, new Map(value.map(entry => [entry.url, entry])));
+    }
+  }
+})().catch(() => {});
+
+function saveTabMedia(tabId) {
+  const key = MEDIA_KEY_PREFIX + tabId;
+  const tab = sniffedMedia.get(tabId);
+  const operation = tab?.size ? chrome.storage.session.set({ [key]: [...tab.values()] }) : chrome.storage.session.remove(key);
+  void operation.catch(() => {});
+}
+
+function clearTabMedia(tabId) {
+  deepSearches.delete(tabId);
+  for (const [id, entry] of sniffHeaderMap) if (entry.tabId === tabId) sniffHeaderMap.delete(id);
+  void mediaRestore.then(() => {
+    sniffedMedia.delete(tabId);
+    saveTabMedia(tabId);
+    updateSniffBadge();
+  });
+}
+
+const sniffConfigReady = cfg().then(c => {
   sniffEnabledCache = c.sniffEnabled !== false;
   sniffRulesCache = Array.isArray(c.sniffRegexRules) ? c.sniffRegexRules : [];
   deepSearchCache = !!c.deepSearch;
@@ -496,6 +568,15 @@ function sniffParseResponseHeaders(responseHeaders) {
     const n = (h.name || '').toLowerCase();
     if (n === 'content-length') { out.size = parseInt(h.value) || out.size; }
     else if (n === 'content-type') { out.type = (h.value || '').split(';')[0].trim().toLowerCase(); }
+    else if (n === 'content-disposition') {
+      const value = h.value || '';
+      const encoded = value.match(/filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i)?.[1];
+      const plain = value.match(/filename\s*=\s*(?:"([^"]+)"|([^;]+))/i);
+      const name = encoded || plain?.[1] || plain?.[2] || '';
+      try { out.filename = decodeURIComponent(name.trim().replace(/^"|"$/g, '')); }
+      catch { out.filename = name.trim(); }
+      out.attachment = /^attachment(?:;|$)/i.test(value.trim());
+    }
     else if (n === 'content-range') {
       const s = (h.value || '').split('/')[1];
       if (s && s !== '*') out.size = parseInt(s) || out.size;
@@ -537,7 +618,10 @@ function sniffOnResponseStarted(details) {
     const hit = sniffHeaderMap.get(details.requestId);
     if (hit) sniffHeaderMap.delete(details.requestId);
     if (!sniffEnabledCache) return;
-    sniffFindMedia(details, hit?.headers);
+    const headers = hit && Date.now() - hit.ts <= HEADER_TTL ? hit.headers : undefined;
+    void Promise.all([mediaRestore, sniffConfigReady]).then(() => {
+      if (sniffEnabledCache) sniffFindMedia(details, headers);
+    }).catch(() => {});
   } catch {}
 }
 
@@ -548,19 +632,22 @@ function sniffOnErrorOccurred(details) {
 function sniffFindMedia(details, reqHeaders) {
   // 排除：OPTIONS 预检、非标签页请求、非 http(s)、扩展（含自身）发起的请求
   if (details.method === 'OPTIONS') return;
+  if (details.statusCode >= 400) return;
   if (details.tabId == null || details.tabId < 0) return;
   const url = details.url || '';
   if (details.initiator && details.initiator.startsWith('chrome-extension://')) return;
 
   const resp = sniffParseResponseHeaders(details.responseHeaders);
-  const m = sniffMatch(url, resp.type, details.type);
+  const suffix = resp.filename?.match(/\.([a-z0-9]{1,10})$/i)?.[1]?.toLowerCase();
+  const m = sniffMatch(url, resp.type, details.type) ||
+    (MEDIA_EXTS.has(suffix) || (resp.attachment && resp.filename) ? { ext: suffix || 'file' } : null);
   if (!m) return;
   // 嗅探正则过滤（cat-catch 方案）：规则非空时仅命中 state=true 规则的 URL 进列表
   if (!matchSniffRegexRules(sniffRulesCache, url)) return;
 
   let tab = sniffedMedia.get(details.tabId);
   if (!tab) { tab = new Map(); sniffedMedia.set(details.tabId, tab); }
-  if (tab.has(url)) return; // 按 URL 查重
+  if (tab.get(url)?.source === 'network') return; // Network headers replace a deep-search candidate.
   if (tab.size >= SNIFF_MAX_PER_TAB) tab.delete(tab.keys().next().value); // 淘汰最旧
 
   let filename = '';
@@ -571,24 +658,24 @@ function sniffFindMedia(details, reqHeaders) {
     type: mediaTypeLabel(m.ext, resp.type),
     size: resp.size || 0,
     contentType: resp.type || '',
-    filename: filename || url,
+    filename: resp.filename || filename || url,
     headers: filterSniffHeaders(reqHeaders),
     ts: Date.now(),
     source: 'network'
   };
   tab.set(url, entry);
+  saveTabMedia(details.tabId);
   updateSniffBadge(details.tabId);
   maybeAutoDownload(entry);
 }
 
 // ============================================================
-// 深度搜索（cat-catch 方案）：内容脚本注入页面主上下文扫描到的媒体 URL
-// 经消息回传后加入该 tab 的嗅探列表（source: 'deepSearch'）
+// 深度搜索仅提供候选链接。未经过网络嗅探的候选项不会触发自动下载。
 // ============================================================
 function addDeepSearchMedia(tabId, urls, pageHref) {
   if (!sniffEnabledCache || !Array.isArray(urls)) return 0;
   let added = 0;
-  for (const url of urls) {
+  for (const url of urls.slice(0, SNIFF_MAX_PER_TAB)) {
     if (typeof url !== 'string' || !/^https?:/i.test(url)) continue;
     const m = sniffMatch(url, '', 'other');
     if (!m) continue;
@@ -612,10 +699,27 @@ function addDeepSearchMedia(tabId, urls, pageHref) {
     };
     tab.set(url, entry);
     added++;
-    maybeAutoDownload(entry);
   }
-  if (added) updateSniffBadge(tabId);
+  if (added) {
+    saveTabMedia(tabId);
+    updateSniffBadge(tabId);
+  }
   return added;
+}
+
+function searchTab(tabId) {
+  if (deepSearches.has(tabId)) return deepSearches.get(tabId);
+  const search = (async () => {
+    await mediaRestore;
+    const [scan] = await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: scanDeepSearch });
+    if (deepSearches.get(tabId) === search && scan?.result) {
+      addDeepSearchMedia(tabId, scan.result.urls, scan.result.href);
+    }
+  })().finally(() => {
+    if (deepSearches.get(tabId) === search) deepSearches.delete(tabId);
+  });
+  deepSearches.set(tabId, search);
+  return search;
 }
 
 // ============================================================
@@ -623,20 +727,25 @@ function addDeepSearchMedia(tabId, urls, pageHref) {
 // 同一 URL 只自动发一次（autoSentSet 防重复）
 // ============================================================
 async function maybeAutoDownload(media) {
+  await mediaRestore;
+  const c = await cfg().catch(() => null);
+  if (!shouldAutoDownload(media, c, autoSentSet) || autoSending.has(media.url)) return;
+  autoSending.add(media.url);
   try {
-    const c = await cfg();
-    if (!shouldAutoDownload(media, c, autoSentSet)) return;
-    autoSentSet.add(media.url);
     const headers = sniffHeadersToLines(media.headers);
     await sendToKimi(media.url, {
       referer: media.headers?.referer,
       filename: media.filename,
       headersOverride: headers
     });
+    autoSentSet.add(media.url);
+    if (autoSentSet.size > 1000) autoSentSet.delete(autoSentSet.values().next().value);
+    await chrome.storage.session.set({ [AUTO_SENT_KEY]: [...autoSentSet] }).catch(() => {});
     notify(i18n('autoDownloaded'), media.filename || media.url);
   } catch (e) {
-    autoSentSet.delete(media.url);
     notify(i18n('sendFailed'), String(e.message || e));
+  } finally {
+    autoSending.delete(media.url);
   }
 }
 
@@ -656,19 +765,14 @@ chrome.webRequest.onErrorOccurred?.addListener(
   { urls: ['<all_urls>'] }
 );
 // tab 关闭时清理该 tab 的嗅探数据
-chrome.tabs.onRemoved?.addListener((tabId) => {
-  sniffedMedia.delete(tabId);
-  for (const [id, entry] of sniffHeaderMap) if (entry.tabId === tabId) sniffHeaderMap.delete(id);
-});
-// 深度搜索自动执行：选项页开启 deepSearch 后，页面加载完成即触发内容脚本扫描
+chrome.tabs.onRemoved?.addListener(clearTabMedia);
+// 深度搜索自动执行：选项页开启 deepSearch 后，在页面加载完成时扫描
 chrome.tabs.onUpdated?.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'loading' || changeInfo.url) {
-    sniffedMedia.delete(tabId);
-    try { chrome.action.setBadgeText({ text: '', tabId }); } catch {}
-    for (const [id, entry] of sniffHeaderMap) if (entry.tabId === tabId) sniffHeaderMap.delete(id);
+    clearTabMedia(tabId);
   }
   if (changeInfo.status === 'complete' && deepSearchCache && sniffEnabledCache) {
-    chrome.tabs.sendMessage(tabId, { type: 'kimi-deep-search' }).catch(() => {});
+    void searchTab(tabId).catch(() => {});
   }
 });
 
@@ -698,18 +802,7 @@ chrome.downloads.onDeterminingFilename.addListener((item) => {
         token = await addPendingConfirm({
           url, referer: item.referrer || '', filename: item.filename || '', headers, itemId: item.id
         });
-        const win = await chrome.windows.create({
-          url: chrome.runtime.getURL('popup.html') + '?mode=confirm&token=' + token,
-          type: 'popup', width: 360, height: 520, focused: true
-        });
-        const entry = pendingConfirms.get(token);
-        if (entry && win?.id != null) {
-          entry.windowId = win.id;
-          await chrome.storage.session?.set({ [PENDING_KEY_PREFIX + token]: entry });
-          if (chrome.windows.get) {
-            try { await chrome.windows.get(win.id); } catch { await cancelPendingDownload(token); }
-          }
-        }
+        await openConfirmation(token);
       } catch (e) {
         if (token) await removePendingConfirm(token);
         try { await chrome.downloads.resume(item.id); } catch {}
@@ -736,7 +829,8 @@ chrome.downloads.onDeterminingFilename.addListener((item) => {
 const MENUS = [
   { id: 'kimi-link', key: 'menuLink', contexts: ['link'] },
   { id: 'kimi-media', key: 'menuMedia', contexts: ['image', 'video', 'audio'] },
-  { id: 'kimi-page', key: 'menuPage', contexts: ['page'] }
+  { id: 'kimi-page', key: 'menuPage', contexts: ['page'] },
+  { id: 'foxdown-selection', key: 'menuSel', contexts: ['selection'] },
 ];
 
 // 每次重建菜单前先刷新语言覆盖层（onInstalled/onStartup/语言切换时调用），标题按当前语言重取
@@ -764,28 +858,55 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   } else if (info.menuItemId === 'kimi-media' && info.srcUrl) {
     sendToKimi(info.srcUrl, { referer: info.pageUrl }).catch(e => notify(i18n('sendFailed'), String(e)));
   } else if (info.menuItemId === 'kimi-page' && tab?.id != null) {
-    collectPageLinks(tab.id, info.pageUrl);
+    try {
+      const urls = await chrome.tabs.sendMessage(tab.id, { type: 'kimi-collect-links' });
+      await confirmPageLinks(urls, info.pageUrl);
+    } catch (error) { notify(i18n('menuPage'), String(error.message || error)); }
+  } else if (info.menuItemId === 'foxdown-selection') {
+    const urls = (info.selectionText || '').match(/(?:https?:\/\/|magnet:\?)[^\s<>"']+/gi) || [];
+    try { await confirmPageLinks(urls.map(url => url.replace(/[.,;，。；]+$/, '')), info.pageUrl); }
+    catch (error) { notify(i18n('menuSel'), String(error.message || error)); }
   }
 });
 
-async function collectPageLinks(tabId, pageUrl) {
+async function confirmPageLinks(links, referer) {
+  const c = await cfg();
+  const pageHost = hostOf(referer);
+  const urls = [...new Set(Array.isArray(links) ? links : [])].filter(url => {
+    if (typeof url !== 'string') return false;
+    if (/^magnet:\?/i.test(url)) return c.captureMagnet;
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+      return shouldCapture(c, { url, filename: parsed.pathname.split('/').pop() }, pageHost);
+    } catch { return false; }
+  });
+  if (!urls.length) { notify(i18n('batchChoose'), i18n('noLinksFound')); return; }
+  const token = await addPendingConfirm({ urls, referer });
   try {
-    const result = await chrome.tabs.sendMessage(tabId, { type: 'kimi-collect-links' });
-    const urls = [...new Set(result || [])].filter(u => /^(https?|magnet):/i.test(u));
-    if (!urls.length) { notify(i18n('menuPage'), i18n('noLinksFound')); return; }
-    const c = await cfg();
-    const servers = resolveServers(c);
-    let ok = 0, fail = 0;
-    for (const u of urls) {
-      try {
-        const headers = /^magnet:/i.test(u) ? [] : await buildHeaders(u, pageUrl);
-        const srv = routeServer(servers, u) || defaultServer(servers);
-        await postTask(srv, u, { referer: pageUrl, headers });
-        ok++;
-      } catch { fail++; }
-    }
-    notify(i18n('menuPage'), i18n('batchResult', [String(ok), fail ? i18n('batchResultFail', String(fail)) : '']));
-  } catch (e) { notify(i18n('menuPage'), String(e.message || e)); }
+    await openConfirmation(token, 'batch');
+  } catch (error) {
+    await removePendingConfirm(token);
+    throw error;
+  }
+}
+
+function submitPageLinks(token, selected) {
+  return pendingOperation(token, async () => {
+    const entry = await getPendingConfirm(token);
+    if (!entry?.urls) return { error: 'expired' };
+    const urls = [...new Set(selected)].filter(url => entry.urls.includes(url)).slice(0, 5);
+    const servers = resolveServers(await cfg());
+    const results = await Promise.allSettled(urls.map(async url => {
+      const headers = /^magnet:\?/i.test(url) ? [] : await buildHeaders(url, entry.referer);
+      await postTask(routeServer(servers, url) || defaultServer(servers), url, { referer: entry.referer, headers });
+    }));
+    const sent = urls.filter((_, index) => results[index].status === 'fulfilled');
+    entry.urls = entry.urls.filter(url => !sent.includes(url));
+    entry.ts = Date.now();
+    await chrome.storage.session?.set({ [PENDING_KEY_PREFIX + token]: entry }).catch(() => {});
+    return { sent };
+  });
 }
 
 // ============================================================
@@ -794,7 +915,7 @@ async function collectPageLinks(tabId, pageUrl) {
 chrome.commands.onCommand.addListener(async (cmd) => {
   if (cmd === 'toggle-capture') {
     const c = await cfg();
-    await chrome.storage.sync.set({ enabled: !c.enabled });
+    await writeSettings({ enabled: !c.enabled });
     notify(i18n('cmdToggle'), !c.enabled ? i18n('captureOn') : i18n('captureOff'));
     refreshBadge();
   } else if (cmd === 'open-panel') {
@@ -856,6 +977,22 @@ cfg().then(c => applyPanelStyle(c.panelOpenStyle)).catch(() => {});
 
 // popup 开关同步 + 嗅探媒体查询/下载
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'getCapturePreferences') {
+    readSettings({ enabled: true, captureMagnet: true }).then(sendResponse, () => sendResponse(null));
+    return true;
+  }
+  if (msg?.type === 'getDownloadStatus') {
+    void refreshBadge().then(() => sendResponse(downloadStatus()));
+    return true;
+  }
+  if (msg?.type === 'clearHandoffError') {
+    handoffFailure = null;
+    void chrome.storage.session.remove('foxdown-handoff-error').then(() => {
+      void paintBadge();
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
   if (msg?.type === 'capture-toggled') { refreshBadge(); }
   if (msg?.type === 'CLICK_EVENT' && msg.altKey) { altBypassUntil = Date.now() + 3000; }
   if (msg?.type === 'MAGNET_DOWNLOAD' && msg.url) {
@@ -867,21 +1004,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   // popup 查询当前 tab 嗅探到的媒体列表
   if (msg?.type === 'getSniffedMedia') {
-    const tab = sniffedMedia.get(msg.tabId);
-    sendResponse(tab ? [...tab.values()] : []);
+    void mediaRestore.then(() => sendResponse([...(sniffedMedia.get(msg.tabId)?.values() || [])]));
     return true;
   }
-  // 内容脚本回传的深度搜索结果（页面主上下文扫描到的媒体 URL）
-  if (msg?.type === 'kimi-deep-search-media' && Array.isArray(msg.urls)) {
-    const tabId = sender?.tab?.id;
-    if (tabId != null && tabId >= 0) {
-      addDeepSearchMedia(tabId, msg.urls, msg.href || sender.tab?.url || '');
-    }
-    return;
-  }
-  // popup"深度搜索"按钮：向当前 tab 的内容脚本发消息执行扫描
+  // popup"深度搜索"按钮
   if (msg?.type === 'triggerDeepSearch' && msg.tabId != null) {
-    chrome.tabs.sendMessage(msg.tabId, { type: 'kimi-deep-search' })
+    searchTab(msg.tabId)
       .then(() => sendResponse({ ok: true }))
       .catch(e => sendResponse({ error: String(e?.message || e) }));
     return true;
@@ -890,6 +1018,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'downloadSniffed' && msg.url) {
     (async () => {
       try {
+        await mediaRestore;
         const media = sniffedMedia.get(msg.tabId)?.get(msg.url);
         // m3u8/mpd 由后端识别为流媒体任务，其他按普通任务；均携带捕获的请求头
         const headers = media ? sniffHeadersToLines(media.headers) : await buildHeaders(msg.url, msg.referer);
@@ -910,6 +1039,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await pendingRestore;
         const entry = await pendingOperation(msg.token, () => getPendingConfirm(msg.token));
         if (!entry) { sendResponse({ error: 'expired' }); return; }
+        if (entry.urls) { sendResponse({ urls: entry.urls }); return; }
         const c = await cfg();
         const { servers, matchedIndex } = resolveConfirmServers(c, entry.url, entry.filename);
         sendResponse({
@@ -934,6 +1064,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true;
   }
+  if (msg?.type === 'submitPageLinks' && msg.token && Array.isArray(msg.urls)) {
+    submitPageLinks(msg.token, msg.urls).then(sendResponse, error => sendResponse({ error: String(error.message || error) }));
+    return true;
+  }
   // 确认弹窗 [取消]：恢复浏览器下载
   if (msg?.type === 'cancelPendingDownload' && msg.token) {
     (async () => {
@@ -949,16 +1083,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // 接收 {type:'download', url, filename, referrer, options}
 // 走与内部下载相同的过滤/发送流程；需选项页开启 allowExternalRequest
 // ============================================================
-const EXTERNAL_OPTION_KEYS = ['dir', 'out', 'userAgent', 'cookie', 'split', 'maxConnectionPerServer', 'selectFile', 'seedTime'];
+const EXTERNAL_OPTION_KEYS = ['userAgent', 'cookie', 'split', 'maxConnectionPerServer', 'selectFile', 'seedTime'];
+
+function externalFilename(value) {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim();
+  if (!name || /^[.]|[.]$|[\\/:*?"<>|\x00-\x1f\x7f]/.test(name)) return undefined;
+  if (/^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\s*\.|$)/i.test(name)) return undefined;
+  return name;
+}
+
 function sanitizeExternalOptions(src) {
   const out = {};
   for (const k of EXTERNAL_OPTION_KEYS) {
     if (src && src[k] !== undefined) out[k] = src[k];
   }
+  const filename = externalFilename(src?.out);
+  if (filename) out.out = filename;
   return out;
 }
 
 chrome.runtime.onMessageExternal?.addListener((msg, sender, sendResponse) => {
+  if (!sender?.id) {
+    sendResponse({ error: 'only other extensions can submit download requests' });
+    return;
+  }
   (async () => {
     try {
       const c = await cfg();
@@ -969,7 +1118,7 @@ chrome.runtime.onMessageExternal?.addListener((msg, sender, sendResponse) => {
       const url = msg.url;
       if (!/^(https?|magnet):/i.test(url)) { sendResponse({ error: 'unsupported url scheme' }); return; }
       const referer = typeof msg.referrer === 'string' ? msg.referrer : undefined;
-      const filename = typeof msg.filename === 'string' ? msg.filename : undefined;
+      const filename = externalFilename(msg.filename);
       // 与内部下载相同的过滤流程
       if (/^magnet:/i.test(url)) {
         if (!c.captureMagnet) { sendResponse({ error: 'magnet capture disabled' }); return; }
@@ -995,117 +1144,246 @@ chrome.runtime.onMessageExternal?.addListener((msg, sender, sendResponse) => {
 });
 
 // ============================================================
-// Badge（alarms 30s 轮询）+ 完成通知（WebSocket 事件）
-// badge 共存策略：有活跃任务 → 全局任务数（靛蓝）；无任务 → 各 tab 嗅探媒体数（绿色 #16a34a）
-// ============================================================
-let lastActiveTasks = 0;
+// Badge priority: failed task > ongoing downloads > resources in this tab.
+// Blue resource counts and green task counts also share a detailed tooltip.
+const serverStates = new Map();
+const renderedBadges = new Map();
+let pendingSends = 0;
+let handoffFailure = null;
+let badgeRefresh = null;
+let paintGeneration = 0;
+let eventsGeneration = 0;
+let eventsSockets = [];
+let eventsReconnectTimer = null;
+const failureReady = chrome.storage.session.get('foxdown-handoff-error').then(saved => {
+  handoffFailure = saved['foxdown-handoff-error'] || null;
+}).catch(() => {});
 
-function clearSniffBadges() {
-  for (const tabId of sniffedMedia.keys()) {
-    try { chrome.action.setBadgeText({ text: '', tabId }); } catch {}
+function serverKey(server) {
+  return server.url.replace(/\/+$/, '') + '\n' + (server.token || '');
+}
+
+function taskServers(config) {
+  const servers = new Map();
+  for (const server of resolveServers(config)) servers.set(serverKey(server), server);
+  return [...servers.values()];
+}
+
+function downloadStatus() {
+  const tasks = [...serverStates.values()].flatMap(state => state.tasks || []);
+  const active = tasks.filter(task => ['active', 'downloading', 'muxing'].includes(task.status)).length;
+  const waiting = tasks.filter(task => task.status === 'waiting').length;
+  const errors = tasks.filter(task => task.status === 'error');
+  const unavailable = [...serverStates.values()].filter(state => state.unavailable).length;
+  return { active, waiting, ongoing: Math.max(active + waiting, pendingSends), pending: pendingSends,
+    errors: errors.map(task => ({ name: task.name || task.id, error: task.errorMessage || '' })),
+    unavailable, handoffFailure };
+}
+
+async function paintBadge() {
+  const generation = ++paintGeneration;
+  await failureReady;
+  const config = await cfg();
+  const status = downloadStatus();
+  const failed = status.errors.length || status.unavailable || status.handoffFailure;
+  const text = failed ? 'X' : status.ongoing ? (status.ongoing > 999 ? '999+' : String(status.ongoing)) : config.enabled ? '' : 'OFF';
+  const color = failed ? '#a34139' : status.ongoing ? '#2e5943' : '#6b756b';
+  let title = 'Foxdown · ' + i18n('badgeSummary', [String(status.active), String(status.waiting), String(status.errors.length)]);
+  if (status.handoffFailure) title += '\n' + i18n('handoffFailed') + ' · ' + status.handoffFailure.name;
+  if (status.unavailable) title += '\n' + i18n('dashboardUnavailable');
+  if (!config.enabled) title += '\n' + i18n('captureOff');
+  const tabs = await chrome.tabs.query({}).catch(() => []);
+  if (generation !== paintGeneration) return;
+  const targets = [{}, ...tabs.filter(tab => tab.id >= 0).map(tab => ({ tabId: tab.id }))];
+  for (const target of targets) {
+    const media = sniffedMedia.get(target.tabId)?.size || 0;
+    const resourceBadge = !failed && !status.ongoing && media > 0;
+    const badgeText = resourceBadge ? (media > 999 ? '999+' : String(media)) : text;
+    const badgeColor = resourceBadge ? '#2563eb' : color;
+    const caption = title + (media ? '\n' + i18n('pageResourcesCount', String(media)) : '');
+    const signature = JSON.stringify([badgeText, badgeColor, caption]);
+    const key = target.tabId ?? 'global';
+    if (renderedBadges.get(key) === signature) continue;
+    renderedBadges.set(key, signature);
+    await Promise.allSettled([
+      chrome.action.setBadgeText({ ...target, text: badgeText }),
+      chrome.action.setBadgeBackgroundColor({ ...target, color: badgeColor }),
+      chrome.action.setBadgeTextColor?.({ ...target, color: '#ffffff' }),
+      chrome.action.setTitle?.({ ...target, title: caption }),
+    ]);
+    if (generation !== paintGeneration) return;
   }
 }
 
-function updateSniffBadge(tabId) {
-  if (lastActiveTasks > 0) return; // 活跃任务数优先显示
-  const n = sniffedMedia.get(tabId)?.size || 0;
-  try {
-    chrome.action.setBadgeText({ text: n ? String(n) : '', tabId });
-    if (n) chrome.action.setBadgeBackgroundColor({ color: '#16a34a', tabId });
-  } catch {}
+function updateSniffBadge() {
+  void paintBadge().catch(() => {});
 }
 
-async function refreshBadge() {
-  const c = await cfg();
-  if (!c.enabled) {
-    lastActiveTasks = 0;
-    chrome.action.setBadgeText({ text: 'OFF' });
-    chrome.action.setBadgeBackgroundColor({ color: '#9ca3af' });
-    return;
-  }
-  const srv = defaultServer(resolveServers(c));
-  try {
-    const h = {};
-    if (srv.token) h['Authorization'] = 'Bearer ' + srv.token;
-    const res = await fetch(srv.url.replace(/\/+$/, '') + '/api/v1/stats', { headers: h });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const s = await res.json();
-    lastActiveTasks = s.numActive || 0;
-    if (lastActiveTasks > 0) {
-      chrome.action.setBadgeText({ text: String(lastActiveTasks) });
-      chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
-      clearSniffBadges(); // tab 级 badge 会覆盖全局，需清掉让任务数生效
-    } else {
-      chrome.action.setBadgeText({ text: '' });
-      for (const tabId of sniffedMedia.keys()) updateSniffBadge(tabId);
-    }
-  } catch {
-    chrome.action.setBadgeText({ text: '!' });
-    chrome.action.setBadgeBackgroundColor({ color: '#dc2626' });
-  }
+function refreshBadge() {
+  if (badgeRefresh) return badgeRefresh;
+  const generation = eventsGeneration;
+  badgeRefresh = (async () => {
+    const servers = taskServers(await cfg());
+    const keys = new Set(servers.map(serverKey));
+    for (const key of serverStates.keys()) if (!keys.has(key)) serverStates.delete(key);
+    await Promise.all(servers.map(async server => {
+      const key = serverKey(server);
+      const previous = serverStates.get(key);
+      try {
+        const response = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/tasks', {
+          headers: server.token ? { Authorization: 'Bearer ' + server.token } : {},
+          signal: AbortSignal.timeout(6000), redirect: 'error',
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const result = await response.json();
+        if (!Array.isArray(result.tasks)) throw new Error('Invalid task list');
+        if (generation === eventsGeneration && serverStates.get(key) === previous) {
+          serverStates.set(key, { tasks: result.tasks, unavailable: false });
+        }
+      } catch {
+        if (generation === eventsGeneration && serverStates.get(key) === previous) {
+          serverStates.set(key, { tasks: previous?.tasks || [], unavailable: true });
+        }
+      }
+    }));
+    await paintBadge();
+  })().catch(() => {}).finally(() => {
+    badgeRefresh = null;
+    if (generation !== eventsGeneration) void refreshBadge();
+  });
+  return badgeRefresh;
 }
 
 chrome.alarms.create('kimi-badge', { periodInMinutes: 1 });
-chrome.alarms.onAlarm.addListener(a => { if (a.name === 'kimi-badge') refreshBadge(); });
+chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'kimi-badge') void refreshBadge(); });
 chrome.runtime.onInstalled.addListener(refreshBadge);
 chrome.runtime.onStartup.addListener(refreshBadge);
+chrome.tabs.onActivated?.addListener(() => { void paintBadge(); });
+chrome.tabs.onRemoved?.addListener(tabId => { renderedBadges.delete(tabId); });
 
-// WebSocket 事件 → 完成/失败通知（Chrome 116+ 上 WS 活动可延长 Service Worker 存活）
-let ws = null;
-let eventsGeneration = 0;
-let eventsReconnectTimer = null;
 async function connectEvents() {
   const generation = ++eventsGeneration;
   clearTimeout(eventsReconnectTimer);
-  eventsReconnectTimer = null;
-  if (ws) {
-    ws.onclose = ws.onmessage = ws.onerror = null;
-    try { ws.close(); } catch {}
-    ws = null;
+  for (const socket of eventsSockets) {
+    socket.onclose = socket.onmessage = socket.onerror = null;
+    try { socket.close(); } catch {}
   }
-  const c = await cfg();
-  if (generation !== eventsGeneration || !c.notifyComplete) return;
-  const srv = defaultServer(resolveServers(c));
-  let wsUrl = srv.url.replace(/^http/, 'ws').replace(/\/+$/, '') + '/ws';
-  if (srv.token) wsUrl += '?token=' + encodeURIComponent(srv.token);
-  let socket;
-  try { socket = ws = new WebSocket(wsUrl); } catch { return; }
-  socket.onmessage = async (ev) => {
-    try {
+  eventsSockets = [];
+  const config = await cfg();
+  if (generation !== eventsGeneration) return;
+  const servers = taskServers(config);
+  const keys = new Set(servers.map(serverKey));
+  for (const key of serverStates.keys()) if (!keys.has(key)) serverStates.delete(key);
+  for (const server of servers) {
+    const key = serverKey(server);
+    let url = server.url.replace(/^http/, 'ws').replace(/\/+$/, '') + '/ws';
+    if (server.token) url += '?token=' + encodeURIComponent(server.token);
+    let socket;
+    try { socket = new WebSocket(url); } catch { continue; }
+    eventsSockets.push(socket);
+    socket.onmessage = async event => {
       if (generation !== eventsGeneration) return;
-      const m = JSON.parse(ev.data);
-      if (m.type !== 'event') return;
-      if (m.name === 'onDownloadComplete' || m.name === 'onBtComplete' || m.name === 'onDownloadError') {
-        let name = m.gid || '';
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'state' && Array.isArray(message.tasks)) {
+          serverStates.set(key, { tasks: message.tasks, unavailable: false });
+          void paintBadge();
+          return;
+        }
+        if (message.type !== 'event') return;
+        void refreshBadge();
+        const isResult = ['onDownloadComplete', 'onBtComplete', 'onDownloadError'].includes(message.name);
+        if (!isResult || !(await cfg()).notifyComplete) return;
+        let name = message.gid || '';
         try {
-          const h = {};
-          if (srv.token) h['Authorization'] = 'Bearer ' + srv.token;
-          const r = await fetch(srv.url.replace(/\/+$/, '') + '/api/v1/tasks/aria2/' + m.gid, { headers: h });
-          if (r.ok) name = (await r.json()).name || name;
+          const response = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/tasks/aria2/' + message.gid, {
+            headers: server.token ? { Authorization: 'Bearer ' + server.token } : {},
+            signal: AbortSignal.timeout(5000),
+          });
+          if (response.ok) name = (await response.json()).name || name;
         } catch {}
-        if (generation !== eventsGeneration) return;
-        const ok = m.name !== 'onDownloadError';
-        notify(ok ? i18n('taskComplete') : i18n('taskError'), name);
-      }
-    } catch {}
-  };
-  socket.onclose = () => {
-    if (generation === eventsGeneration) eventsReconnectTimer = setTimeout(connectEvents, 10000);
-  };
-  socket.onerror = () => { try { socket.close(); } catch {} };
+        if (generation === eventsGeneration) notify(i18n(message.name === 'onDownloadError' ? 'taskError' : 'taskComplete'), name);
+      } catch {}
+    };
+    socket.onclose = () => {
+      if (generation !== eventsGeneration) return;
+      serverStates.set(key, { tasks: serverStates.get(key)?.tasks || [], unavailable: true });
+      void paintBadge();
+      clearTimeout(eventsReconnectTimer);
+      eventsReconnectTimer = setTimeout(connectEvents, 10000);
+    };
+    socket.onerror = () => { try { socket.close(); } catch {} };
+  }
+  void refreshBadge();
 }
-connectEvents();
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.notifyComplete || changes.serverUrl || changes.apiToken || changes.servers) connectEvents();
+void connectEvents();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.serverUrl || changes.apiToken || changes.servers) void connectEvents();
   if (changes.sniffEnabled) sniffEnabledCache = changes.sniffEnabled.newValue !== false;
   if (changes.sniffRegexRules) sniffRulesCache = Array.isArray(changes.sniffRegexRules.newValue) ? changes.sniffRegexRules.newValue : [];
   if (changes.deepSearch) deepSearchCache = !!changes.deepSearch.newValue;
   if (changes.panelOpenStyle) applyPanelStyle(changes.panelOpenStyle.newValue);
-  // 语言切换：重建右键菜单（createMenus 内部会先 loadI18nOverride）并重连事件流（通知文案用新语言）
   if (changes.locale) {
-    try { createMenus(); } catch (e) {}
-    try { connectEvents(); } catch (e) {}
-  }
+    void createMenus();
+    void loadI18nOverride().then(paintBadge);
+  } else void paintBadge();
 });
 
-refreshBadge();
+void refreshBadge();
+void loadI18nOverride().then(paintBadge).catch(() => {});
+
+// Preview requests may reuse the Referer captured for that media. A session
+// rule is limited to this extension, the preview tab, and the media origin.
+const previewRulesReady = chrome.declarativeNetRequest?.getSessionRules().then(rules => {
+  if (rules.length) return chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: rules.map(rule => rule.id) });
+}).catch(() => {});
+let nextPreviewRule = 1;
+
+chrome.runtime.onConnect?.addListener(port => {
+  if (port.name !== 'foxdown-media-preview' ||
+      port.sender?.url?.split('?')[0] !== chrome.runtime.getURL('popup.html')) return;
+  const id = nextPreviewRule++;
+  let closed = false;
+  let installed = false;
+  let update;
+  port.onMessage.addListener(({ tabId, url }) => {
+    if (update) return;
+    update = (async () => {
+      await previewRulesReady;
+      await mediaRestore;
+      if (closed) return;
+      const media = sniffedMedia.get(tabId)?.get(url);
+      const referer = media?.source === 'network' && media.headers?.referer;
+      if (referer && /^https?:\/\//i.test(referer)) {
+        const target = new URL(url);
+        target.hash = '';
+        const hls = media.type === 'HLS';
+        const pattern = hls ? target.origin + '/' : target.href;
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        await chrome.declarativeNetRequest.updateSessionRules({
+          addRules: [{
+            id,
+            action: { type: 'modifyHeaders', requestHeaders: [{ header: 'Referer', operation: 'set', value: referer }] },
+            condition: {
+              regexFilter: '^' + escaped + (hls ? '' : '$'),
+              isUrlFilterCaseSensitive: true,
+              initiatorDomains: [chrome.runtime.id],
+              tabIds: [port.sender.tab?.id ?? chrome.tabs.TAB_ID_NONE],
+              resourceTypes: ['media', 'xmlhttprequest'],
+            },
+          }],
+        });
+        installed = true;
+      }
+    })().catch(() => {}).then(() => {
+      if (!closed) { try { port.postMessage({ ready: true }); } catch {} }
+    });
+  });
+  port.onDisconnect.addListener(() => {
+    closed = true;
+    void update?.then(() => {
+      if (installed) return chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: [id] });
+    }).catch(() => {});
+  });
+});

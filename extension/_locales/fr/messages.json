@@ -81,7 +81,7 @@
     "message": "Autoriser les requêtes de téléchargement d'autres extensions (API intermédiaire, à activer avec prudence)"
   },
   "mediaTitle": {
-    "message": "Médias de cette page"
+    "message": "Ressources de la page"
   },
   "mediaDownload": {
     "message": "Télécharger"
@@ -93,6 +93,9 @@
   "mediaPreview": {
     "message": "Aperçu",
     "description": "Preview button of a media list item"
+  },
+  "previewClose": {
+    "message": "Fermer l’aperçu"
   },
   "previewFailed": {
     "message": "Échec de l'aperçu : impossible de charger ce média (une connexion ou une protection anti-hotlink peut être requise)"
@@ -172,6 +175,15 @@
   "captureLabel": {
     "message": "Capturer les téléchargements du navigateur"
   },
+  "dashboardHeading": {
+    "message": "Tableau de bord"
+  },
+  "dashboardConnected": {
+    "message": "Connecté"
+  },
+  "dashboardUnavailable": {
+    "message": "Service indisponible"
+  },
   "statActive": {
     "message": "Tâches actives"
   },
@@ -199,6 +211,15 @@
   "stateFailed": {
     "message": "Échec de la connexion : $1",
     "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "batchChoose": {
+    "message": "Choisir les liens à télécharger"
+  },
+  "batchFilter": {
+    "message": "Filtrer par lien ou extension"
+  },
+  "batchSelectVisible": {
+    "message": "Sélectionner les liens visibles"
   },
   "noLinksFound": {
     "message": "Aucun lien téléchargeable trouvé sur cette page"
@@ -469,5 +490,32 @@
   },
   "obDownloadApp": {
     "message": "Télécharger l’application Foxdown"
+  },
+  "badgeSummary": {
+    "message": "Actifs $1 · En attente $2 · Échecs $3"
+  },
+  "handoffFailed": {
+    "message": "Échec de l’envoi du téléchargement"
+  },
+  "pageResourcesCount": {
+    "message": "Ressources de cette page : $1"
+  },
+  "clearErrorHint": {
+    "message": "Effacer l’échec d’envoi"
+  },
+  "sniffEnabledShort": {
+    "message": "Détection automatique"
+  },
+  "sniffEmpty": {
+    "message": "Détection activée. Lancez un média ou rechargez la page pour trouver les médias et pièces jointes."
+  },
+  "sniffDisabled": {
+    "message": "Détection désactivée. Activez-la pour trouver des ressources."
+  },
+  "sniffNoPage": {
+    "message": "Ouvrez une page web pour voir ses ressources."
+  },
+  "downloadErrors": {
+    "message": "$1 problèmes de téléchargement"
   }
 }

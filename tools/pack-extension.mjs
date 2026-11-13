@@ -12,6 +12,7 @@ const OUT_ZIP = path.join(ROOT, 'Foxdown-extension.zip');
 
 // ---- inclusion / exclusion rules -------------------------------------------
 const REQUIRED = [
+  'settings.js', 'options-dashboard.js',
   'manifest.json',
   'background.js', 'content.js', 'i18n.js', 'lib.js',
   'popup.html', 'popup.js', 'options.html', 'options.js',
@@ -25,7 +26,7 @@ const REQUIRED = [
   'vendor/hls.min.js',
   'PRIVACY.md',
 ];
-const EXCLUDE_BASENAMES = new Set(['gen-icons.js', '.DS_Store', 'Thumbs.db', '.env']);
+const EXCLUDE_BASENAMES = new Set(['icon-source.png', 'gen-icons.js', '.DS_Store', 'Thumbs.db', '.env']);
 const EXCLUDE_DIRS = new Set(['store', 'node_modules', '.git']);
 const EXCLUDE_EXT = new Set(['.ts', '.map']);
 

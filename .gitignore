@@ -8,6 +8,7 @@ Foxdown-extension.zip
 /bin/*
 !/bin/.gitkeep
 /extension/icons/*.png
+!/extension/icons/icon-source.png
 /extension/store/icon256.png
 /web/public/*.png
 /.impeccable/

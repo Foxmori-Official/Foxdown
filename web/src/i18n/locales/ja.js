@@ -1,5 +1,6 @@
 export default {
   common: {
+    browse: '参照…',
     connectionTitle: "Foxdown に接続",
     connectionToken: "API トークン（必須）",
     connectionRetry: "接続を再試行",
@@ -149,7 +150,7 @@ export default {
     trackerAutoUpdate: '起動時にトラッカーを自動更新',
     trackerUpdateNow: '今すぐトラッカーを更新',
     seedRatio: 'シード比率',
-    seedRatioHint: '比率到達後にシード停止、0 で常にシード',
+    seedRatioHint: '比率または時間の上限で停止、0 は比率制限なし',
     seedTime: 'シード時間（分）',
     streamThreads: 'ダウンロードスレッド数',
     streamRetry: 'リトライ回数',
@@ -173,6 +174,7 @@ export default {
     trackersUpdated: '{count} 件のトラッカーを更新しました',
     trackerUpdateFailed: 'トラッカーの更新に失敗しました：{msg}',
     groupProxy: 'プロキシ',
+    webApiAddress: '接続先 URL',
     groupRpc: 'RPC / リモートアクセス',
     groupPost: '後処理',
     minSplitSize: '最小分割サイズ',
@@ -218,7 +220,7 @@ export default {
     webhookTest: 'テストリクエストを送信',
     webhookTestResult: 'テストリクエストを送信しました。ステータス {status}',
     webhookTestFailed: 'テストリクエストに失敗：{msg}',
-    postScriptHint: '注入される変数: RDOWN_EVENT / RDOWN_TASK_ID / RDOWN_TASK_NAME / RDOWN_FILE / RDOWN_FILE_COUNT（$1 = イベント、$2 = タスク ID）',
+    postScriptHint: '注入される変数: FOXDOWN_EVENT / FOXDOWN_TASK_ID / FOXDOWN_TASK_NAME / FOXDOWN_FILE / FOXDOWN_FILE_COUNT（$1 = イベント、$2 = タスク ID）',
     speedProfilesLabel: '速度プリセット',
     discard: '変更を破棄',
     factoryReset: '出荷時設定に戻す',

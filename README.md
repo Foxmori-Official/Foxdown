@@ -4,7 +4,7 @@ Foxdown 是面向 macOS 和 Windows 的桌面下载管理器，支持 HTTP、BT�
 
 **简体中文** · [English](docs/README.en.md)
 
-[下载版本](https://github.com/Foxmori-Official/Foxdown/releases) · [接口文档](docs/api.md) · [更新与维护](docs/updates.md) · [界面复核](docs/design-review.md) · [隐私说明](PRIVACY.md)
+[下载版本](https://github.com/Foxmori-Official/Foxdown/releases) · [接口文档](docs/api.md) · [Docker 部署](docs/docker.md) · [更新与维护](docs/updates.md) · [界面复核](docs/design-review.md) · [隐私说明](PRIVACY.md)
 
 ## 安装桌面版
 
@@ -33,6 +33,19 @@ Windows ARM64 应用通过 Windows 11 的 x64 模拟层运行所带下载引擎�
 4. 固定扩展图标，打开演示页并点击下载链接，再到 Foxdown 的「全部」列表查看结果。若接管规则排除了演示文件，也可通过链接右键菜单手动发送。
 
 扩展设置提供下载接管、多服务器路由、通知和媒体嗅探选项。可从扩展菜单重新打开引导。
+
+工具栏角标显示进行中的任务数量，失败或服务不可达时显示红色 `X`。点击扩展可查看失败原因。“本页资源”默认开启自动嗅探，播放媒体或刷新网页后会列出捕获的媒体与附件，也可从扩展设置左侧的仪表盘打开资源窗口。
+
+## 命令行与 MCP
+
+启动 Foxdown 后，可以用命令行查看任务或发送下载。
+
+```sh
+node cli/foxdown.mjs list
+node cli/foxdown.mjs add "https://example.com/file.zip"
+```
+
+`FOXDOWN_SERVER` 指定服务地址，`FOXDOWN_TOKEN` 指定访问令牌。MCP JSON-RPC 接口位于 `POST /mcp`，使用相同的 Web API 令牌。工具列表与请求格式见 [接口文档](docs/api.md)，容器部署见 [Docker 文档](docs/docker.md)。
 
 ## 从源码运行
 

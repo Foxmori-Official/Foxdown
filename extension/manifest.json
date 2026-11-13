@@ -12,6 +12,8 @@
     "notifications",
     "alarms",
     "webRequest",
+    "scripting",
+    "declarativeNetRequestWithHostAccess",
     "cookies",
     "tabs",
     "sidePanel"
@@ -22,10 +24,6 @@
   "externally_connectable": {
     "ids": [
       "*"
-    ],
-    "matches": [
-      "http://*/*",
-      "https://*/*"
     ]
   },
   "background": {
@@ -53,7 +51,6 @@
         "https://*/*"
       ],
       "js": [
-        "lib.js",
         "content.js"
       ],
       "run_at": "document_idle"

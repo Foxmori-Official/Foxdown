@@ -36,11 +36,13 @@ chown -R 1000:1000 data downloads
 | --- | --- | --- |
 | `FOXDOWN_PORT` | `16801` | Web UI / API 端口 |
 | `FOXDOWN_HOST` | `0.0.0.0`（镜像内） | 监听地址 |
-| `API_TOKEN` | 空 | 访问令牌；**暴露到局域网/公网时务必设置**，空 = 无鉴权 |
+| `API_TOKEN` | 空 | 访问令牌，远程访问需要设置；空值只允许回环地址和 Host |
 | `DOWNLOAD_DIR` | `/downloads` | 下载目录（容器内路径） |
 | `DATA_DIR` | `/data` | 数据目录（容器内路径） |
 
 环境变量优先级高于 `data/settings.json`，适合 NAS 图形界面直接配置。
+
+通过反向代理访问 Web UI 时，保留浏览器访问地址对应的 Host。Origin 校验会拒绝其他网站向下载服务发起的请求。
 
 ## 群晖 DSM
 

@@ -6,21 +6,21 @@ import crypto from 'node:crypto';
  *        <Channels> <FrameRate> <VideoRange> <GroupId> <Name> <Host> <Date>
  */
 
-// 同时兼容 {Var}（推荐，Windows 直觉安全）与 <Var>（N_m3u8DL-RE 旧习惯）两种写法
-const VAR_RE = /{([A-Za-z]+)}|<([A-Za-z]+)>/g;
+// 兼容 {Var}、<Var> 和扩展使用的 ${var}。
+const VAR_RE = /\$?{([A-Za-z]+)}|<([A-Za-z]+)>/g;
 
 export function renderNameTemplate(pattern, vars = {}) {
   if (!pattern) return vars.SaveName || vars.Name || '';
   const map = {
-    SaveName: vars.SaveName, Id: vars.Id, Codecs: vars.Codecs, Language: vars.Language,
-    Resolution: vars.Resolution, Bandwidth: vars.Bandwidth != null ? String(vars.Bandwidth) : undefined,
-    MediaType: vars.MediaType, Channels: vars.Channels != null ? String(vars.Channels) : undefined,
-    FrameRate: vars.FrameRate != null ? String(vars.FrameRate) : undefined,
-    VideoRange: vars.VideoRange, GroupId: vars.GroupId, Name: vars.Name,
-    Host: vars.Host, Date: vars.Date || new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+    savename: vars.SaveName, filename: vars.SaveName, id: vars.Id, codecs: vars.Codecs, language: vars.Language,
+    resolution: vars.Resolution, bandwidth: vars.Bandwidth,
+    mediatype: vars.MediaType, channels: vars.Channels, framerate: vars.FrameRate,
+    videorange: vars.VideoRange, groupid: vars.GroupId, name: vars.Name,
+    host: vars.Host, date: vars.Date || new Date().toISOString().slice(0, 10).replace(/-/g, ''),
   };
   return String(pattern).replace(VAR_RE, (_, k1, k2) => {
-    const v = map[k1 || k2];
+    const key = (k1 || k2).toLowerCase();
+    const v = Object.hasOwn(map, key) ? map[key] : undefined;
     return v === undefined || v === null || v === '' ? '' : String(v);
   });
 }

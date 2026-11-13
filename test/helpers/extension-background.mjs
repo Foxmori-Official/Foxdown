@@ -3,9 +3,9 @@ import vm from 'node:vm';
 
 export function backgroundFixture({ persisted = {}, missingWindows = [] } = {}) {
   const session = structuredClone(persisted);
-  const sync = { enabled: true, askBeforeDownload: true, domainMode: 'off', extMode: 'off', minSizeMB: 0, captureUnknownSize: true };
+  const local = { enabled: true, askBeforeDownload: true, domainMode: 'off', extMode: 'off', minSizeMB: 0, captureUnknownSize: true };
   const listeners = {};
-  const calls = { resume: [], cancel: [], erase: [], windows: [], fetch: [], sockets: [], alarms: [] };
+  const calls = { resume: [], cancel: [], erase: [], windows: [], fetch: [], sockets: [], alarms: [], rules: [], badges: [], badgeColors: [], titles: [] };
   const handlers = {};
   const event = key => ({ addListener: callback => {
     (handlers[key] ||= []).push(callback);
@@ -14,7 +14,7 @@ export function backgroundFixture({ persisted = {}, missingWindows = [] } = {}) 
   const noopEvent = () => ({ addListener: () => {} });
   const chrome = {
     storage: {
-      sync: { get: async defaults => ({ ...defaults, ...sync }), set: async patch => Object.assign(sync, patch) },
+      local: { get: async defaults => ({ ...defaults, ...local }), set: async patch => Object.assign(local, patch) },
       session: {
         get: async key => structuredClone(typeof key === 'string' ? { [key]: session[key] } : session),
         set: async patch => Object.assign(session, structuredClone(patch)),
@@ -42,16 +42,30 @@ export function backgroundFixture({ persisted = {}, missingWindows = [] } = {}) 
     contextMenus: { removeAll: () => {}, create: () => {}, onClicked: noopEvent() },
     runtime: {
       id: 'isolated-test', getURL: path => `chrome-extension://isolated-test/${path}`,
-      onInstalled: noopEvent(), onStartup: noopEvent(), onMessage: event('message'),
+      onInstalled: noopEvent(), onStartup: noopEvent(), onMessage: event('message'), onMessageExternal: event('externalMessage'),
+      onConnect: event('connect'),
     },
     notifications: { create: () => {} },
+    declarativeNetRequest: {
+      getSessionRules: async () => [],
+      updateSessionRules: async options => calls.rules.push(options),
+    },
     alarms: { create: (name, options) => calls.alarms.push({ name, ...options }), onAlarm: event('alarm') },
-    action: { setBadgeText: () => {}, setBadgeBackgroundColor: () => {}, setPopup: () => {}, onClicked: noopEvent() },
+    action: {
+      setBadgeText: options => calls.badges.push(options),
+      setTitle: options => calls.titles.push(options),
+      setBadgeBackgroundColor: options => calls.badgeColors.push(options), setPopup: () => {}, onClicked: noopEvent(),
+    },
     commands: { onCommand: noopEvent() }, i18n: { getMessage: key => key },
   };
-  const controls = { post: async () => ({ ok: true, json: async () => ({ id: 'fake-task' }) }), timeouts: [] };
+  const controls = {
+    post: async () => ({ ok: true, json: async () => ({ id: 'fake-task' }) }),
+    get: async () => ({ ok: true, json: async () => ({ tasks: [], numActive: 0 }) }), timeouts: [],
+  };
   const context = vm.createContext({
-    chrome, console, URL, AbortController,
+    chrome, console, URL, AbortController, importScripts: () => {},
+    readSettings: defaults => chrome.storage.local.get(defaults),
+    writeSettings: patch => chrome.storage.local.set(patch),
     AbortSignal: { timeout: milliseconds => {
       const controller = new AbortController();
       controls.timeouts.push({ milliseconds, controller });
@@ -59,7 +73,7 @@ export function backgroundFixture({ persisted = {}, missingWindows = [] } = {}) 
     } }, navigator: { userAgent: 'Test' },
     setInterval: () => 0, setTimeout, clearTimeout, clearInterval: () => {},
     fetch: (...args) => {
-      if (args[1]?.method !== 'POST') return Promise.resolve({ ok: true, json: async () => ({ numActive: 0 }) });
+      if (args[1]?.method !== 'POST') return controls.get(...args);
       calls.fetch.push(args); return controls.post(...args);
     },
     WebSocket: class {
@@ -71,8 +85,9 @@ export function backgroundFixture({ persisted = {}, missingWindows = [] } = {}) 
   vm.runInContext(read('lib.js') + '\n' + read('background.js') + `\n;globalThis.testing = {
     addPendingConfirm, getPendingConfirm, pendingConfirms, confirmPendingDownload, cancelPendingDownload,
     pendingRestore, sweepPendingConfirms, sniffedMedia, sniffHeaderMap, addDeepSearchMedia, connectEvents,
+    mediaRestore, confirmPageLinks, submitPageLinks, maybeAutoDownload, refreshBadge, downloadStatus,
   };`, context);
-  return { ...context.testing, chrome, calls, controls, session, sync, listeners };
+  return { ...context.testing, chrome, calls, controls, session, local, listeners };
 }
 
 export async function waitFor(predicate) {

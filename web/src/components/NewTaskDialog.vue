@@ -136,7 +136,11 @@
       <el-collapse-item :title="t('dialog.advanced')" name="adv">
         <el-form label-width="110px" size="small">
           <el-form-item :label="t('dialog.saveDir')">
-            <el-input v-model="adv.dir" :placeholder="t('dialog.saveDirPlaceholder')" />
+            <el-input v-model="adv.dir" :placeholder="t('dialog.saveDirPlaceholder')">
+              <template v-if="desktop?.selectDirectory" #append>
+                <el-button @click="pickSaveDir">{{ t('common.browse') }}</el-button>
+              </template>
+            </el-input>
           </el-form-item>
           <el-form-item :label="t('dialog.fileName')">
             <el-input v-model="adv.out" :placeholder="t('dialog.fileNamePlaceholder')" />
@@ -198,6 +202,7 @@ import { api } from '../api/client'
 import { formatBytes } from '../utils/format'
 
 const { t } = useI18n()
+const desktop = globalThis.window?.foxdownDesktop
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false }
@@ -232,6 +237,15 @@ const adv = ref({
   split: 16,
   maxConnectionPerServer: 16
 })
+
+async function pickSaveDir() {
+  try {
+    const selected = await desktop.selectDirectory(adv.value.dir)
+    if (selected) adv.value.dir = selected
+  } catch (error) {
+    ElMessage.error(error.message)
+  }
+}
 
 const urlLines = computed(() =>
   urlsText.value.split('\n').map((s) => s.trim()).filter(Boolean)

@@ -1,4 +1,4 @@
-// i18n 手动切换覆盖层测试：mock chrome（storage.sync / runtime.getURL / i18n.getMessage /
+// i18n 手动切换覆盖层测试：mock chrome（storage.local / runtime.getURL / i18n.getMessage /
 // i18n.getUILanguage），fetch 映射到本地 extension/_locales/<目录>/messages.json，
 // vm 加载 extension/i18n.js。
 // 断言：非 auto 返回覆盖语言消息、$1..$N 占位替换、auto 按浏览器 UI 语言解析
@@ -18,14 +18,14 @@ function assert(cond, name) {
   else { fail++; console.log('  ✗', name); }
 }
 
-// locale: storage.sync.get({locale:'auto'}) 返回的 locale 值（undefined = 未设置过）
+// locale: storage.local.get({locale:'auto'}) 返回的 locale 值（undefined = 未设置过）
 // uiLang: mock 的浏览器 UI 语言（chrome.i18n.getUILanguage 返回值，默认 ru = 不支持）
 function makeCtx(locale, uiLang = 'ru') {
   const storageData = {};
   if (locale !== undefined) storageData.locale = locale;
   const chrome = {
     storage: {
-      sync: {
+      local: {
         get: async (defaults) => ({ ...defaults, ...storageData }),
         set: async (obj) => Object.assign(storageData, obj),
       },
@@ -37,7 +37,7 @@ function makeCtx(locale, uiLang = 'ru') {
     },
   };
   const sandbox = {
-    chrome, console,
+    chrome, console, readSettings: defaults => chrome.storage.local.get(defaults),
     fetch: async (url) => {
       try {
         const text = fs.readFileSync(path.join(EXT, String(url)), 'utf8');

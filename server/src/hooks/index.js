@@ -5,7 +5,7 @@ import path from 'node:path';
 /**
  * Post-processing hooks (Gopeed-style webhook / post-script / auto-extract):
  *  - POST settings.webhookUrl on task complete/error (JSON {event, task})
- *  - run settings.postScript with RDOWN_EVENT/RDOWN_TASK_ID/RDOWN_TASK_NAME/RDOWN_FILE_* env
+ *  - run settings.postScript with FOXDOWN_* task variables (and legacy RDOWN_* aliases)
  *  - auto-extract zip/tar/tgz when settings.autoExtract (Windows built-in tar.exe = bsdtar)
  */
 export class HookRunner {
@@ -36,16 +36,21 @@ export class HookRunner {
     const script = this.settings.postScript;
     if (!script) return;
     const files = (task.files || []).map(f => f.path || f).filter(Boolean);
+    const taskEnv = {
+      EVENT: event,
+      TASK_ID: String(task.id || ''),
+      TASK_NAME: String(task.name || ''),
+      FILE: files[0] || '',
+      FILE_COUNT: String(files.length),
+    };
+    const env = { ...process.env };
+    for (const [key, value] of Object.entries(taskEnv)) {
+      env['FOXDOWN_' + key] = value;
+      env['RDOWN_' + key] = value;
+    }
     await new Promise((resolve) => {
-      const p = spawn(script, [event, String(task.id || '')], {
-        env: {
-          ...process.env,
-          RDOWN_EVENT: event,
-          RDOWN_TASK_ID: String(task.id || ''),
-          RDOWN_TASK_NAME: String(task.name || ''),
-          RDOWN_FILE: files[0] || '',
-          RDOWN_FILE_COUNT: String(files.length),
-        },
+      const p = spawn(script, [event, taskEnv.TASK_ID], {
+        env,
         shell: process.platform === 'win32',
         windowsHide: true,
         timeout: 300000,

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="theme.css">
   <style>
     :root { color-scheme: light dark; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; max-width: 860px; margin: 24px auto; padding: 0 16px 40px; color: var(--text); background: var(--bg); }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; max-width: 1240px; margin: 0 auto; padding: 32px; color: var(--text); background: var(--bg); }
     :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
     h1 { font-size: 25px; display: flex; align-items: center; gap: 8px; }
     h1 img { width: 24px; height: 24px; }
@@ -48,10 +48,53 @@
     .save-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px; margin-top: 24px; padding: 12px 0; border-top: 1px solid var(--border); background: var(--bg); }
     #status { margin: 0; overflow-wrap: anywhere; }
     button:disabled { opacity: .55; cursor: wait; }
+    .settings-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 40px; align-items: start; }
+    .dashboard { position: sticky; top: 32px; padding: 28px; border-radius: 22px; background: #294e37; color: #fff1d6; box-shadow: 0 12px 32px #182b2010; }
+    .brand-lockup { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 650; letter-spacing: -.6px; }
+    .brand-lockup img { width: 48px; height: 48px; border-radius: 12px; }
+    .dashboard h2 { color: #c4d3b9; font-size: 12px; font-weight: 500; margin: 32px 0 14px; padding: 0; border: 0; }
+    .connection-state { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .connection-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #d5ad8c; }
+    .connection-dot.online { background: #b9dba5; box-shadow: 0 0 0 4px #b9dba514; }
+    .dashboard-server { color: #c4d3b9; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; margin: 10px 0 28px; }
+    .dashboard-metrics { margin: 0; }
+    .dashboard-metrics > div { padding: 20px 0; border-top: 1px solid #fff1d620; }
+    .dashboard-metrics dt { font-size: 12px; color: #c4d3b9; font-weight: 400; }
+    .dashboard-metrics dd { font-size: 25px; font-variant-numeric: tabular-nums; letter-spacing: -.6px; margin: 8px 0 0; }
+    .dashboard-metrics .primary-metric dd { font-size: 30px; }
+    .task-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    #dashboardOpen { width: 100%; margin-top: 14px; background: #fff1d6; color: #294e37; font-weight: 600; }
+    #dashboardOpen:hover { background: #ffe3b7; }
+    #dashboardResources { width: 100%; margin-top: 10px; color: #fff1d6; background: transparent; border: 1px solid #fff1d640; }
+    #dashboardResources:hover { background: #fff1d610; }
+    .settings-content { min-width: 0; border: 1px solid var(--border); background: var(--card-bg); padding: 28px 32px 0; border-radius: 22px; }
+    .settings-content h1 { margin: 0 0 28px; font-size: 23px; font-weight: 650; letter-spacing: -.5px; }
+    .settings-content h2 { margin-top: 32px; padding-bottom: 12px; }
+    .settings-content input, .settings-content textarea, .settings-content select { min-width: 0; }
+    .settings-content .row { align-items: flex-start; }
+    .settings-content input[type=checkbox] { accent-color: var(--brand); flex: none; margin-top: 3px; }
+    .save-bar { background: var(--card-bg); padding: 16px 0; }
+    @media (max-width: 980px) { body { padding: 24px; } .settings-layout { grid-template-columns: 240px minmax(0, 1fr); gap: 24px; } .dashboard { top: 24px; padding: 24px; } .settings-content { padding: 24px 24px 0; } }
+    @media (max-width: 700px) { body { padding: 16px; } .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; } .dashboard { position: static; } .dashboard-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; } .task-metrics { grid-column: 1 / -1; } .dashboard-server { margin-bottom: 16px; } .settings-content { padding: 22px 20px 0; } }
   </style>
 </head>
 <body>
-  <h1><img src="icons/icon48.png" alt=""><span data-i18n="optHeading">Foxdown 连接器设置</span></h1>
+  <div class="settings-layout">
+  <aside class="dashboard" aria-labelledby="dashboardHeading">
+    <div class="brand-lockup"><img src="icons/icon128.png" alt=""><span>Foxdown</span></div>
+    <h2 id="dashboardHeading" data-i18n="dashboardHeading">仪表盘</h2>
+    <div class="connection-state"><span id="dashboardDot" class="connection-dot"></span><span id="dashboardConnection" data-i18n="dashboardUnavailable">服务不可达</span></div>
+    <p id="dashboardServer" class="dashboard-server">—</p>
+    <dl class="dashboard-metrics">
+      <div class="primary-metric"><dt data-i18n="statSpeed">总下载速度</dt><dd id="dashboardDownload">—</dd></div>
+      <div><dt data-i18n="statUpspeed">总上传速度</dt><dd id="dashboardUpload">—</dd></div>
+      <div class="task-metrics"><div><dt data-i18n="statActive">活跃任务</dt><dd id="dashboardActive">—</dd></div><div><dt data-i18n="statWaiting">等待任务</dt><dd id="dashboardWaiting">—</dd></div></div>
+    </dl>
+    <button id="dashboardOpen" type="button" data-i18n="openPanelBtn">管理面板</button>
+    <button id="dashboardResources" type="button" data-i18n="mediaTitle">本页资源</button>
+  </aside>
+  <main class="settings-content">
+  <h1><span data-i18n="optHeading">Foxdown 连接器设置</span></h1>
 
   <h2 data-i18n="langTitle">语言</h2>
   <label><span data-i18n="langLabel">界面语言</span>
@@ -68,7 +111,7 @@
       <option value="ko">한국어</option>
     </select>
   </label>
-  <div class="hint" data-i18n="langHint">切换语言后扩展将自动重载，使所有界面生效</div>
+  <div class="hint" data-i18n="langHint">语言切换后立即生效，无需重载扩展。</div>
 
   <h2 data-i18n="optServerSection">服务器</h2>
   <label><span data-i18n="optServerUrl">服务器地址</span>
@@ -196,8 +239,12 @@
     <div id="status" role="status"></div>
   </footer>
 
+  </main>
+  </div>
+  <script src="settings.js"></script>
   <script src="i18n.js"></script>
   <script src="connection.js"></script>
   <script src="options.js"></script>
+  <script src="options-dashboard.js"></script>
 </body>
 </html>

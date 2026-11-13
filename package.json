@@ -17,6 +17,7 @@
     "engines": "node tools/download-engines.mjs",
     "upstream:report": "node tools/upstream-report.mjs",
     "prebuild:web": "npm run assets",
+    "test:desktop-multiconnection": "node test/desktop-multiconnection-smoke.mjs",
     "test:desktop-engine": "node test/desktop-engine-smoke.mjs",
     "test:desktop-extension": "node test/desktop-extension-smoke.mjs"
   },
@@ -102,7 +103,7 @@
       "target": [
         "dir"
       ],
-      "icon": "web/public/logo.png",
+      "icon": "web/public/icon-mac.png",
       "category": "public.app-category.utilities",
       "notarize": false,
       "identity": "-",

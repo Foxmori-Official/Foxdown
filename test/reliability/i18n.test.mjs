@@ -8,8 +8,7 @@ test('late locale responses cannot overwrite newer language or metadata', async 
   const source = fs.readFileSync(new URL('../../extension/i18n.js', import.meta.url), 'utf8');
   let locale = 'de';
   const pending = new Map();
-  const context = vm.createContext({ chrome: {
-    storage: { sync: { get: async () => ({ locale }) } },
+  const context = vm.createContext({ readSettings: async () => ({ locale }), chrome: {
     i18n: { getUILanguage: () => 'en', getMessage: () => 'native-English' },
     runtime: { getURL: file => file },
   }, fetch: url => new Promise(resolve => pending.set(url, resolve)) });

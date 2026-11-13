@@ -14,9 +14,8 @@ export const BIN_DIR = path.resolve(process.env.FOXDOWN_BIN_DIR || process.env.K
 export const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(ROOT, 'data');
-export const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR
-  ? path.resolve(process.env.DOWNLOAD_DIR)
-  : path.join(ROOT, 'downloads');
+export const DOWNLOAD_DIR = path.resolve(process.env.DOWNLOAD_DIR || process.env.FOXDOWN_DEFAULT_DOWNLOAD_DIR
+  || path.join(ROOT, 'downloads'));
 export const WEB_DIST = path.join(ROOT, 'web', 'dist');
 
 for (const d of [DATA_DIR, DOWNLOAD_DIR]) fs.mkdirSync(d, { recursive: true });
@@ -31,7 +30,7 @@ export const NM3U8_BIN = path.join(BIN_DIR, process.platform === 'win32' ? 'N_m3
 
 export const ARIA2_RPC_PORT = 16800;
 export const API_PORT = Number(process.env.FOXDOWN_PORT || process.env.KIMI_PORT || process.env.API_PORT) || 16801;
-// 127.0.0.1 by default (desktop); containers set KIMI_HOST=0.0.0.0
+// 127.0.0.1 by default (desktop); containers set FOXDOWN_HOST=0.0.0.0.
 export const API_HOST = process.env.FOXDOWN_HOST || process.env.KIMI_HOST || process.env.API_HOST || '127.0.0.1';
 
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
@@ -65,7 +64,7 @@ export const DEFAULT_SETTINGS = {
   btTrackerSource: 'https://fastly.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt',
   btTrackerAutoUpdate: true,
   seedRatio: 1.0,
-  seedTime: 0,                  // minutes, 0 = unlimited
+  seedTime: 0,                  // minutes; 0 disables seeding after download
   followTorrent: true,
   listenPort: 51413,
   upnpEnabled: false,         // UPnP/NAT-PMP 自动端口映射（Motrix nat-api 方案）

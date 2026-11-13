@@ -49,7 +49,7 @@ function startServer() {
         ELECTRON_RUN_AS_NODE: '1',
         NODE_ENV: 'production',
         DATA_DIR: dataDir,
-        DOWNLOAD_DIR: downloadDir,
+        FOXDOWN_DEFAULT_DOWNLOAD_DIR: downloadDir,
         FOXDOWN_BIN_DIR: binDir,
         FOXDOWN_HOST: '127.0.0.1',
         FOXDOWN_PORT: String(port),
@@ -224,6 +224,19 @@ ipcMain.handle('set-login-item', (event, value) => {
   app.setLoginItemSettings({ openAtLogin: Boolean(value) });
   return { openAtLogin: app.getLoginItemSettings().openAtLogin };
 });
+
+async function choosePath(event, defaultPath, properties) {
+  allowSender(event, appUrl);
+  const result = await dialog.showOpenDialog(mainWindow, {
+    defaultPath: typeof defaultPath === 'string' && defaultPath.trim() ? defaultPath : downloadDir,
+    properties,
+  });
+  return result.canceled ? null : result.filePaths[0] || null;
+}
+ipcMain.handle('select-directory', (event, defaultPath) =>
+  choosePath(event, defaultPath, ['openDirectory', 'createDirectory']));
+ipcMain.handle('select-file', (event, defaultPath) =>
+  choosePath(event, defaultPath, ['openFile']));
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();

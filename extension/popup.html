@@ -28,6 +28,15 @@
     /* 本页媒体 */
     #mediaBox { margin-top: 10px; }
     .media-head { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--ok); }
+    .media-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .media-toolbar h2 { margin: 0; }
+    .sniff-switch { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-dim); }
+    .sniff-switch input { accent-color: var(--brand); }
+    #mediaPage { margin: 8px 0; color: var(--text-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #mediaEmpty { margin: 8px 0; padding: 12px; font-size: 12px; line-height: 1.65; color: var(--text-dim); background: var(--brand-ghost-bg); border-radius: 8px; }
+    .task-errors { margin-top: 12px; padding: 10px; border-radius: 8px; background: var(--err-bg); color: var(--err); font-size: 12px; overflow-wrap: anywhere; }
+    .task-errors ul { padding-left: 18px; margin: 6px 0; }
+    .task-errors button { background: transparent; color: var(--err); text-decoration: underline; font-size: 12px; margin: 0; padding: 4px 0; }
     #mediaList { max-height: 220px; overflow-y: auto; }
     .media-item { display: flex; align-items: center; gap: 6px; padding: 5px 6px; margin: 0 -6px; border-bottom: 1px solid var(--brand-ghost-bg); font-size: 12px; border-radius: 6px; }
     .media-item:hover { background: var(--brand-ghost-bg); }
@@ -45,6 +54,7 @@
     #previewBox video, #previewBox audio { width: 100%; max-height: 180px; border-radius: 6px; background: #000; display: block; }
     #previewErr { font-size: 12px; color: var(--err); margin-top: 6px; display: none; }
     #previewName { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #previewClose { margin-top: 6px; padding: 4px 8px; font-size: 11px; }
     /* 下载前确认模式（popup.html?mode=confirm&token=xxx，360px 独立窗口） */
     #confirmBox { display: none; }
     body.confirm-mode { width: 332px; }
@@ -65,6 +75,15 @@
     #cfCancel { height: 32px; }
     #cfStart:disabled { background: var(--text-dim); cursor: default; }
 
+    #batchBox { display: none; }
+    body.batch-mode { width: auto; }
+    body.batch-mode > *:not(#batchBox) { display: none !important; }
+    body.batch-mode #batchBox { display: block; }
+    #batchList { max-height: 275px; overflow: auto; margin-top: 8px; }
+    #batchList label { display: flex; gap: 8px; align-items: flex-start; padding: 6px 2px; overflow-wrap: anywhere; }
+    #batchList label[hidden] { display: none; }
+    #batchState { color: var(--text-dim); margin-top: 8px; }
+    #batchStart:disabled { opacity: 0.55; cursor: default; }
   </style>
 </head>
 <body>
@@ -77,15 +96,26 @@
   <div class="stat"><span data-i18n="statWaiting">等待任务</span><b id="waiting">-</b></div>
   <div class="stat"><span data-i18n="statSpeed">总下载速度</span><b id="speed">-</b></div>
   <div class="stat"><span data-i18n="statUpspeed">总上传速度</span><b id="upspeed">-</b></div>
-  <div id="mediaBox" style="display:none">
-    <div class="media-head" id="mediaHead"></div>
-    <div id="mediaList"></div>
+  <div id="taskErrors" class="task-errors" hidden>
+    <strong id="taskErrorTitle"></strong>
+    <ul id="taskErrorList"></ul>
+    <button id="clearHandoffError" type="button" data-i18n="clearErrorHint">清除发送失败提示</button>
   </div>
+  <section id="mediaBox">
+    <div class="media-toolbar">
+      <h2 class="media-head" id="mediaHead" data-i18n="mediaTitle">本页资源</h2>
+      <label class="sniff-switch"><input id="sniffCapture" type="checkbox" checked><span data-i18n="sniffEnabledShort">自动嗅探</span></label>
+    </div>
+    <div id="mediaPage"></div>
+    <p id="mediaEmpty" data-i18n="sniffEmpty">嗅探已开启。播放视频、音频或刷新网页后，发现的资源会显示在这里。</p>
+    <div id="mediaList"></div>
+  </section>
   <button id="deepSearch" class="ghost" type="button" style="width:100%;display:none" data-i18n="deepSearchBtn">深度搜索</button>
   <div id="previewBox">
     <div id="previewName"></div>
     <div id="previewPlayer"></div>
     <div id="previewErr"></div>
+    <button id="previewClose" class="ghost" type="button" data-i18n="previewClose">关闭预览</button>
   </div>
   <div id="state"></div>
   <div class="row">
@@ -118,6 +148,21 @@
       <button id="cfCancel" class="ghost" data-i18n="confirmCancel">取消</button>
     </div>
   </div>
+  <div id="batchBox">
+    <h1><img src="icons/icon48.png" alt=""><span data-i18n="batchChoose">选择要下载的链接</span></h1>
+    <div class="cf-row">
+      <label for="batchFilter" data-i18n="batchFilter">按链接或后缀筛选</label>
+      <input type="search" id="batchFilter">
+    </div>
+    <label><input type="checkbox" id="batchAll"> <span data-i18n="batchSelectVisible">选择当前显示的链接</span></label>
+    <div id="batchList"></div>
+    <div id="batchState" role="status"></div>
+    <div class="row">
+      <button id="batchStart" disabled data-i18n="confirmStart">开始下载</button>
+      <button id="batchCancel" class="ghost" data-i18n="confirmCancel">取消</button>
+    </div>
+  </div>
+  <script src="settings.js"></script>
   <script src="i18n.js"></script>
   <script src="popup.js"></script>
 </body>

@@ -81,7 +81,7 @@
     "message": "他の拡張機能からのダウンロード要求を許可（ミドルウェア API、慎重に有効化してください）"
   },
   "mediaTitle": {
-    "message": "このページのメディア"
+    "message": "ページのリソース"
   },
   "mediaDownload": {
     "message": "ダウンロード"
@@ -93,6 +93,9 @@
   "mediaPreview": {
     "message": "プレビュー",
     "description": "Preview button of a media list item"
+  },
+  "previewClose": {
+    "message": "プレビューを閉じる"
   },
   "previewFailed": {
     "message": "プレビューに失敗しました：このメディアを読み込めません（ログインまたはホットリンク保護が必要な場合があります）"
@@ -172,6 +175,15 @@
   "captureLabel": {
     "message": "ブラウザーのダウンロードをキャプチャ"
   },
+  "dashboardHeading": {
+    "message": "ダッシュボード"
+  },
+  "dashboardConnected": {
+    "message": "接続済み"
+  },
+  "dashboardUnavailable": {
+    "message": "サービスに接続できません"
+  },
   "statActive": {
     "message": "アクティブなタスク"
   },
@@ -199,6 +211,15 @@
   "stateFailed": {
     "message": "接続に失敗しました：$1",
     "description": "Popup footer status: connection failed, $1 is the error message"
+  },
+  "batchChoose": {
+    "message": "ダウンロードするリンクを選択"
+  },
+  "batchFilter": {
+    "message": "リンクまたは拡張子で絞り込む"
+  },
+  "batchSelectVisible": {
+    "message": "表示中のリンクを選択"
   },
   "noLinksFound": {
     "message": "このページにダウンロード可能なリンクが見つかりません"
@@ -469,5 +490,32 @@
   },
   "obDownloadApp": {
     "message": "Foxdown デスクトップアプリをダウンロード"
+  },
+  "badgeSummary": {
+    "message": "実行中 $1 · 待機 $2 · 失敗 $3"
+  },
+  "handoffFailed": {
+    "message": "ダウンロードの送信に失敗しました"
+  },
+  "pageResourcesCount": {
+    "message": "このページのリソース: $1"
+  },
+  "clearErrorHint": {
+    "message": "送信エラーを消去"
+  },
+  "sniffEnabledShort": {
+    "message": "自動検出"
+  },
+  "sniffEmpty": {
+    "message": "検出は有効です。メディアを再生するかページを再読み込みすると、メディアや添付ファイルが表示されます。"
+  },
+  "sniffDisabled": {
+    "message": "検出は無効です。自動検出を有効にしてください。"
+  },
+  "sniffNoPage": {
+    "message": "ウェブページを開くとリソースを確認できます。"
+  },
+  "downloadErrors": {
+    "message": "ダウンロードの問題 $1 件"
   }
 }
