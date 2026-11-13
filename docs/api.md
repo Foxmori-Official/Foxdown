@@ -129,4 +129,4 @@ apiToken(""), theme("auto"), locale("zh-CN")
 
 流媒体命名支持 `{SaveName}`、`<SaveName>`、`${fileName}` 三种变量语法。两端共用 SaveName／fileName、Host／host 和 Date／date。扩展的 title、ext 与桌面引擎的 Resolution、Codecs 等变量来自各自可获得的数据。
 
-后处理脚本接收 `FOXDOWN_EVENT`、`FOXDOWN_TASK_ID`、`FOXDOWN_TASK_NAME`、`FOXDOWN_FILE` 和 `FOXDOWN_FILE_COUNT`。`RDOWN_*` 同名变量继续可用。
+后处理脚本接收 `FOXDOWN_EVENT`、`FOXDOWN_TASK_ID`、`FOXDOWN_TASK_NAME`、`FOXDOWN_FILE` 和 `FOXDOWN_FILE_COUNT`。

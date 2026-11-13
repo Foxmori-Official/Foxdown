@@ -9,7 +9,7 @@ export const ROOT = path.resolve(__dirname, '..', '..');
 // Docker/headless overrides: all paths & listen settings can come from env.
 // Defaults are unchanged (desktop layout under the repo root).
 const platformBin = path.join(ROOT, 'bin', (process.platform === 'darwin' ? 'mac' : 'win') + '-' + process.arch);
-export const BIN_DIR = path.resolve(process.env.FOXDOWN_BIN_DIR || process.env.KIMI_BIN_DIR
+export const BIN_DIR = path.resolve(process.env.FOXDOWN_BIN_DIR
   || (fs.existsSync(platformBin) ? platformBin : path.join(ROOT, 'bin')));
 export const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
@@ -29,9 +29,9 @@ export const FFPROBE_BIN = path.join(MEDIA_DIR, process.platform === 'win32' ? '
 export const NM3U8_BIN = path.join(BIN_DIR, process.platform === 'win32' ? 'N_m3u8DL-RE.exe' : 'N_m3u8DL-RE');
 
 export const ARIA2_RPC_PORT = 16800;
-export const API_PORT = Number(process.env.FOXDOWN_PORT || process.env.KIMI_PORT || process.env.API_PORT) || 16801;
+export const API_PORT = Number(process.env.FOXDOWN_PORT || process.env.API_PORT) || 16801;
 // 127.0.0.1 by default (desktop); containers set FOXDOWN_HOST=0.0.0.0.
-export const API_HOST = process.env.FOXDOWN_HOST || process.env.KIMI_HOST || process.env.API_HOST || '127.0.0.1';
+export const API_HOST = process.env.FOXDOWN_HOST || process.env.API_HOST || '127.0.0.1';
 
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 

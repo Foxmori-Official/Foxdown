@@ -279,7 +279,7 @@ async function resolvePageTitle(referer) {
   } catch { return ''; }
 }
 
-async function sendToKimi(url, { referer, filename, headersOverride, extraOptions, pageTitle, reuseActive } = {}) {
+async function sendToFoxdown(url, { referer, filename, headersOverride, extraOptions, pageTitle, reuseActive } = {}) {
   const c = await cfg();
   const servers = resolveServers(c);
   // 路由匹配目标：下载 URL + 文件名（Aria2-Explorer 同款拼接）
@@ -293,7 +293,7 @@ async function sendToKimi(url, { referer, filename, headersOverride, extraOption
     if (out) opts.out = out;
   }
   const result = await postTask(srv, url, { referer, headers, extraOptions: opts, reuseActive });
-  if (!result.reused) notify(i18n('sentToKimi'), filename || opts.out || url);
+  if (!result.reused) notify(i18n('sentToFoxdown'), filename || opts.out || url);
   return result;
 }
 
@@ -459,7 +459,7 @@ async function confirmPendingDownloadNow(token, { filename, split, serverIndex }
     try { await chrome.downloads.cancel(entry.itemId); } catch {}
     try { await chrome.downloads.erase({ id: entry.itemId }); } catch {}
   }
-  notify(i18n('sentToKimi'), extraOptions.out || entry.filename || entry.url);
+  notify(i18n('sentToFoxdown'), extraOptions.out || entry.filename || entry.url);
   return { ok: true };
 }
 
@@ -736,7 +736,7 @@ async function maybeAutoDownload(media) {
   autoSending.add(media.url);
   try {
     const headers = sniffHeadersToLines(media.headers);
-    const result = await sendToKimi(media.url, {
+    const result = await sendToFoxdown(media.url, {
       referer: media.headers?.referer,
       filename: media.filename,
       headersOverride: headers,
@@ -815,7 +815,7 @@ chrome.downloads.onDeterminingFilename.addListener((item) => {
       return;
     }
     try {
-      await sendToKimi(url, { referer: item.referrer, filename: item.filename, reuseActive: true });
+      await sendToFoxdown(url, { referer: item.referrer, filename: item.filename, reuseActive: true });
       await chrome.downloads.cancel(item.id).catch(() => {});
       chrome.downloads.erase({ id: item.id });
     } catch (e) {
@@ -858,9 +858,9 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'kimi-link' && info.linkUrl) {
-    sendToKimi(info.linkUrl, { referer: info.pageUrl }).catch(e => notify(i18n('sendFailed'), String(e)));
+    sendToFoxdown(info.linkUrl, { referer: info.pageUrl }).catch(e => notify(i18n('sendFailed'), String(e)));
   } else if (info.menuItemId === 'kimi-media' && info.srcUrl) {
-    sendToKimi(info.srcUrl, { referer: info.pageUrl }).catch(e => notify(i18n('sendFailed'), String(e)));
+    sendToFoxdown(info.srcUrl, { referer: info.pageUrl }).catch(e => notify(i18n('sendFailed'), String(e)));
   } else if (info.menuItemId === 'kimi-page' && tab?.id != null) {
     try {
       const urls = await chrome.tabs.sendMessage(tab.id, { type: 'kimi-collect-links' });
@@ -1002,7 +1002,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'MAGNET_DOWNLOAD' && msg.url) {
     cfg().then(c => {
       if (c.enabled && c.captureMagnet) {
-        sendToKimi(msg.url, { referer: msg.referer }).catch(e => notify(i18n('sendFailed'), String(e)));
+        sendToFoxdown(msg.url, { referer: msg.referer }).catch(e => notify(i18n('sendFailed'), String(e)));
       }
     });
   }
@@ -1026,7 +1026,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const media = sniffedMedia.get(msg.tabId)?.get(msg.url);
         // m3u8/mpd 由后端识别为流媒体任务，其他按普通任务；均携带捕获的请求头
         const headers = media ? sniffHeadersToLines(media.headers) : await buildHeaders(msg.url, msg.referer);
-        await sendToKimi(msg.url, {
+        await sendToFoxdown(msg.url, {
           referer: media?.headers?.referer || msg.referer,
           filename: media?.filename,
           headersOverride: headers
@@ -1138,7 +1138,7 @@ chrome.runtime.onMessageExternal?.addListener((msg, sender, sendResponse) => {
       const extraOptions = sanitizeExternalOptions(msg.options);
       if (filename && !extraOptions.out) extraOptions.out = filename;
       await postTask(srv, url, { referer, headers, extraOptions });
-      notify(i18n('sentToKimi'), filename || url);
+      notify(i18n('sentToFoxdown'), filename || url);
       sendResponse({ ok: true });
     } catch (e) {
       try { sendResponse({ error: String(e.message || e) }); } catch {}

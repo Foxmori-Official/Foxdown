@@ -91,7 +91,7 @@ try {
   }));
   backend = spawn(process.execPath, [path.join(root, 'server/src/index.js')], {
     env: {
-      ...process.env, KIMI_HOST: '127.0.0.1', KIMI_PORT: String(apiPort),
+      ...process.env, FOXDOWN_HOST: '127.0.0.1', FOXDOWN_PORT: String(apiPort),
       DATA_DIR: data, DOWNLOAD_DIR: downloads, FOXDOWN_BIN_DIR: bin, API_TOKEN: token,
     },
     stdio: ['ignore', 'inherit', 'inherit', 'ipc'],

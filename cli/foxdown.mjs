@@ -8,8 +8,8 @@
 //   node cli/foxdown.mjs watch [--stats]        # NDJSON 每行 {ts,tasks:[...]}，1Hz
 //   node cli/foxdown.mjs doctor
 // 配置: --server URL / --token T（或环境变量 FOXDOWN_SERVER / FOXDOWN_TOKEN）
-const BASE = ((process.env.FOXDOWN_SERVER || process.env.RDOWN_SERVER) || 'http://127.0.0.1:16801').replace(/\/+$/, '');
-const TOKEN = (process.env.FOXDOWN_TOKEN || process.env.RDOWN_TOKEN) || '';
+const BASE = (process.env.FOXDOWN_SERVER || 'http://127.0.0.1:16801').replace(/\/+$/, '');
+const TOKEN = process.env.FOXDOWN_TOKEN || '';
 
 // 管道被下游（如 head）关闭时安静退出
 process.stdout.on('error', (e) => { if (e.code === 'EPIPE') process.exit(0); throw e; });

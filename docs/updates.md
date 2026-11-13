@@ -18,7 +18,7 @@ node tools/upstream-report.mjs upstream-report.md
 1. 从报告打开对应的发布说明、提交或差异。记录上游 URL、提交或标签、受影响的 Foxdown 模块和用户能观察到的变化。
 2. 核对接口、许可证和运行平台。安装包始终内置所需引擎。涉及引擎时，对比 RPC 选项、分段和续传行为，核对每种系统架构的文件和 SHA-256。涉及扩展时，重点看 Chrome／Edge 的权限、MV3 事件和请求头。
 3. 把选中的改动实现为独立提交。PR 说明记录来源、选择理由、验证结果及回退方式。下载引擎升级还需验证从旧版会话恢复的路径。
-4. 运行 `npm test`、`npm run test:web-build`、`npm run test:desktop-engine` 和 `npm run pack:extension`。涉及安装引导、浏览器接管或 Electron 的改动，需要在相应入口实际操作。
+4. 运行 `npm test`、`npm run test:web-build`、`npm run test:desktop-engine` 和 `npm run pack:extension`。涉及安装引导、浏览器接管或 Electron 的改动，需要在相应入口实际操作。Docker 在 GitHub 从干净源码构建并验证非 root 启动、引擎、网页资源和鉴权。
 5. 审阅完成后再更新对应项目的 `baseline`。决定暂缓的改动可在 PR 或 issue 记录原因和原始链接。
 
 ## 发布 Foxdown

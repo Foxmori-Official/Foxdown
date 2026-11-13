@@ -432,7 +432,7 @@ try {
     }
     throw new Error('An intercepted download must display badge 1 on every tab');
   }, mediaTabId);
-  const repeatedCapture = await worker.evaluate(({ url, referer }) => sendToKimi(url, {
+  const repeatedCapture = await worker.evaluate(({ url, referer }) => sendToFoxdown(url, {
     referer, filename: 'slow.bin', reuseActive: true,
   }), { url: mediaOrigin + '/slow.bin', referer: mediaOrigin + '/watch' });
   assert.equal(repeatedCapture.reused, true, 'A repeated automatic handoff should return the active task');
@@ -443,7 +443,7 @@ try {
     assert.ok(attempt < 200, 'The intercepted slow file must finish downloading');
     await delay(100);
   }
-  await worker.evaluate(url => sendToKimi(url), mediaOrigin + '/missing.bin');
+  await worker.evaluate(url => sendToFoxdown(url), mediaOrigin + '/missing.bin');
   await worker.evaluate(async () => {
     for (let attempt = 0; attempt < 100; attempt++) {
       if (await chrome.action.getBadgeText({}) === 'X') return;

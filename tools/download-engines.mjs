@@ -115,7 +115,7 @@ async function prepare(binDir, arch) {
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
   const arch = process.argv.find(arg => arg.startsWith('--arch='))?.slice(7) || process.arch;
   const folder = (process.platform === 'darwin' ? 'mac' : 'win') + '-' + arch;
-  const dir = process.env.FOXDOWN_BIN_DIR || process.env.KIMI_BIN_DIR || fileURLToPath(new URL('../bin/' + folder + '/', import.meta.url));
+  const dir = process.env.FOXDOWN_BIN_DIR || fileURLToPath(new URL('../bin/' + folder + '/', import.meta.url));
   prepare(dir, arch).then(() => console.log(`Bundled engines ready in ${dir}`)).catch(error => {
     console.error(error.message);
     process.exitCode = 1;

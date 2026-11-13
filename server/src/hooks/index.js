@@ -5,7 +5,7 @@ import path from 'node:path';
 /**
  * Post-processing hooks (Gopeed-style webhook / post-script / auto-extract):
  *  - POST settings.webhookUrl on task complete/error (JSON {event, task})
- *  - run settings.postScript with FOXDOWN_* task variables (and legacy RDOWN_* aliases)
+ *  - run settings.postScript with FOXDOWN_* task variables
  *  - auto-extract zip/tar/tgz when settings.autoExtract (Windows built-in tar.exe = bsdtar)
  */
 export class HookRunner {
@@ -46,7 +46,6 @@ export class HookRunner {
     const env = { ...process.env };
     for (const [key, value] of Object.entries(taskEnv)) {
       env['FOXDOWN_' + key] = value;
-      env['RDOWN_' + key] = value;
     }
     await new Promise((resolve) => {
       const p = spawn(script, [event, taskEnv.TASK_ID], {

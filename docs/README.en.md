@@ -33,11 +33,13 @@ Refresh open pages after updating the extension. This README describes the curre
 
 ## What you can do
 
-- **Manage file downloads.** Use multiple connections and segments, pause and resume tasks, submit batches, and retry failed downloads.
+- **Manage file downloads.** Use multiple connections and segments, pause and resume tasks, submit batches, and retry failed downloads. Duplicate files receive new names; clearing completed records keeps files on disk.
 - **Download torrents and magnet links.** Add a torrent file or magnet link and monitor the task in the desktop app.
 - **Save streams.** Download HLS/DASH streams, select audio and video tracks, and remux completed downloads to MP4.
 - **Capture browser downloads.** Apply domain, file-type, and size rules, or send a link from its context menu. Failed handoffs fall back to the browser.
 - **Find page resources.** Detection is enabled by default. Reload a page or play media, then use **Page resources** to inspect media and attachments, preview them, or select downloads.
+
+The desktop app and extension support Simplified Chinese and English, including automatic system-language selection.
 
 The extension settings dashboard opens the resource window and shows connection status. Toolbar badges provide a quick status check:
 
@@ -68,7 +70,7 @@ npm run dev-electron
 
 Engines are downloaded and verified during the build. See the [desktop development guide](electron.md) for tests and packaging commands, and the [update and release guide](updates.md) for maintenance. Development builds are available from successful [GitHub Actions runs](https://github.com/Foxmori-Official/Foxdown/actions/workflows/desktop.yml).
 
-More: [CLI, API, and MCP](api.md) · [Docker deployment](docker.md) · [Download and resource detection verification](download-and-detection-verification.md)
+More: [CLI, API, and MCP](api.md) · [Docker deployment](docker.md) · [Functional, performance, and security verification](verification.md)
 
 ## Acknowledgements and license
 

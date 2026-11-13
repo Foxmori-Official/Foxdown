@@ -28,7 +28,7 @@ async function checkServerHealth(url, token) {
   if (!response.ok) throw new Error('obTestFail');
 
   const health = await response.json().catch(() => null);
-  if (health?.ok !== true || !['foxdown', 'rdown'].includes(health.app)) throw new Error('serverNotFoxdown');
+  if (health?.ok !== true || health.app !== 'foxdown') throw new Error('serverNotFoxdown');
   if (!health.aria2) throw new Error('serverEngineUnavailable');
   return health;
 }

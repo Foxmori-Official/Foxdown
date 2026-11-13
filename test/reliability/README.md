@@ -5,7 +5,6 @@ dependencies:
 
 ```sh
 npm test
-npm run build:web
 npm run test:web-build # production bundle graph + initial JS/CSS budgets
 ```
 
@@ -35,6 +34,11 @@ runs these Node built-in tests with at most three test files concurrently:
   REST credentials/status handling and unavailable session storage.
 - `i18n.test.mjs`: late locale responses cannot overwrite a newer selection or
   its HTML language metadata. The existing UI tests cover title/lang updates.
+- `audit-investigation.test.mjs`: settings validation, tokenless browser permissions,
+  symlink confinement, atomic persistence and configuration restart behavior.
+- `independent-audit.test.mjs`: malformed torrents, bounded metadata, DASH expansion,
+  output collisions, stream lifecycle, simulated external processes and UPnP gateways.
+- `release.test.mjs`: version consistency and Chinese-only release notes.
 
 No real engine subprocesses, remote API services, user credentials or real file
 transfers are used. Server tests bind only to `127.0.0.1` on an ephemeral port;
@@ -46,7 +50,7 @@ checks are mock/VM regressions, not real-browser extension end-to-end tests.
 The Web UI registers only the Element Plus components used by each Vue file,
 including their component styles. Loading/message/message-box services remain
 explicitly registered. `web.test.mjs` verifies template registration, accessible
-navigation and icon-only action labels, all nine locale message syntax trees,
+navigation and icon-only action labels, both locale message syntax trees,
 and literal filename-pattern brace rendering.
 
 `npm run test:web-build` writes a production Vite manifest, then checks the entire

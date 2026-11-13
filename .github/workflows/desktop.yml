@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: '发布标签，例如 v0.0.1；留空则仅构建'
+        description: '发布标签，例如 v0.0.2；留空则仅构建'
         required: false
         type: string
       native_mac_arm64:
@@ -160,10 +160,53 @@ jobs:
           name: Foxdown-extension
           path: Foxdown-extension.zip
           if-no-files-found: error
+  headless:
+    name: Docker 无头服务
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: 从干净源码构建容器
+        run: docker build -t foxdown:ci .
+      - name: 验证非 root 服务和内置资源
+        run: |
+          docker run -d --name foxdown-ci --read-only --tmpfs /tmp --tmpfs /data:uid=1000,gid=1000 --tmpfs /downloads:uid=1000,gid=1000 -p 127.0.0.1:16801:16801 -e API_TOKEN=headless-ci-fixture foxdown:ci
+          test "$(docker exec foxdown-ci id -u)" = '1000'
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { setTimeout as delay } from 'node:timers/promises';
+          const base = 'http://127.0.0.1:16801';
+          const headers = { Authorization: 'Bearer headless-ci-fixture' };
+          let ready = false;
+          for (let attempt = 0; attempt < 40; attempt++) {
+            try {
+              const response = await fetch(base + '/api/v1/health', { headers, signal: AbortSignal.timeout(1000) });
+              const health = await response.json();
+              if (response.ok && health.app === 'foxdown' && health.aria2 && health.ffmpeg) { ready = true; break; }
+            } catch {}
+            await delay(500);
+          }
+          assert.ok(ready, '容器内 aria2 和 FFmpeg 必须正常启动');
+          assert.equal((await fetch(base + '/api/v1/settings')).status, 401);
+          for (const file of ['/', '/logo.png', '/favicon.png']) {
+            const response = await fetch(base + file);
+            assert.equal(response.status, 200, file);
+            assert.ok((await response.arrayBuffer()).byteLength > 0, file);
+          }
+          NODE
+      - name: 容器日志与清理
+        if: always()
+        run: |
+          docker logs foxdown-ci || true
+          docker rm -f foxdown-ci || true
   draft-release:
     name: 生成版本标签与 Release 草稿
     if: needs.prepare.outputs.release_tag != ''
-    needs: [prepare, desktop, extension]
+    needs: [prepare, desktop, extension, headless]
     runs-on: ubuntu-latest
     permissions:
       contents: write

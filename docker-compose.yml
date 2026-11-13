@@ -11,7 +11,7 @@ services:
     environment:
       FOXDOWN_PORT: 16801
       # Access token for the Web UI / API. STRONGLY recommended when exposed
-      # beyond localhost; empty = no auth.
+      # beyond localhost; an empty token only accepts loopback requests.
       API_TOKEN: "change-me"
       DOWNLOAD_DIR: /downloads
       DATA_DIR: /data

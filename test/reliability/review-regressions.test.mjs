@@ -44,14 +44,14 @@ test('shared filename variables accept all three syntaxes without a leftover dol
   }
 });
 
-test('post-processing scripts receive FOXDOWN variables and matching legacy aliases', { skip: process.platform === 'win32' }, async () => {
+test('post-processing scripts receive FOXDOWN task variables', { skip: process.platform === 'win32' }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'foxdown-hook-test-'));
   try {
     const output = path.join(root, 'environment.json');
     const script = path.join(root, 'capture.mjs');
     await fs.writeFile(script, `#!${process.execPath}
 import fs from 'node:fs';
-const entries = Object.entries(process.env).filter(([key]) => /^(FOXDOWN|RDOWN)_/.test(key));
+const entries = Object.entries(process.env).filter(([key]) => /^FOXDOWN_/.test(key));
 fs.writeFileSync(${JSON.stringify(output)}, JSON.stringify(Object.fromEntries(entries)));
 `, { mode: 0o755 });
     await new HookRunner({ postScript: script })._script('complete', {
@@ -62,7 +62,6 @@ fs.writeFileSync(${JSON.stringify(output)}, JSON.stringify(Object.fromEntries(en
       EVENT: 'complete', TASK_ID: 'fixture-task', TASK_NAME: 'fixture download', FILE: '/fixture/file.zip', FILE_COUNT: '1',
     })) {
       assert.equal(env['FOXDOWN_' + key], value);
-      assert.equal(env['RDOWN_' + key], value);
     }
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 });

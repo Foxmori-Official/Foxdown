@@ -15,7 +15,7 @@ const setupFile = path.join(__dirname, 'setup.html');
 const setupUrl = pathToFileURL(setupFile).href;
 const dataDir = process.env.DATA_DIR || path.join(app.getPath('userData'), 'data');
 const downloadDir = process.env.DOWNLOAD_DIR || path.join(app.getPath('downloads'), 'Foxdown');
-const binDir = process.env.FOXDOWN_BIN_DIR || process.env.KIMI_BIN_DIR
+const binDir = process.env.FOXDOWN_BIN_DIR
   || (app.isPackaged ? path.join(runtime, 'bin') : path.join(root, 'bin', (process.platform === 'darwin' ? 'mac' : 'win') + '-' + process.arch));
 
 let mainWindow;

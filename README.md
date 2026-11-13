@@ -37,11 +37,13 @@
 
 ## 可以用它做什么
 
-- **管理文件下载**。支持多连接和分段下载、暂停与恢复、批量任务和失败重试。
+- **管理文件下载**。支持多连接和分段下载、暂停与恢复、批量任务和失败重试。同名文件保留副本，一键清空已完成记录会保留磁盘文件。
 - **下载种子与磁力链接**。添加种子文件或磁力链接，在桌面应用中查看任务和下载进度。
 - **保存流媒体**。支持 HLS／DASH 下载、音视频选轨及下载完成后转封装为 MP4。
 - **接管浏览器下载**。按域名、文件类型或大小设置接管规则，也可通过链接右键菜单手动发送。转交失败时恢复浏览器下载。
 - **发现网页资源**。默认开启资源嗅探，刷新网页或播放媒体后，在「本页资源」中查看媒体与附件，预览或选择需要下载的内容。
+
+桌面应用和扩展提供简体中文、英语界面，可跟随系统自动选择。
 
 扩展设置左侧的仪表盘可以打开资源窗口并查看连接状态。工具栏角标帮助你随时了解任务与当前页面的情况：
 
@@ -72,7 +74,7 @@ npm run dev-electron
 
 引擎在构建阶段下载并校验。测试命令和安装包构建方式见[桌面端开发与验证](docs/electron.md)，版本维护流程见[更新与发布指南](docs/updates.md)。开发构建可从成功的 [GitHub Actions 运行](https://github.com/Foxmori-Official/Foxdown/actions/workflows/desktop.yml)下载。
 
-更多用法：[命令行、API 与 MCP](docs/api.md) · [Docker 部署](docs/docker.md) · [下载与资源检测验证](docs/download-and-detection-verification.md)
+更多用法：[命令行、API 与 MCP](docs/api.md) · [Docker 部署](docs/docker.md) · [功能、性能与安全验证](docs/verification.md)
 
 <a id="reference-projects"></a>
 

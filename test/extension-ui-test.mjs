@@ -426,7 +426,7 @@ console.log('== options：连接测试（多服务器优先） ==');
     page: 'options',
     fetchRoutes: {
       'http://s1:16801': { ok: true, json: async () => ({ ok: true, app: 'foxdown', aria2: true, aria2Version: '1.37', stream: true, ffmpeg: true }) },
-      'http://fallback:16801': { ok: true, json: async () => ({ ok: true, app: 'rdown', aria2: true, aria2Version: '9.9', stream: false, ffmpeg: false }) },
+      'http://fallback:16801': { ok: true, json: async () => ({ ok: true, app: 'foxdown', aria2: true, aria2Version: '9.9', stream: false, ffmpeg: false }) },
     },
   });
   run(t, 'options.js');

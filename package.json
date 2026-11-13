@@ -1,6 +1,6 @@
 {
   "name": "foxdown",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Foxdown - unified download manager: aria2 engine + HLS/DASH stream engine + browser capture",
   "main": "electron/main.cjs",
@@ -29,8 +29,12 @@
     "sharp": "^0.35.5"
   },
   "overrides": {
-    "app-builder-lib": { "minimatch": "^11.0.1" },
-    "@electron/universal": { "minimatch": "^11.0.1" }
+    "app-builder-lib": {
+      "minimatch": "^11.0.1"
+    },
+    "@electron/universal": {
+      "minimatch": "^11.0.1"
+    }
   },
   "build": {
     "appId": "com.foxmori.foxdown",
@@ -116,5 +120,7 @@
     }
   },
   "author": "Foxmori",
-  "engines": { "node": ">=22.12.0" }
+  "engines": {
+    "node": ">=22.12.0"
+  }
 }

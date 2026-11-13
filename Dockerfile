@@ -1,19 +1,29 @@
-# Foxdown — headless Docker deployment
-# Multi-stage: deps -> runtime. Linux aria2/ffmpeg come from the Alpine repos
-# (the repo's bin/ ships Windows .exe binaries and is excluded via .dockerignore).
+# Build current artwork and Web UI directly from a clean source checkout.
+FROM node:22-alpine AS web
+WORKDIR /app
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --ignore-scripts
+COPY extension/gen-icons.js ./extension/
+COPY extension/icons/icon-source.png ./extension/icons/
+RUN npm run assets
+COPY web/package.json web/package-lock.json ./web/
+RUN npm --prefix web ci
+COPY web ./web
+RUN npm --prefix web run build
 
-# ---- stage 1: install production node_modules ------------------------------
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# ---- stage 2: runtime ------------------------------------------------------
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Linux builds of the download/stream engines (Alpine official repos)
 RUN apk add --no-cache aria2 ffmpeg \
- && addgroup -S foxdown && adduser -S foxdown -G foxdown
+ && deluser node \
+ && (delgroup node 2>/dev/null || true) \
+ && addgroup -g 1000 foxdown \
+ && adduser -D -u 1000 -G foxdown foxdown
 
 ENV NODE_ENV=production \
     FOXDOWN_HOST=0.0.0.0 \
@@ -28,7 +38,8 @@ WORKDIR /app
 COPY --from=deps /app/server/node_modules ./server/node_modules
 COPY server/package.json ./server/package.json
 COPY server/src ./server/src
-COPY web/dist ./web/dist
+COPY LICENSE ./LICENSE
+COPY --from=web /app/web/dist ./web/dist
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \

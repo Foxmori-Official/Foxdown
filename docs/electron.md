@@ -17,6 +17,8 @@ npm run dev-electron
 
 安装包在构建阶段准备并校验引擎。开发模式先运行 `npm run engines`，按平台架构写入 `bin/mac-arm64`、`bin/mac-x64`、`bin/win-x64` 或 `bin/win-arm64`。安装版从应用的 `runtime/bin` 读取内置引擎，启动时无需下载。启动失败时可展开「错误详情」定位缺少组件或端口冲突。
 
+图标统一源文件为 `extension/icons/icon-source.png`，执行 `npm run assets` 生成桌面、Web 和扩展尺寸。macOS 使用专用不透明背景图标，其他平台使用透明版本。
+
 ## 验证
 
 在仓库根目录运行以下命令：
@@ -31,7 +33,7 @@ npm run dev-electron
 | `npm run test:desktop-multiconnection` | 实际下载大文件，校验并发连接、分段、暂停恢复及 SHA-256 |
 | `npm run pack:extension` | 生成浏览器扩展 ZIP |
 
-运行真实浏览器测试前，先执行 `npx playwright install chromium`。可用 `FOXDOWN_PACKAGED_EXE` 指定打包后的可执行文件，验证安装包内的运行环境。多连接测试会下载外部文件并清理临时文件，验证范围见[下载与资源检测记录](download-and-detection-verification.md)。
+运行真实浏览器测试前，先执行 `npx playwright install chromium`。可用 `FOXDOWN_PACKAGED_EXE` 指定打包后的可执行文件，验证安装包内的运行环境。多连接测试会下载外部文件并清理临时文件，验证范围见[当前版本验证记录](verification.md)。
 
 如需独立运行本地服务与网页界面，在引擎和网页构建完成后执行 `npm start`，默认访问 `http://127.0.0.1:16801`。
 
