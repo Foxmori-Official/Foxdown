@@ -165,6 +165,19 @@ test('audit fixes preserve authorized settings, extension handoff, and persisted
     assert.equal(await fs.readFile(file, 'utf8'), previous);
     await store.flush();
     assert.equal(JSON.parse(await fs.readFile(file, 'utf8')).meta['retry-write'].value, 3);
+    let attempts = 0;
+    fs.rename = async (...args) => {
+      if (++attempts <= 2) throw Object.assign(new Error('fixture temporarily locked'), { code: 'EPERM' });
+      return rename(...args);
+    };
+    try {
+      store.setMeta('transient-lock', { value: 4 });
+      await store.flush();
+    } finally { fs.rename = rename; }
+    assert.ok(attempts >= 3);
+    const recovered = JSON.parse(await fs.readFile(file, 'utf8'));
+    assert.equal(recovered.meta['transient-lock'].value, 4);
+    assert.equal(recovered.meta['retry-write'].value, 3);
     assert.deepEqual((await fs.readdir(DATA_DIR)).filter(name => name.endsWith('.tmp')), []);
   });
 });
