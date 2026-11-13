@@ -1,8 +1,10 @@
 # Foxdown 验证记录
 
+最新一轮见 [2026-11-13 独立功能、性能与安全审查](independent-audit.md)，包含双语精简、实际大文件与接口负载、依赖更新及打包应用验证。
+
 2026-11-12，macOS Apple 芯片开发机。
 
-- `npm test` 覆盖浏览器扩展逻辑、引导和选项界面、API、调度、持久化、批量重试、种子文件选择和九种语言。
+- `npm test` 覆盖浏览器扩展逻辑、引导和选项界面、API、调度、持久化、批量重试、种子文件选择和简体中文和英语。
 - `npm run test:web-build` 验证生产构建依赖、按需加载和首屏资源预算。
 - `npm run test:desktop-engine` 使用内置 aria2、FFmpeg、FFprobe，在临时目录校验 HTTP 文件字节、HLS 转 MP4、API Token 和引擎退出。
 - `npm run test:desktop-extension` 用独立 Electron 和 Chromium 测试配置，验证桌面启动、令牌恢复、设置导航、Chrome MV3 引导、128 KiB 文件真实接管，以及服务不可达时恢复浏览器下载。测试结束后关闭进程并清理临时数据。

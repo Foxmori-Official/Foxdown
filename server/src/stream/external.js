@@ -56,7 +56,14 @@ export class ExternalStreamEngine extends EventEmitter {
     };
     proc.stdout.on('data', onData);
     proc.stderr.on('data', onData);
+    proc.on('error', error => {
+      if (this.running.get(task.id) !== proc) return;
+      this.running.delete(task.id);
+      const current = this.store.updateStreamTask(task.id, { status: 'error', errorMessage: error.message, downloadSpeed: 0 });
+      if (current) this.emit('error', current);
+    });
     proc.on('exit', (code) => {
+      if (this.running.get(task.id) !== proc) return;
       this.running.delete(task.id);
       const t = this.store.getStreamTask(task.id);
       if (!t) return;
@@ -76,9 +83,9 @@ export class ExternalStreamEngine extends EventEmitter {
     // e.g. "Vid 1920x1080 |  45.6% | 456/1000 | 2.35MBps | 00:01:23"
     const m = /(\d+(?:\.\d+)?)%\s*\|\s*(\d+)\/(\d+)\s*\|\s*([\d.]+)\s*(KB|MB|GB|B)ps/i.exec(line);
     if (!m) return;
-    const unit = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 }[m[4].toUpperCase()] || 1;
+    const unit = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 }[m[5].toUpperCase()] || 1;
     const done = Number(m[2]), total = Number(m[3]);
-    const speed = Number(m[1 + 3]) * unit;
+    const speed = Number(m[4]) * unit;
     const t = this.store.getStreamTask(id);
     if (!t) return;
     const prev = t.progress || {};

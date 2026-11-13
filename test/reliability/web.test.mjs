@@ -137,7 +137,7 @@ test('icon-only task row actions have localized accessible labels', () => {
 test('every locale message compiles, including literal filename-pattern braces', async () => {
   const { baseCompile } = require('@intlify/message-compiler');
   const { createI18n } = await import('../../web/node_modules/vue-i18n/dist/vue-i18n.mjs');
-  const locales = ['en', 'de', 'es', 'fr', 'pt-BR', 'ja', 'zh-CN', 'zh-TW', 'ko'];
+  const locales = ['en', 'zh-CN'];
   for (const locale of locales) {
     const dict = (await import(`../../web/src/i18n/locales/${locale}.js`)).default;
     const walk = (obj, prefix = '') => {

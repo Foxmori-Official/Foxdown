@@ -1,3 +1,5 @@
+import { readMetadata } from './metadata.js';
+
 const FALLBACK_SOURCES = [
   'https://fastly.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt',
   'https://gcore.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt',
@@ -12,8 +14,11 @@ export async function fetchTrackerList(primarySource) {
   for (const src of [...new Set(sources)]) {
     try {
       const resp = await fetch(src, { signal: AbortSignal.timeout(12000) });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const trackers = resp.text ? (await resp.text()).split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#')) : [];
+      if (!resp.ok) {
+        await resp.body?.cancel();
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      const trackers = (await readMetadata(resp)).toString('utf8').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
       if (!trackers.length) throw new Error('empty list');
       // truncate to stay under Windows command-line length limits (Motrix lesson)
       let joined = '';

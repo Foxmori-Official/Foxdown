@@ -57,7 +57,7 @@
 
 ## 从源码构建
 
-使用 Node.js 22 和 npm，在 macOS 或 Windows 上运行：
+使用 Node.js 22.12 或更新版本和 npm，在 macOS 或 Windows 上运行：
 
 ```sh
 git clone https://github.com/Foxmori-Official/Foxdown.git

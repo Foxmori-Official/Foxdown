@@ -1,4 +1,4 @@
-// i18n 校验：9 个语言文件 key 集合与 zh_CN 完全一致（0 缺失 0 多余），
+// i18n 校验：2 个语言文件 key 集合与 zh_CN 完全一致（0 缺失 0 多余），
 // 占位符 $1..$N 跨语言一致（防某语言漏译导致替换断裂），
 // 且 HTML 的 data-i18n / data-i18n-ph 与 JS 的 i18n('...') 引用全部有对应 key。
 import fs from 'node:fs';
@@ -28,7 +28,7 @@ for (const d of dirs) {
   }
 }
 console.log('✓ 长度断言（extName≤45 / extShortName≤12 / extDesc≤132 / actionTitle≤30）已检查');
-if (dirs.length !== 9) { console.error(`✗ 语言目录数 = ${dirs.length}，应为 9（Auto 由浏览器语言自动匹配）`); fail++; }
+if (dirs.length !== 2) { console.error(`✗ 语言目录数 = ${dirs.length}，应为 2（Auto 由浏览器语言自动匹配）`); fail++; }
 
 for (const d of dirs) {
   let obj;
@@ -49,7 +49,7 @@ for (const d of dirs) {
   }
 }
 
-// 占位符一致性：每 key 的 $N 占位符集合在 9 个语言必须与 zh_CN 相同
+// 占位符一致性：每 key 的 $N 占位符集合在 2 个语言必须与 zh_CN 相同
 function placeholders(msg) {
   return [...String(msg).matchAll(/\$(\d+)/g)].map(m => '$' + m[1]).sort().join(',');
 }

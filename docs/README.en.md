@@ -53,7 +53,7 @@ The desktop service listens on loopback by default. Task state and settings are 
 
 ## Build from source
 
-Use Node.js 22 and npm on macOS or Windows:
+Use Node.js 22.12 or newer and npm on macOS or Windows:
 
 ```sh
 git clone https://github.com/Foxmori-Official/Foxdown.git

@@ -26,3 +26,4 @@ Foxdown 的项目代码使用 [MIT 许可证](../LICENSE)。外部引擎、分�
 - **macOS FFmpeg 与 FFprobe** 来自 [ffmpeg-macos-builds 9.0.1-1 的 LGPL 版本](https://github.com/dfloresc/ffmpeg-macos-builds/releases/tag/v9.0.1-1)。安装包包含共享库，组件声明、构建配置与源码校验值位于 `media/LICENSES` 和 `media/BUILDINFO.txt`。[对应源码归档](https://github.com/dfloresc/ffmpeg-macos-builds/releases/tag/v9.0.1-1) · [FFmpeg 许可说明](https://ffmpeg.org/legal.html)
 - **N_m3u8DL-RE** 是可选的外部流媒体引擎，由用户自行安装。[项目仓库](https://github.com/nilaoda/N_m3u8DL-RE)
 - **hls.js** 随浏览器扩展分发，用于 HLS 媒体预览，许可保存在 [extension/vendor/hls.LICENSE](../extension/vendor/hls.LICENSE)。[项目源码](https://github.com/video-dev/hls.js)
+- **@silentbot1/nat-api** 用于 UPnP/NAT-PMP 端口映射，采用支持 Promise 的维护分支，以替换旧 `nat-api` 的过时依赖链。遵循其 MIT 许可证。[项目源码](https://github.com/silentbot1/nat-api)

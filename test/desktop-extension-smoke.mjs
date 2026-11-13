@@ -267,6 +267,11 @@ try {
   const options = await browser.newPage();
   await options.goto(extensionBase + '/options.html');
   await options.waitForFunction(() => document.getElementById('serverUrl').value.startsWith('http'));
+  assert.deepEqual(await options.locator('#locale option').evaluateAll(options => options.map(option => option.value)), ['auto', 'en', 'zh-CN']);
+  await options.locator('#locale').selectOption('zh-CN');
+  await options.waitForFunction(() => document.documentElement.lang === 'zh-CN');
+  await options.locator('#locale').selectOption('en');
+  await options.waitForFunction(() => document.documentElement.lang === 'en');
   assert.equal(await options.locator('#serverUrl').inputValue(), origin);
   await options.locator('#test').click();
   await options.locator('#status.ok').filter({ hasText: /1\.36\.0/ }).waitFor();
@@ -472,7 +477,25 @@ try {
     await delay(200);
   }
   assert.equal(fallback?.bytesReceived, 128 * 1024, 'Browser download must resume when Foxdown is unreachable');
+  const tokenless = await fetch(origin + '/api/v1/settings', {
+    method: 'PUT', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apiToken: '' }),
+  });
+  assert.equal(tokenless.status, 200);
+  const restricted = await worker.evaluate(async ({ origin, outside }) => {
+    const settings = await fetch(origin + '/api/v1/settings');
+    const tasks = await fetch(origin + '/api/v1/tasks');
+    const create = options => fetch(origin + '/api/v1/tasks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: origin + '/api/v1/demo-file', options }),
+    });
+    const escaped = await create({ dir: outside });
+    const ordinary = await create({});
+    return { settings: settings.status, tasks: tasks.status, escaped: escaped.status, ordinary: ordinary.status };
+  }, { origin, outside: path.join(temp, 'outside') });
+  assert.deepEqual(restricted, { settings: 403, tasks: 200, escaped: 403, ordinary: 200 });
   assert.deepEqual(jsErrors, []);
+  console.log('Tokenless Chromium worker passed: credentials and outside directories blocked, normal download handoff allowed.');
   console.log('Real Chromium MV3 passed: 401 → authenticated setup → tested origin demo → actual captured 128 KiB → settings and popup synchronization → browser fallback.');
 } finally {
   await browser?.close();

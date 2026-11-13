@@ -62,6 +62,11 @@ ok("负数/空 -> '0' / 0", () => {
   assert.equal(sizeStrToMB(null), 0)
 })
 ok("小写 '16m' 也解析", () => assert.equal(sizeStrToMB('16m'), 16))
+ok('小分片与原始字节容量往返保留精度', () => {
+  assert.equal(mbToSizeStr(sizeStrToMB('1K')), '1K')
+  assert.equal(mbToSizeStr(sizeStrToMB('1048576')), '1M')
+  assert.equal(mbToSizeStr(1.5), '1536K')
+})
 
 // ---- Tracker：逗号分隔 <-> 每行一个 ----
 ok("'a,b' -> 'a\\nb'", () => assert.equal(trackersToText('udp://a,udp://b'), 'udp://a\nudp://b'))

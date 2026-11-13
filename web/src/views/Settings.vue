@@ -111,7 +111,7 @@
             <span class="hint">{{ t('settings.splitHint') }}</span>
           </el-form-item>
           <el-form-item :label="t('settings.minSplitSize')">
-            <el-input-number v-model="form.minSplitSizeMB" :min="0" :step="1" class="num-stepper" />
+            <el-input-number v-model="form.minSplitSizeMB" :min="1 / 1024" :max="1024" :step="1" class="num-stepper" />
             <span class="unit-suffix">MB</span>
             <span class="hint">{{ t('settings.minSplitSizeHint') }}</span>
           </el-form-item>
@@ -495,14 +495,7 @@ const fileAllocOptions = computed(() => [
 const localeOptions = computed(() => [
   { value: 'auto', label: t('settings.langAuto') },
   { value: 'en', label: 'English' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'es', label: 'Español' },
-  { value: 'fr', label: 'Français' },
-  { value: 'pt-BR', label: 'Português (Brasil)' },
-  { value: 'ja', label: '日本語' },
   { value: 'zh-CN', label: '简体中文' },
-  { value: 'zh-TW', label: '繁體中文' },
-  { value: 'ko', label: '한국어' }
 ])
 
 // 表单持有 UI 显示值（单位换算后的），存储格式的还原在 save() 里做
@@ -598,7 +591,7 @@ function fillForm() {
   form.rpcSecret = s.rpcSecret || '' // 只读展示，不参与保存
   form.apiToken = s.apiToken ?? ''
   form.theme = s.theme ?? 'auto'
-  form.locale = s.locale || 'auto'
+  form.locale = s.locale === 'auto' ? 'auto' : resolveLocale(s.locale || 'auto')
 }
 
 // ---- Save 层：UI 显示值 -> 存储格式 ----

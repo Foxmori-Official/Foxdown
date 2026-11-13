@@ -11,6 +11,7 @@
 import { parseMaster, parseMedia, isMasterPlaylist } from './hls.js';
 import { parseMpd } from './dash.js';
 import { streamFormat } from '../util/helpers.js';
+import { readMetadata } from '../util/metadata.js';
 
 async function fetchText(url, headers, timeoutMs = 20000, retries = 3) {
   let lastErr;
@@ -22,8 +23,11 @@ async function fetchText(url, headers, timeoutMs = 20000, retries = 3) {
         redirect: 'follow',
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-      return await resp.text();
+      if (!resp.ok) {
+        await resp.body?.cancel();
+        throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+      }
+      return (await readMetadata(resp)).toString('utf8');
     } catch (err) {
       lastErr = err;
       if (attempt < retries - 1) {
@@ -64,7 +68,7 @@ export async function probeStream(url, headers = {}) {
 
   if (sniffed === 'dash') {
     const mpd = parseMpd(text, url);
-    const variants = mpd.representations.map((r, i) => ({
+    const variants = (mpd.representations.length ? mpd.representations : mpd.audioRepresentations).map((r, i) => ({
       id: r.id || `v${i}`,
       bandwidth: r.bandwidth,
       resolution: r.width && r.height ? `${r.width}x${r.height}` : '',

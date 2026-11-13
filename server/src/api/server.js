@@ -2,11 +2,14 @@ import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import { isIP } from 'node:net';
+import { timingSafeEqual } from 'node:crypto';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import { API_PORT, API_HOST, WEB_DIST, loadSettings, saveSettings, hasFfmpeg, hasExternalStreamEngine } from '../config.js';
 import { isMagnet, isTorrentUrl, isStreamUrl, guessFilename, sanitizeFilename } from '../util/helpers.js';
 import { probeUrl } from './probe.js';
+import { validateSettingsPatch } from '../settings.js';
+import { isWithinDirectory } from '../util/paths.js';
 
 const ARIA2_KEYS = [
   'gid', 'status', 'totalLength', 'completedLength', 'uploadLength', 'downloadSpeed',
@@ -36,7 +39,25 @@ function allowsBrowserRequest(req) {
 
 function isAuthorized(req, token, queryToken) {
   if (!token) return isLoopbackRequest(req);
-  return (req.headers.authorization?.replace(/^Bearer /i, '') || queryToken) === token;
+  return tokenEquals(req.headers.authorization?.replace(/^Bearer /i, '') || queryToken, token);
+}
+
+function tokenEquals(input, expected) {
+  if (typeof input !== 'string' || typeof expected !== 'string' || !expected) return false;
+  const actual = Buffer.from(input);
+  const secret = Buffer.from(expected);
+  return actual.length === secret.length && timingSafeEqual(actual, secret);
+}
+
+function hasBearerToken(req, token) {
+  return tokenEquals(req.headers.authorization?.match(/^Bearer (.+)$/i)?.[1], token);
+}
+
+function restrictedBrowserClient(req, token) {
+  if (hasBearerToken(req, token)) return false;
+  // Chrome extension workers may omit Origin on privileged cross-origin
+  // fetches, but still send Fetch Metadata identifying that browser context.
+  return /^chrome-extension:\/\//.test(req.headers.origin || '') || req.headers['sec-fetch-site'] === 'none';
 }
 
 function mapAria2Task(t, meta = {}) {
@@ -104,8 +125,14 @@ export class ApiServer {
   }
 
   _auth(req, res, next) {
-    if (isAuthorized(req, this.settings.apiToken, req.query.token)) return next();
-    res.status(401).json({ error: 'unauthorized' });
+    if (!isAuthorized(req, this.settings.apiToken, req.query.token)) return res.status(401).json({ error: 'unauthorized' });
+    if (restrictedBrowserClient(req, this.settings.apiToken)) {
+      const pathname = req.originalUrl.split('?')[0].replace(/\/+$/, '');
+      const read = req.method === 'GET' && /^\/api\/v1\/(?:health|tasks(?:\/[^/]+\/[^/]+)?|stats|dashboard)$/.test(pathname);
+      const create = req.method === 'POST' && ['/api/v1/tasks', '/api/v1/resolve'].includes(pathname);
+      if (!read && !create) return res.status(403).json({ error: 'this operation requires the Web UI or a Bearer token' });
+    }
+    next();
   }
 
   _setupMiddleware() {
@@ -324,6 +351,11 @@ export class ApiServer {
     // ---- create task ----
     r.post('/api/v1/tasks', async (req, res) => {
       try {
+        const directory = req.body?.options?.dir;
+        if (restrictedBrowserClient(req, this.settings.apiToken) && directory !== undefined &&
+            (typeof directory !== 'string' || !await isWithinDirectory(directory, this.settings.downloadDir))) {
+          return res.status(403).json({ error: 'extension downloads must use the configured download directory' });
+        }
         const { createTaskFromBody } = await import('../tasks/create.js');
         const out = await createTaskFromBody(this, req.body || {});
         res.json(out);
@@ -461,13 +493,11 @@ export class ApiServer {
 
     r.put('/api/v1/settings', async (req, res) => {
       try {
-        const patch = req.body || {};
+        const patch = validateSettingsPatch(req.body);
         if (Object.hasOwn(patch, 'postScript') && patch.postScript !== this.settings.postScript) {
-          const bearer = req.headers.authorization?.match(/^Bearer (.+)$/i)?.[1];
-          if (!isSameOrigin(req) && !(bearer && bearer === this.settings.apiToken)) {
+          if (!isSameOrigin(req) && !hasBearerToken(req, this.settings.apiToken)) {
             return res.status(403).json({ error: 'changing postScript requires the Web UI or a Bearer token' });
           }
-          if (typeof patch.postScript !== 'string') return res.status(400).json({ error: 'postScript must be a string' });
         }
         const restartNeeded = [
           'maxConcurrentDownloads', 'maxConnectionPerServer', 'split', 'minSplitSize',
@@ -475,17 +505,18 @@ export class ApiServer {
           'fileAllocation', 'diskCache', 'userAgent', 'enableDht', 'btEnableLpd',
           'btMaxPeers', 'btTracker', 'seedRatio', 'seedTime', 'listenPort', 'downloadDir', 'btEnablePex',
           'proxyEnabled', 'proxyServer', 'proxyUser', 'proxyPasswd', 'noProxy', 'checkCertificate',
-          'rpcPort', 'rpcListenAll',
+          'rpcPort', 'rpcListenAll', 'rpcSecret', 'followTorrent',
         ];
-        const rpcChanged = patch.rpcPort !== undefined || patch.rpcListenAll !== undefined;
+        const rpcChanged = patch.rpcPort !== undefined || patch.rpcListenAll !== undefined || patch.rpcSecret !== undefined;
         const needRestart = Object.keys(patch).some(k => restartNeeded.includes(k));
         const previousToken = this.settings.apiToken;
-        Object.assign(this.settings, patch);
+        const updated = { ...this.settings, ...patch };
+        saveSettings(updated);
+        Object.assign(this.settings, updated);
         if (previousToken !== this.settings.apiToken) {
           // Existing sockets were authorized with the previous credential.
           for (const client of this.wss?.clients || []) client.close(1008, 'Authentication changed');
         }
-        saveSettings(this.settings);
         if (needRestart) await this.engine.restart(this.settings);
         if (rpcChanged) {
           await this.rpc.reconnect(this.settings.rpcSecret, this.settings.rpcPort).catch(() => {});
@@ -550,6 +581,10 @@ export class ApiServer {
       try {
         const { spawn } = await import('node:child_process');
         const target = path.resolve(p);
+        const tasks = await this._listMergedTasks();
+        const roots = [this.settings.downloadDir, ...tasks.map(task => task.dir)].filter(Boolean);
+        const allowed = await Promise.all(roots.map(root => isWithinDirectory(target, root)));
+        if (!allowed.some(Boolean)) return res.status(403).json({ error: 'path must belong to a download directory' });
         const folder = (await fs.promises.stat(target)).isDirectory() ? target : path.dirname(target);
         const command = process.platform === 'win32' ? 'explorer.exe' : process.platform === 'darwin' ? 'open' : 'xdg-open';
         await new Promise((resolve, reject) => {

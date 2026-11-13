@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { createCipheriv } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const bin = process.env.FOXDOWN_BIN_DIR || path.join(root, 'bin', (process.platform === 'darwin' ? 'mac' : 'win') + '-' + process.arch);
@@ -41,8 +42,35 @@ try {
   execFileSync(path.join(mediaBin, 'ffprobe' + exe), ['-version'], { stdio: 'pipe' });
   execFileSync(path.join(mediaBin, 'ffmpeg' + exe), [
     '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=128x96:r=10',
-    '-t', '2', '-c:v', 'mpeg2video', '-f', 'hls', 'sample.m3u8',
+    '-t', '4', '-c:v', 'mpeg2video', '-g', '10', '-hls_time', '1', '-hls_playlist_type', 'vod', '-f', 'hls', 'sample.m3u8',
   ], { cwd: temp, stdio: 'pipe', timeout: 20000 });
+  execFileSync(path.join(mediaBin, 'ffmpeg' + exe), [
+    '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=128x96:r=10',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100', '-t', '4',
+    '-c:v', 'mpeg4', '-g', '10', '-c:a', 'aac', '-f', 'dash', '-seg_duration', '1', 'sample.mpd',
+  ], { cwd: temp, stdio: 'pipe', timeout: 20000 });
+  const dash = await fs.readFile(path.join(temp, 'sample.mpd'), 'utf8');
+  const audioOnly = dash.replace(/<AdaptationSet\b[^>]*contentType="video"[\s\S]*?<\/AdaptationSet>/, '');
+  assert.notEqual(audioOnly, dash, 'The audio-only fixture must remove the video track');
+  await fs.writeFile(path.join(temp, 'audio.mpd'), audioOnly);
+  const playlist = await fs.readFile(path.join(temp, 'sample.m3u8'), 'utf8');
+  const key = Buffer.alloc(16, 0x12);
+  await fs.writeFile(path.join(temp, 'key.bin'), key);
+  let sequence = 0;
+  const encrypted = [];
+  for (const line of playlist.split('\n')) {
+    if (!line || line.startsWith('#')) { encrypted.push(line); continue; }
+    const iv = Buffer.alloc(16);
+    iv.writeBigUInt64BE(BigInt(sequence), 8);
+    const cipher = createCipheriv('aes-128-cbc', key, iv);
+    const plain = await fs.readFile(path.join(temp, line));
+    const segment = `encrypted-${sequence++}.ts`;
+    await fs.writeFile(path.join(temp, segment), Buffer.concat([cipher.update(plain), cipher.final()]));
+    encrypted.push(segment);
+  }
+  assert.ok(sequence >= 4, 'The HLS fixture must contain several real segments');
+  await fs.writeFile(path.join(temp, 'encrypted.m3u8'), encrypted.join('\n')
+    .replace('#EXTM3U', '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"'));
 
   fixture = http.createServer(async (request, response) => {
     const name = new URL(request.url, 'http://localhost').pathname.slice(1);
@@ -100,7 +128,26 @@ try {
   const fileRequest = { url: fixtureOrigin + '/file.bin' };
   const file = await api('/tasks', fileRequest);
   const stream = await api('/tasks', { url: fixtureOrigin + '/sample.m3u8', stream: { mux: true } });
-  await Promise.all([waitComplete(file), waitComplete(stream)]);
+  const encryptedStream = await api('/tasks', { url: fixtureOrigin + '/encrypted.m3u8', stream: { mux: true } });
+  const dashStream = await api('/tasks', { url: fixtureOrigin + '/sample.mpd', stream: { mux: true } });
+  const audioStream = await api('/tasks', { url: fixtureOrigin + '/audio.mpd', stream: { mux: true } });
+  await Promise.all([file, stream, encryptedStream, dashStream, audioStream].map(waitComplete));
+  assert.deepEqual(await fs.readFile(path.join(downloads, 'encrypted.mp4')), await fs.readFile(path.join(downloads, 'sample.mp4')));
+  const originalStream = await fs.readFile(path.join(downloads, 'sample.mp4'));
+  const duplicateStreams = await Promise.all([1, 2].map(() => api('/tasks', {
+    url: fixtureOrigin + '/sample.m3u8', options: { out: 'sample.mp4' }, stream: { mux: true },
+  })));
+  const streamResults = await Promise.all(duplicateStreams.map(waitComplete));
+  assert.deepEqual(new Set(streamResults.map(task => task.name)), new Set(['sample (1).mp4', 'sample (2).mp4']));
+  assert.deepEqual(await fs.readFile(path.join(downloads, 'sample.mp4')), originalStream);
+  for (const task of streamResults) assert.deepEqual(await fs.readFile(task.outputFiles[0]), originalStream);
+  function tracks(name) {
+    return JSON.parse(execFileSync(path.join(mediaBin, 'ffprobe' + exe), [
+      '-v', 'error', '-show_streams', '-of', 'json', path.join(downloads, name),
+    ], { encoding: 'utf8', stdio: 'pipe' })).streams.map(track => track.codec_type).sort();
+  }
+  assert.deepEqual(tracks('sample.mkv'), ['audio', 'video']);
+  assert.deepEqual(tracks('audio.mp4'), ['audio']);
   servedFile = replacement;
   const duplicate = await waitComplete(await api('/tasks', fileRequest));
   assert.equal(duplicate.name, 'file.1.bin');
@@ -128,7 +175,7 @@ try {
   }
   const filesBefore = await fs.readdir(downloads);
   const bytesBefore = await Promise.all(filesBefore.map(name => fs.readFile(path.join(downloads, name))));
-  assert.deepEqual(await api('/tasks/clear-completed', { deleteFiles: true }), { removed: 5, failed: 0 });
+  assert.deepEqual(await api('/tasks/clear-completed', { deleteFiles: true }), { removed: 10, failed: 0 });
   const { tasks } = await api('/tasks');
   assert.deepEqual(new Map(tasks.map(task => [task.id, task.status])), new Map([[pending.id, 'paused'], [failed.id, 'error']]));
   assert.deepEqual(await fs.readdir(downloads), filesBefore);
@@ -138,7 +185,7 @@ try {
   const retried = await api(`/tasks/aria2/${failed.id}/action`, { action: 'retry' });
   const retriedTask = await waitComplete({ ...retried, engine: 'aria2' });
   assert.deepEqual(await fs.readFile(path.join(downloads, retriedTask.name)), content);
-  console.log(`Native engine smoke passed (${process.platform}/${process.arch}): HTTP duplicates, HLS → MP4 and clearing completed records with files intact.`);
+  console.log(`Native engine smoke passed (${process.platform}/${process.arch}): HTTP/HLS duplicates, AES-128 HLS, DASH video/audio and audio-only mux, clearing completed records with files intact.`);
 } finally {
   if (backend?.connected) {
     backend.send({ type: 'shutdown' }, () => {});

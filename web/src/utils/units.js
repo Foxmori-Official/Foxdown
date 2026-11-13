@@ -45,16 +45,19 @@ export function sizeStrToMB(str) {
     const u = m[2].toUpperCase()
     if (u === 'G') return v * 1024
     if (u === 'M') return v
-    return Math.round((v / 1024) * 100) / 100 // K -> MB
+    return v / 1024 // K -> MB without losing small valid split sizes
   }
   const n = Number(s)
-  return Number.isFinite(n) ? n : 0
+  return Number.isFinite(n) ? n / BYTES_PER_MB : 0
 }
 
 export function mbToSizeStr(mb) {
   const n = Number(mb)
   if (!Number.isFinite(n) || n <= 0) return '0'
-  return `${Math.round(n)}M`
+  const bytes = Math.round(n * BYTES_PER_MB)
+  if (bytes % BYTES_PER_MB === 0) return `${bytes / BYTES_PER_MB}M`
+  if (bytes % BYTES_PER_KB === 0) return `${bytes / BYTES_PER_KB}K`
+  return String(bytes)
 }
 
 // ---- Tracker list: stored comma-separated <-> UI one-per-line ----

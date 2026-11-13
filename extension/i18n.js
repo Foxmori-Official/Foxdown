@@ -1,35 +1,13 @@
-// Foxdown Connector - 手动语言切换覆盖层
-// Chrome 原生 chrome.i18n 只能跟随浏览器语言、无法运行时切换；
-// 本文件从 chrome.storage.local 读取 { locale }（'auto' = 跟随系统），
-// 非 auto 时 fetch 对应 _locales/<目录>/messages.json 作为 OVERRIDE，
-// i18n() 优先取 OVERRIDE，其次 chrome.i18n.getMessage，最后回退 key 本身。
-// auto 时先用 resolveUiLocale 做地区/前缀解析（Chrome 原生只做"精确目录→default"，
-// 不会把 zh-HK 落到 zh_TW）；解析不到的语言交还 Chrome 原生 → default_locale: en 兜底。
-// 普通脚本：background.js 用 importScripts 加载，popup/options 用 <script> 加载，
-// 两个全局函数挂到 globalThis，各上下文共用。
+// Runtime language override for the two supported UI languages.
 (function () {
   'use strict';
-  // 选项值 → _locales 目录名（pt-BR→pt_BR、zh-CN→zh_CN、zh-TW→zh_TW，其余同名）
-  const LOCALE_DIRS = {
-    en: 'en', de: 'de', es: 'es', fr: 'fr', 'pt-BR': 'pt_BR',
-    ja: 'ja', 'zh-CN': 'zh_CN', 'zh-TW': 'zh_TW', ko: 'ko'
-  };
+  const LOCALE_DIRS = { en: 'en', 'zh-CN': 'zh_CN' };
   let activeLocale = 'en';
   let loadGeneration = 0;
   let OVERRIDE = null; // Chrome messages.json 格式：{ key: { message: '...' } } | null
 
-  // 浏览器 UI 语言 → 支持语言（与 Web 端 resolveLocale 同规则）。
-  // 返回 null 表示不支持（如 ru）：不加载覆盖层，走 Chrome 原生 → default_locale: en。
-  function resolveUiLocale(uiLang) {
-    const lang = String(uiLang || '').toLowerCase();
-    if (!lang) return null;
-    const keys = Object.keys(LOCALE_DIRS);
-    const exact = keys.find((k) => k.toLowerCase() === lang);
-    if (exact) return exact;
-    const prefix = lang.split('-')[0];
-    if (prefix === 'zh') return /tw|hk|mo|hant/.test(lang) ? 'zh-TW' : 'zh-CN';
-    if (prefix === 'pt') return 'pt-BR';
-    return keys.find((k) => k.toLowerCase().split('-')[0] === prefix) || null;
+  function resolveUiLocale(language) {
+    return /^zh(?:[-_]|$)/i.test(String(language || '')) ? 'zh-CN' : 'en';
   }
 
   // 从 chrome.storage.local 读取语言设置并（必要时）载入覆盖消息表
@@ -43,8 +21,8 @@
       if (!pref || pref === 'auto') {
         pref = resolveUiLocale(chrome.i18n.getUILanguage && chrome.i18n.getUILanguage());
       }
+      if (!Object.hasOwn(LOCALE_DIRS, pref)) pref = 'en';
       const dir = LOCALE_DIRS[pref];
-      if (!dir) return; // 未知值或解析不到：跟随 Chrome 原生（default_locale: en）
       const res = await fetch(chrome.runtime.getURL('_locales/' + dir + '/messages.json'));
       if (!res || !res.ok) return;
       const data = await res.json();

@@ -4,6 +4,8 @@ Foxdown 用 Electron 启动 Node 后端，默认在 `127.0.0.1:16801` 提供界�
 
 ## 本地运行
 
+开发环境需要 Node.js 22.12 或更新版本；安装版使用内置运行环境。
+
 ```sh
 npm ci
 npm --prefix server ci
@@ -23,7 +25,8 @@ npm run dev-electron
 | --- | --- |
 | `npm test` | 验证任务、接口、扩展逻辑与多语言文案 |
 | `npm run test:web-build` | 验证网页生产构建、按需加载与资源大小 |
-| `npm run test:desktop-engine` | 使用本地测试服务验证 HTTP 下载和 HLS 转 MP4 |
+| `npm run test:desktop-engine` | 验证 HTTP/HLS 重名下载、AES-128、DASH 双轨与纯音频输出 |
+| `npm run test:backend-performance` | 用 500 条历史任务和 16 个并发客户端测量接口延迟、事件循环和内存 |
 | `npm run test:desktop-extension` | 验证桌面启动、设置导航和真实浏览器下载接管 |
 | `npm run test:desktop-multiconnection` | 实际下载大文件，校验并发连接、分段、暂停恢复及 SHA-256 |
 | `npm run pack:extension` | 生成浏览器扩展 ZIP |

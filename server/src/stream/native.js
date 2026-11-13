@@ -23,6 +23,9 @@ import { parseMaster, parseMedia, isMasterPlaylist } from './hls.js';
 import { parseMpd } from './dash.js';
 import { remuxToMp4, muxTracks, concatFiles } from './mux.js';
 import { sanitizeFilename } from '../util/helpers.js';
+import { writeJsonAtomic } from '../util/atomic-json.js';
+import { readMetadata } from '../util/metadata.js';
+import { reserveOutputPath } from '../util/paths.js';
 
 const TMP_ROOT = path.join(DATA_DIR, '.kimi-stream');
 const PAUSE = Symbol('pause');
@@ -54,7 +57,9 @@ export class NativeStreamEngine extends EventEmitter {
     const run = this._execute(task, ctx);
     ctx.settled = run;
     this.runs.set(task.id, ctx);
-    await run;
+    // A start/resume API call acknowledges the launch, not the whole download.
+    // Keep the completion promise for restart and shutdown coordination.
+    void run.catch(error => console.error('[stream] download failed:', error.message));
   }
 
   async _execute(task, ctx) {
@@ -71,6 +76,9 @@ export class NativeStreamEngine extends EventEmitter {
       });
       this.emit('error', this.store.getStreamTask(task.id));
     } finally {
+      for (const output of ctx.pendingOutputs) await fs.promises.rm(output, { force: true }).catch(() => {});
+      try { await this._saveManifest(ctx); }
+      catch (error) { console.error('[stream] failed to save download progress:', error.message); }
       this.runs.delete(task.id);
       clearInterval(ctx.emitTimer);
     }
@@ -91,11 +99,18 @@ export class NativeStreamEngine extends EventEmitter {
 
   async resume(task, { restart } = {}) {
     if (restart) {
+      const existing = this.runs.get(task.id);
+      if (existing) {
+        existing.paused = true;
+        existing.abort.abort();
+        await existing.settled.catch(() => {});
+      }
       await fs.promises.rm(this._dir(task.id), { recursive: true, force: true }).catch(() => {});
       this.store.updateStreamTask(task.id, {
         status: 'waiting',
         progress: { totalSegments: 0, doneSegments: 0, bytesDownloaded: 0, speed: 0, eta: 0, live: false },
         totalLength: 0, completedLength: 0, downloadSpeed: 0, outputFiles: [], errorMessage: '',
+        outputName: '',
       });
     } else if (!this.runs.has(task.id)) {
       this.store.updateStreamTask(task.id, { status: 'waiting', downloadSpeed: 0 });
@@ -114,10 +129,12 @@ export class NativeStreamEngine extends EventEmitter {
   }
 
   async shutdownAll() {
-    for (const ctx of this.runs.values()) {
+    const active = [...this.runs.values()];
+    for (const ctx of active) {
       ctx.paused = true;
       ctx.abort.abort();
     }
+    await Promise.allSettled(active.map(ctx => ctx.settled));
   }
 
   /* ------------------------------------------------ internals -------- */
@@ -140,6 +157,7 @@ export class NativeStreamEngine extends EventEmitter {
       manifestDirty: false,
       initFile: null,        // downloaded init segment (HLS map / DASH init)
       audioInitFile: null,
+      pendingOutputs: [],
     };
   }
 
@@ -173,7 +191,10 @@ export class NativeStreamEngine extends EventEmitter {
       try {
         const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ctx.abort.signal]);
         const resp = await fetch(url, { headers, redirect: 'follow', signal });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+        if (!resp.ok) {
+          await resp.body?.cancel();
+          throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+        }
         return resp;
       } catch (err) {
         if (err === PAUSE || err === CANCEL || ctx.abort.signal.aborted) throw ctx.cancelled ? CANCEL : PAUSE;
@@ -194,17 +215,19 @@ export class NativeStreamEngine extends EventEmitter {
     }
   }
 
-  _saveManifest(ctx) {
+  async _saveManifest(ctx) {
+    while (ctx.manifestWriting) await ctx.manifestWriting;
     if (!ctx.manifest || !ctx.manifestDirty) return;
     ctx.manifestDirty = false;
-    try {
-      fs.writeFileSync(path.join(this._dir(ctx.taskId), 'manifest.json'), JSON.stringify(ctx.manifest));
-    } catch {}
+    ctx.manifestWriting = writeJsonAtomic(path.join(this._dir(ctx.taskId), 'manifest.json'), ctx.manifest);
+    try { await ctx.manifestWriting; }
+    catch (error) { ctx.manifestDirty = true; throw error; }
+    finally { ctx.manifestWriting = null; }
   }
 
   _saveManifestNow(ctx) {
     ctx.manifestDirty = true;
-    this._saveManifest(ctx);
+    return this._saveManifest(ctx);
   }
 
   /* ---- speed ---- */
@@ -277,7 +300,7 @@ export class NativeStreamEngine extends EventEmitter {
 
     // 1. fetch top-level manifest
     const resp = await this._fetch(task.url, headers, ctx, { isPlaylist: true });
-    const text = await resp.text();
+    const text = (await readMetadata(resp)).toString('utf8');
 
     let plan;
     if (/<MPD[\s>]/.test(text)) {
@@ -303,8 +326,8 @@ export class NativeStreamEngine extends EventEmitter {
     }
 
     // 2. init segment (HLS EXT-X-MAP / DASH init)
-    if (plan.init?.uri) ctx.initFile = await this._ensureInit(task, ctx, plan.init.uri, headers, 'init.bin');
-    if (plan.audio?.init?.uri) ctx.audioInitFile = await this._ensureInit(task, ctx, plan.audio.init.uri, headers, 'audio_init.bin');
+    if (plan.init?.uri) ctx.initFile = await this._ensureInit(task, ctx, plan.init.uri, headers, 'init.bin', plan.init.byterange);
+    if (plan.audio?.init?.uri) ctx.audioInitFile = await this._ensureInit(task, ctx, plan.audio.init.uri, headers, 'audio_init.bin', plan.audio.init.byterange);
 
     this._startProgressTicker(task, ctx);
     this.emit('progress', this.store.getStreamTask(task.id));
@@ -318,7 +341,7 @@ export class NativeStreamEngine extends EventEmitter {
         await this._downloadSegments(task, ctx, plan.audio.segments, headers, threads, 'audio_');
       }
     }
-    this._saveManifestNow(ctx);
+    await this._saveManifestNow(ctx);
 
     if (ctx.abort.signal.aborted) throw ctx.cancelled ? CANCEL : PAUSE;
 
@@ -326,14 +349,18 @@ export class NativeStreamEngine extends EventEmitter {
     await this._finalize(task, ctx, plan);
   }
 
-  async _ensureInit(task, ctx, uri, headers, fname) {
+  async _ensureInit(task, ctx, uri, headers, fname, byterange) {
     const p = path.join(this._dir(task.id), fname);
     try {
       const st = await fs.promises.stat(p);
       if (st.size > 0) return p;
     } catch {}
-    const resp = await this._fetch(uri, headers, ctx);
-    const buf = Buffer.from(await resp.arrayBuffer());
+    const segment = { uri };
+    if (byterange) {
+      const [length, offset = 0] = byterange.split('@').map(Number);
+      segment.byterange = [offset, length];
+    }
+    const buf = await this._fetchSegment(ctx, segment, headers);
     await fs.promises.writeFile(p, buf);
     return p;
   }
@@ -387,14 +414,14 @@ export class NativeStreamEngine extends EventEmitter {
     const sel = this._pickVariant(master.variants, task.options?.select, task.options?.drop);
     if (!sel) throw new Error('master playlist has no variants');
     const resp = await this._fetch(sel.uri, headers, ctx, { isPlaylist: true });
-    const plan = this._planHlsMedia(task, ctx, await resp.text(), sel.uri);
+    const plan = this._planHlsMedia(task, ctx, (await readMetadata(resp)).toString('utf8'), sel.uri);
     plan.variant = sel;
 
     if (sel.audio) {
       const track = master.audioTracks.find(a => a.groupId === sel.audio && a.uri);
       if (track) {
         const aresp = await this._fetch(track.uri, headers, ctx, { isPlaylist: true });
-        const aMedia = parseMedia(await aresp.text(), track.uri);
+        const aMedia = parseMedia((await readMetadata(aresp)).toString('utf8'), track.uri);
         plan.audio = this._hlsSegmentPlan(aMedia);
       }
     }
@@ -425,7 +452,7 @@ export class NativeStreamEngine extends EventEmitter {
         } else {
           br = [offset, Number(seg.byterange)];
         }
-        offset += br[1];
+        offset = br[0] + br[1];
       } else {
         offset = 0;
       }
@@ -447,11 +474,12 @@ export class NativeStreamEngine extends EventEmitter {
   _planDash(task, ctx, text) {
     const mpd = parseMpd(text, task.url);
     ctx.live = mpd.live;
+    const hasVideo = mpd.representations.length > 0;
     const sel = this._pickVariant(
-      mpd.representations.map(r => ({ ...r, resolution: r.width && r.height ? `${r.width}x${r.height}` : '' })),
+      (hasVideo ? mpd.representations : mpd.audioRepresentations).map(r => ({ ...r, resolution: r.width && r.height ? `${r.width}x${r.height}` : '' })),
       task.options?.select,
     );
-    if (!sel) throw new Error('MPD has no usable video representations');
+    if (!sel) throw new Error('MPD has no usable media representations');
 
     const toSeg = (rep) => rep.segments.map((s, i) => ({
       index: i,
@@ -481,7 +509,7 @@ export class NativeStreamEngine extends EventEmitter {
       updatePeriodSec: mpd.minimumUpdatePeriodSec || 5,
     };
 
-    if (mpd.audioRepresentations.length) {
+    if (hasVideo && mpd.audioRepresentations.length) {
       const bestAudio = mpd.audioRepresentations.reduce((a, b) => (b.bandwidth > (a?.bandwidth ?? -1) ? b : a), null);
       plan.audio = {
         format: 'dash',
@@ -510,13 +538,13 @@ export class NativeStreamEngine extends EventEmitter {
       if (current.audio) {
         await this._downloadSegments(task, ctx, current.audio.segments, headers, threads, 'audio_');
       }
-      this._saveManifestNow(ctx);
+      await this._saveManifestNow(ctx);
       if (current.endList) return;
 
       // wait then refresh the playlist
       await this._sleep(waitSec * 1000, ctx);
       const resp = await this._fetch(current.playlistUrl, headers, ctx, { isPlaylist: true });
-      const text = await resp.text();
+      const text = (await readMetadata(resp)).toString('utf8');
       current = isDash
         ? this._planDash(task, ctx, text)
         : this._planHlsMedia(task, ctx, text, current.playlistUrl);
@@ -541,7 +569,7 @@ export class NativeStreamEngine extends EventEmitter {
     const pending = segments.filter(s => !store2[this._mkey(prefix, s)]);
     if (pending.length) {
       ctx.manifest.totalSegments = Object.keys(store2).length + pending.length;
-      this._saveManifestNow(ctx);
+      await this._saveManifestNow(ctx);
     }
 
     let cursor = 0;
@@ -579,7 +607,7 @@ export class NativeStreamEngine extends EventEmitter {
           idx: seg.seq ?? seg.index,
         };
         ctx.manifestDirty = true;
-        if (attempt > 0 || (seg.index % 8) === 0) this._saveManifestNow(ctx);
+        if (attempt > 0 || (seg.index % 8) === 0) await this._saveManifestNow(ctx);
         return;
       } catch (err) {
         if (err === PAUSE || err === CANCEL) throw err;
@@ -631,7 +659,7 @@ export class NativeStreamEngine extends EventEmitter {
     if (!seg.key?.uri) return null;
     if (ctx.keyCache.has(seg.key.uri)) return ctx.keyCache.get(seg.key.uri);
     const resp = await this._fetch(seg.key.uri, headers, ctx);
-    const buf = Buffer.from(await resp.arrayBuffer());
+    const buf = await readMetadata(resp, 16);
     if (buf.length !== 16) throw new Error(`key from ${seg.key.uri} is ${buf.length} bytes, expected 16`);
     ctx.keyCache.set(seg.key.uri, buf);
     return buf;
@@ -687,6 +715,7 @@ export class NativeStreamEngine extends EventEmitter {
       try { base = decodeURIComponent(new URL(task.url).pathname.split('/').filter(Boolean).pop() || ''); } catch {}
       base = base.replace(/\.[^.]+$/, '');
     }
+    base = base.replace(/\.(?:mp4|mkv|ts|m4s)$/i, '');
     // 命名模板（N_m3u8DL --save-pattern 变量集 + UTF-8 字节安全截断）：
     // 用户显式命名且未指定任务级模板时尊重原名；否则按模板渲染
     const pattern = task.options?.savePattern || (task.name ? null : (this.settings?.savePattern || '<SaveName>'));
@@ -717,14 +746,17 @@ export class NativeStreamEngine extends EventEmitter {
 
     const outputFiles = [];
     let mainOut;
+    const reserve = async extension => {
+      const output = await reserveOutputPath(task.saveDir, name + extension);
+      ctx.pendingOutputs.push(output);
+      return output;
+    };
 
     if (plan.format === 'hls') {
       const outExt = wantMux ? '.mp4' : '.ts';
-      mainOut = path.join(task.saveDir, name + outExt);
+      mainOut = await reserve(outExt);
       if (wantMux) {
-        const merged = path.join(dir, 'merged.ts');
-        await concatFiles(videoFiles, merged);
-        mainOut = await remuxToMp4([merged], mainOut);
+        mainOut = await remuxToMp4(videoFiles, mainOut);
       } else {
         mainOut = await concatFiles(videoFiles, mainOut);
       }
@@ -741,24 +773,25 @@ export class NativeStreamEngine extends EventEmitter {
         const mergedA = path.join(dir, 'audio.m4s');
         await concatFiles(aFiles, mergedA);
         if (wantMux) {
-          mainOut = path.join(task.saveDir, name + '.mkv');
+          mainOut = await reserve('.mkv');
           mainOut = await muxTracks(mergedV, mergedA, mainOut);
           outputFiles.push(mainOut);
         } else {
-          mainOut = path.join(task.saveDir, name + '.mp4');
+          mainOut = await reserve('.mp4');
           await concatFiles([mergedV], mainOut);
-          const aOut = path.join(task.saveDir, name + '.audio.m4s');
+          const aOut = await reserve('.audio.m4s');
           await concatFiles([mergedA], aOut);
           outputFiles.push(mainOut, aOut);
         }
       } else {
-        mainOut = path.join(task.saveDir, name + '.mp4');
+        mainOut = await reserve('.mp4');
         if (wantMux) mainOut = await remuxToMp4([mergedV], mainOut);
         else await concatFiles([mergedV], mainOut);
         outputFiles.push(mainOut);
       }
     }
 
+    if (ctx.abort.signal.aborted) throw ctx.cancelled ? CANCEL : PAUSE;
     const stat = await fs.promises.stat(mainOut).catch(() => null);
     this.store.updateStreamTask(id, {
       status: 'complete',
@@ -766,6 +799,7 @@ export class NativeStreamEngine extends EventEmitter {
       completedLength: ctx.bytesDownloaded,
       totalLength: ctx.bytesDownloaded,
       outputFiles,
+      outputName: path.basename(mainOut),
       outputSize: stat?.size || 0,
       progress: {
         ...(this.store.getStreamTask(id)?.progress || {}),
@@ -774,6 +808,7 @@ export class NativeStreamEngine extends EventEmitter {
         speed: 0, eta: 0, live: ctx.live,
       },
     });
+    ctx.pendingOutputs = [];
     this.emit('done', this.store.getStreamTask(id));
     this.emit('progress', this.store.getStreamTask(id));
 

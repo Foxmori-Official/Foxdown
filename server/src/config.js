@@ -111,7 +111,11 @@ export function loadSettings() {
 }
 
 export function saveSettings(s) {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+  const temporary = `${SETTINGS_FILE}.${crypto.randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temporary, JSON.stringify(s, null, 2), { flag: 'wx', mode: 0o600 });
+    fs.renameSync(temporary, SETTINGS_FILE);
+  } finally { fs.rmSync(temporary, { force: true }); }
 }
 
 export function hasExternalStreamEngine() {

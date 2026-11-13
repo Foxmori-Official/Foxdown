@@ -469,12 +469,12 @@ console.log('== options：语言切换即时生效（i18n 集成） ==');
   const t = makeSandbox({ page: 'options' });
   run(t, 'options.js');
   await new Promise(r => setTimeout(r, 30));
-  t.byId.locale.value = 'de';
+  t.byId.locale.value = 'en';
   await t.byId.locale.dispatch('change', { target: t.byId.locale });
-  assert(t.local.locale === 'de', '语言切换即存 storage.local');
-  assert(t.sandbox.document.documentElement.lang === 'de' && t.sandbox.document.title === msg('de', 'optTitle'), '设置页 HTML lang 与标题同步切换');
-  assert(t.byId.langLabelEl.textContent === msg('de', 'langLabel'), 'data-i18n 元素原地刷成德语文案');
-  assert(t.byId.domainListPhEl.placeholder === msg('de', 'domainListPh'), 'data-i18n-ph 占位符刷成德语');
+  assert(t.local.locale === 'en', '语言切换即存 storage.local');
+  assert(t.sandbox.document.documentElement.lang === 'en' && t.sandbox.document.title === msg('en', 'optTitle'), '设置页 HTML lang 与标题同步切换');
+  assert(t.byId.langLabelEl.textContent === msg('en', 'langLabel'), 'data-i18n 元素原地刷成英语文案');
+  assert(t.byId.domainListPhEl.placeholder === msg('en', 'domainListPh'), 'data-i18n-ph 占位符刷成英语');
   t.byId.locale.value = 'ru-XX'; // 不支持值
   await t.byId.locale.dispatch('change', { target: t.byId.locale });
   assert(t.local.locale === 'ru-XX', '不支持语言值照存（用户显式选择）');
@@ -598,14 +598,14 @@ console.log('== popup：确认数据缺失 ==');
 
 console.log('== popup：语言变更事件重刷文案 ==');
 {
-  const t = makeSandbox({ page: 'popup', storage: { locale: 'ja' } });
+  const t = makeSandbox({ page: 'popup', storage: { locale: 'en' } });
   run(t, 'popup.js');
   await new Promise(r => setTimeout(r, 30));
-  assert(t.byId.captureLabel.textContent === msg('ja', 'captureLabel'), '启动即按 storage 语言（ja）应用文案');
-  await t.chrome.storage.local.set({ locale: 'ko' }); // 触发 onChanged
+  assert(t.byId.captureLabel.textContent === msg('en', 'captureLabel'), '启动即按 storage 语言（en）应用文案');
+  await t.chrome.storage.local.set({ locale: 'zh-CN' }); // 触发 onChanged
   await new Promise(r => setTimeout(r, 30));
-  assert(t.byId.captureLabel.textContent === msg('ko', 'captureLabel'), 'storage.onChanged(locale) → popup 原地重刷韩语文案');
-  assert(t.sandbox.document.documentElement.lang === 'ko', 'popup HTML lang 跟随即时切换');
+  assert(t.byId.captureLabel.textContent === msg('zh_CN', 'captureLabel'), 'storage.onChanged(locale) → popup 原地重刷中文文案');
+  assert(t.sandbox.document.documentElement.lang === 'zh-CN', 'popup HTML lang 跟随即时切换');
 }
 
 console.log(`\n结果: ${pass} 通过, ${fail} 失败`);

@@ -47,6 +47,7 @@ async function main() {
     scheduler.stop();
     try { await stream.shutdown(); } catch {}
     try { await rpc.saveSession(); } catch {}
+    try { await store.flush(); } catch (error) { console.error('[store] shutdown save failed:', error.message); }
     rpc.close();
     try { await upnp.destroy(); } catch {}
     await engine.stop();

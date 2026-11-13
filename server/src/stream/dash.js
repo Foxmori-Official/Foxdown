@@ -11,19 +11,59 @@
  *  - SegmentBase: indexRange only -> treated as one whole segment
  */
 
+const MAX_SEGMENTS = 100000;
+const MAX_URL_CHARACTERS = 32 * 1024 * 1024;
+
+function accountUrl(url, budget) {
+  budget.characters += url?.length || 0;
+  if (budget.characters > MAX_URL_CHARACTERS) throw new Error('DASH expanded URLs exceed supported limit');
+}
+
+function addSegment(segments, segment, budget) {
+  checkSegmentCount(++budget.count);
+  accountUrl(segment.url, budget);
+  segments.push(segment);
+}
+
+function decodeEntities(value) {
+  const named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+  return value.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (entity, key) => {
+    if (!key.startsWith('#')) return named[key] || entity;
+    const point = key[1].toLowerCase() === 'x' ? Number.parseInt(key.slice(2), 16) : Number(key.slice(1));
+    return point > 0 && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff) ? String.fromCodePoint(point) : entity;
+  });
+}
+
+function checkSegmentCount(count) {
+  if (!Number.isSafeInteger(count) || count < 0 || count > MAX_SEGMENTS) throw new Error('DASH segment count exceeds supported limit');
+}
+
+function findTagEnd(text, start) {
+  let quote = '';
+  for (let index = start; index < text.length; index++) {
+    const character = text[index];
+    if (quote) {
+      if (character === quote) quote = '';
+    } else if (character === '"' || character === "'") quote = character;
+    else if (character === '>') return index;
+  }
+  return -1;
+}
+
 /** Tiny tolerant XML tokenizer -> { name, attrs, children, text } tree. */
 function parseXml(text) {
   const root = { name: '#root', attrs: {}, children: [], text: '' };
   const stack = [root];
   let i = 0;
+  let nodes = 0;
   const n = text.length;
   while (i < n) {
     const lt = text.indexOf('<', i);
     if (lt < 0) {
-      stack[stack.length - 1].text += text.slice(i);
+      stack[stack.length - 1].text += decodeEntities(text.slice(i));
       break;
     }
-    if (lt > i) stack[stack.length - 1].text += text.slice(i, lt);
+    if (lt > i) stack[stack.length - 1].text += decodeEntities(text.slice(i, lt));
     if (text.startsWith('<!--', lt)) {
       const end = text.indexOf('-->', lt);
       i = end < 0 ? n : end + 3;
@@ -40,7 +80,7 @@ function parseXml(text) {
       i = end < 0 ? n : end + 1;
       continue;
     }
-    const gt = text.indexOf('>', lt);
+    const gt = findTagEnd(text, lt + 1);
     if (gt < 0) break;
     const inner = text.slice(lt + 1, gt);
     i = gt + 1;
@@ -58,8 +98,9 @@ function parseXml(text) {
     const attrs = {};
     const re = /([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
     let m;
-    while ((m = re.exec(attrText))) attrs[m[1]] = m[2] ?? m[3] ?? '';
+    while ((m = re.exec(attrText))) attrs[m[1]] = decodeEntities(m[2] ?? m[3] ?? '');
     const node = { name, attrs, children: [], text: '' };
+    if (++nodes > 100000 || stack.length > 64) throw new Error('DASH XML structure exceeds supported limit');
     stack[stack.length - 1].children.push(node);
     if (!selfClose) stack.push(node);
   }
@@ -89,11 +130,15 @@ function expandTimeline(tl, timescale) {
 }
 
 function substitute(url, repId, number, time) {
+  const padded = (value, width) => {
+    if (Number(width) > 64) throw new Error('DASH template padding exceeds supported limit');
+    return String(value).padStart(Number(width), '0');
+  };
   return url
     .replace(/\$RepresentationID\$/g, repId)
-    .replace(/\$Number%0(\d+)d\$/g, (_, w) => String(number).padStart(Number(w), '0'))
+    .replace(/\$Number%0(\d+)d\$/g, (_, w) => padded(number, w))
     .replace(/\$Number\$/g, String(number))
-    .replace(/\$Time%0(\d+)d\$/g, (_, w) => String(time).padStart(Number(w), '0'))
+    .replace(/\$Time%0(\d+)d\$/g, (_, w) => padded(time, w))
     .replace(/\$Time\$/g, String(time));
 }
 
@@ -101,28 +146,39 @@ const abs = (uri, base) => {
   try { return new URL(uri, base).href; } catch { return uri; }
 };
 
+const inheritedBase = (node, parent) => {
+  const value = kid(node, 'BaseURL')?.text.trim();
+  return value ? abs(value, parent) : parent;
+};
+
 /** Collect segment refs from a SegmentTemplate element. */
-function segmentsFromTemplate(st, rep, baseUrl) {
+function segmentsFromTemplate(st, rep, baseUrl, budget) {
   const timescale = num(st.attrs.timescale, 1) || 1;
   const media = st.attrs.media || '';
   const initTpl = st.attrs.initialization || '';
   const startNumber = num(st.attrs.startNumber, 1);
   const duration = num(st.attrs.duration, 0); // in timescale units
+  const presentationOffset = num(st.attrs.presentationTimeOffset, 0);
   const timeline = kid(st, 'SegmentTimeline');
   const repId = rep.attrs.id || '';
   const segments = [];
   let initUrl = null;
   if (initTpl) initUrl = abs(substitute(initTpl, repId, startNumber, 0), baseUrl);
+  accountUrl(initUrl, budget);
 
   if (timeline) {
     const entries = expandTimeline(timeline, timescale);
     let curTime = entries.length && entries[0].t != null ? entries[0].t : 0;
-    for (const e of entries) {
+    for (const [index, e] of entries.entries()) {
       if (e.t != null) curTime = e.t;
-      const count = e.r >= 0 ? e.r + 1 : 1;
+      if (!(e.d > 0)) throw new Error('invalid DASH segment duration');
+      const end = entries[index + 1]?.t ?? (rep._periodDuration ? rep._periodDuration * timescale + presentationOffset : 0);
+      const count = e.r >= 0 ? e.r + 1 : Math.ceil((end - curTime) / e.d);
+      if (e.r < 0 && !(count > 0)) throw new Error('DASH repeat has no finite end');
+      checkSegmentCount(budget.count + count);
       for (let k = 0; k < count; k++) {
         const url = abs(substitute(media, repId, startNumber + segments.length, curTime), baseUrl);
-        segments.push({ url, duration: e.d / timescale, number: startNumber + segments.length, time: curTime });
+        addSegment(segments, { url, duration: e.d / timescale, number: startNumber + segments.length, time: curTime }, budget);
         curTime += e.d;
       }
     }
@@ -130,45 +186,48 @@ function segmentsFromTemplate(st, rep, baseUrl) {
     // static MPD without timeline: derive count from period duration
     // caller may pass rep.durationHint; default to a single segment if unknown
     const segs = num(rep._segmentCountHint, 0);
+    checkSegmentCount(budget.count + segs);
     if (segs > 0) {
       for (let i = 0; i < segs; i++) {
         const n0 = startNumber + i;
-        segments.push({ url: abs(substitute(media, repId, n0, 0), baseUrl), duration: duration / timescale, number: n0 });
+        addSegment(segments, { url: abs(substitute(media, repId, n0, 0), baseUrl), duration: duration / timescale, number: n0 }, budget);
       }
     } else {
       const n0 = startNumber;
-      segments.push({ url: abs(substitute(media, repId, n0, 0), baseUrl), duration: duration / timescale, number: n0 });
+      addSegment(segments, { url: abs(substitute(media, repId, n0, 0), baseUrl), duration: duration / timescale, number: n0 }, budget);
     }
   }
   return { initUrl, segments };
 }
 
 /** Collect segment refs from a SegmentList element. */
-function segmentsFromList(sl, rep, baseUrl) {
+function segmentsFromList(sl, rep, baseUrl, budget) {
   const init = kid(sl, 'Initialization');
   const initUrl = init && init.attrs.sourceURL ? abs(init.attrs.sourceURL, baseUrl) : null;
+  accountUrl(initUrl, budget);
   const segments = [];
   for (const su of kids(sl, 'SegmentURL')) {
     if (!su.attrs.media) continue;
-    segments.push({
+    addSegment(segments, {
       url: abs(su.attrs.media, baseUrl),
       duration: num(su.attrs.duration, 0),
       mediaRange: su.attrs.mediaRange || null,
-    });
+    }, budget);
   }
   return { initUrl, segments };
 }
 
 /** Collect segment ref from a SegmentBase element (whole file, index ignored). */
-function segmentsFromBase(sb, rep, baseUrl) {
+function segmentsFromBase(sb, rep, baseUrl, budget) {
   const init = kid(sb, 'Initialization');
   let initUrl = init && init.attrs.sourceURL ? abs(init.attrs.sourceURL, baseUrl) : null;
-  if (!initUrl && init && init.attrs.range) {
-    // range-limited init on the representation URL itself; keep rep URL
-    initUrl = abs(rep.attrs._base || '', baseUrl);
-  }
+  // SegmentBase downloads the whole representation (including its init range).
+  // Prepending that same file as an init would duplicate the MP4 headers/media.
   const url = abs(rep._baseUrl || rep.attrs._base || '', baseUrl);
-  return { initUrl, segments: url ? [{ url, duration: 0 }] : [] };
+  accountUrl(initUrl, budget);
+  const segments = [];
+  if (url) addSegment(segments, { url, duration: 0 }, budget);
+  return { initUrl, segments };
 }
 
 /**
@@ -195,17 +254,22 @@ export function parseMpd(text, baseUrl) {
 
   const representations = [];
   const audioRepresentations = [];
+  const budget = { count: 0, characters: 0 };
+  const mpdBase = inheritedBase(mpd, baseUrl);
 
   const periods = kids(mpd, 'Period');
   for (const period of periods) {
+    const periodBase = inheritedBase(period, mpdBase);
     let periodDur = durationSec;
     if (period.attrs.duration) periodDur = parseDuration(period.attrs.duration);
     const sets = kids(period, 'AdaptationSet');
     for (const as of sets) {
+      const adaptationBase = inheritedBase(as, periodBase);
       const asMime = as.attrs.mimeType || '';
       const asCodecs = as.attrs.codecs || '';
       const reps = kids(as, 'Representation');
       for (const rep of reps) {
+        rep._periodDuration = periodDur;
         const mime = rep.attrs.mimeType || asMime;
         const codecs = rep.attrs.codecs || asCodecs;
         const width = num(rep.attrs.width, num(as.attrs.width, 0));
@@ -227,36 +291,30 @@ export function parseMpd(text, baseUrl) {
         let st = kid(rep, 'SegmentTemplate') || kid(as, 'SegmentTemplate');
         let sl = kid(rep, 'SegmentList') || kid(as, 'SegmentList');
         let sb = kid(rep, 'SegmentBase') || kid(as, 'SegmentBase');
-        const base = kid(rep, 'BaseURL') || kid(as, 'BaseURL');
-        if (base && base.text.trim()) {
-          entry.baseUrl = abs(base.text.trim(), baseUrl);
-          rep._baseUrl = entry.baseUrl;
-        } else {
-          rep._baseUrl = baseUrl;
-        }
+        entry.baseUrl = inheritedBase(rep, adaptationBase);
+        rep._baseUrl = entry.baseUrl;
         rep.attrs._base = rep._baseUrl;
 
         if (st) {
           // hint for count derivation on static template-without-timeline
-          if (!st.attrs.duration && periodDur && st.attrs.duration) { /* noop */ }
           if (st.attrs.duration && periodDur) {
             const ts = num(st.attrs.timescale, 1) || 1;
             rep._segmentCountHint = Math.ceil(periodDur / (num(st.attrs.duration) / ts));
           }
-          const r = segmentsFromTemplate(st, rep, rep._baseUrl);
+          const r = segmentsFromTemplate(st, rep, rep._baseUrl, budget);
           entry.initUrl = r.initUrl;
           entry.segments = r.segments;
         } else if (sl) {
-          const r = segmentsFromList(sl, rep, rep._baseUrl);
+          const r = segmentsFromList(sl, rep, rep._baseUrl, budget);
           entry.initUrl = r.initUrl;
           entry.segments = r.segments;
         } else if (sb) {
-          const r = segmentsFromBase(sb, rep, rep._baseUrl);
+          const r = segmentsFromBase(sb, rep, rep._baseUrl, budget);
           entry.initUrl = r.initUrl;
           entry.segments = r.segments;
         } else {
           // plain BaseURL -> single segment
-          if (rep._baseUrl) entry.segments = [{ url: rep._baseUrl, duration: periodDur }];
+          if (rep._baseUrl) addSegment(entry.segments, { url: rep._baseUrl, duration: periodDur }, budget);
         }
 
         const isAudio = (mime || '').startsWith('audio') ||

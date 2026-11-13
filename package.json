@@ -13,6 +13,7 @@
     "pack:extension": "npm run assets && node tools/pack-extension.mjs",
     "test": "node test/extension-test.mjs && node test/extension-ui-test.mjs && node test/i18n-check.mjs && node test/i18n-switch-test.mjs && node test/web-i18n-check.mjs && node test/unit-convert-test.mjs && node --test --test-concurrency=3 test/reliability/*.test.mjs",
     "test:web-build": "npm run build:web && node --test test/performance/*.test.mjs",
+    "test:backend-performance": "node test/backend-performance.mjs",
     "assets": "node extension/gen-icons.js",
     "engines": "node tools/download-engines.mjs",
     "upstream:report": "node tools/upstream-report.mjs",
@@ -22,10 +23,14 @@
     "test:desktop-extension": "node test/desktop-extension-smoke.mjs"
   },
   "devDependencies": {
-    "electron": "^39.8.10",
+    "electron": "^45.3.2",
     "electron-builder": "^26.15.3",
     "playwright": "1.64.0",
     "sharp": "^0.35.5"
+  },
+  "overrides": {
+    "app-builder-lib": { "minimatch": "^11.0.1" },
+    "@electron/universal": { "minimatch": "^11.0.1" }
   },
   "build": {
     "appId": "com.foxmori.foxdown",
@@ -110,5 +115,6 @@
       "minimumSystemVersion": "13.0"
     }
   },
-  "author": "Foxmori"
+  "author": "Foxmori",
+  "engines": { "node": ">=22.12.0" }
 }

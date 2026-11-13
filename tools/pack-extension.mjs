@@ -18,11 +18,7 @@ const REQUIRED = [
   'popup.html', 'popup.js', 'options.html', 'options.js',
   'onboarding.html', 'onboarding.js', 'onboarding.css', 'theme.css', 'connection.js',
   'icons/icon16.png', 'icons/icon32.png', 'icons/icon48.png', 'icons/icon128.png',
-  '_locales/de/messages.json', '_locales/en/messages.json',
-  '_locales/es/messages.json', '_locales/fr/messages.json',
-  '_locales/ja/messages.json', '_locales/ko/messages.json',
-  '_locales/pt_BR/messages.json', '_locales/zh_CN/messages.json',
-  '_locales/zh_TW/messages.json',
+  '_locales/en/messages.json', '_locales/zh_CN/messages.json',
   'vendor/hls.min.js',
   'PRIVACY.md',
 ];
@@ -198,7 +194,7 @@ console.log(`ZIP: ${OUT_ZIP}`);
 console.log(`ZIP size: ${zip.length} bytes (${(zip.length / 1024).toFixed(1)} KiB), files: ${lfhList.length}, uncompressed total: ${totalUncompressed} bytes`);
 console.log(`manifest.json at ZIP root: ${manifestAtRoot ? 'YES' : 'NO'}`);
 console.log(`manifest.json JSON valid, no comments, no trailing commas: ${manifestJsonOk ? 'YES' : 'NO'}`);
-console.log(`messages.json validated: ${msgFiles.length}/9 ${msgFiles.length === 9 ? 'OK' : 'COUNT MISMATCH'}`);
+console.log(`messages.json validated: ${msgFiles.length}/2 ${msgFiles.length === 2 ? 'OK' : 'COUNT MISMATCH'}`);
 if (errors.length) {
   console.error('VALIDATION FAILED:\n - ' + errors.join('\n - '));
   process.exit(1);

@@ -7,6 +7,10 @@ REST、MCP 和 WebSocket 都校验浏览器 Origin，允许与服务 Host 相同
 
 修改 `postScript` 需要同源 Web UI，或携带有效 Bearer 令牌。仅查询参数中的令牌不能用于修改脚本。
 
+免令牌浏览器扩展仅可检查健康状态、读取任务与统计、探测资源及创建下载。扩展指定的目录需要位于默认下载目录内，符号链接按实际目标检查。设置、令牌、MCP、Webhook 测试和打开目录等操作需要 Web UI 或显式 Bearer 令牌。
+
+设置更新仅接受已定义字段及其正确类型，非法值会返回 400。`postScript` 等路径与 HTTP 头配置拒绝控制字符，速度预设会校验名称及上下行数值。
+
 ## 命令行
 
 启动 Foxdown 后，可以查看任务或提交下载：
@@ -97,6 +101,10 @@ node cli/foxdown.mjs add "https://example.com/file.zip"
 }
 ```
 响应 `{id, engine}`。
+
+原生流媒体遇到同名输出时添加序号；完成后的任务名称及 `outputFiles` 返回实际结果。恢复／重试接口在启动任务后返回，完成状态通过任务查询或 WebSocket 获取。
+
+资源探测与播放列表的响应体上限为 16 MiB。原生 DASH 每份 MPD 最多展开 100,000 个分片，超出工作量或结构预算会报错。容量设置接受整数、K、M 格式，`minSplitSize` 范围为 1 KiB 至 1 GiB。
 
 ### WebSocket 推送
 

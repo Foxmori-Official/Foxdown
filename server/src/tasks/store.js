@@ -3,6 +3,7 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { DATA_DIR } from '../config.js';
 import { genId } from '../util/helpers.js';
+import { writeJsonAtomic } from '../util/atomic-json.js';
 
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
@@ -17,6 +18,8 @@ export class TaskStore extends EventEmitter {
     this.db = { streamTasks: [], meta: {} };
     this._load();
     this._saveTimer = null;
+    this._writing = null;
+    this._dirty = false;
   }
 
   _load() {
@@ -31,10 +34,24 @@ export class TaskStore extends EventEmitter {
   }
 
   save() {
+    this._dirty = true;
     clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
-      try { fs.writeFileSync(DB_FILE, JSON.stringify(this.db, null, 1)); } catch {}
+      this.flush().catch(error => console.error('[store] failed to save tasks:', error.message));
     }, 300);
+  }
+
+  async flush() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = null;
+    while (this._writing) await this._writing;
+    if (!this._dirty) return;
+    this._dirty = false;
+    this._writing = writeJsonAtomic(DB_FILE, this.db);
+    try { await this._writing; }
+    catch (error) { this._dirty = true; throw error; }
+    finally { this._writing = null; }
+    if (this._dirty) await this.flush();
   }
 
   addStreamTask(fields) {

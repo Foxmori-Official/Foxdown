@@ -77,7 +77,7 @@ export class StreamManager extends EventEmitter {
       id: t.id,
       engine: 'stream',
       kind: 'stream',
-      name: t.name || t.url,
+      name: t.outputName || t.name || t.url,
       status: t.status,
       totalLength: t.totalLength || 0,
       completedLength: t.completedLength || 0,
