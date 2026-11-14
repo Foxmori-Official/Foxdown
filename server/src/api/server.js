@@ -5,11 +5,12 @@ import { isIP } from 'node:net';
 import { timingSafeEqual } from 'node:crypto';
 import express from 'express';
 import { WebSocketServer } from 'ws';
-import { API_PORT, API_HOST, WEB_DIST, loadSettings, saveSettings, hasFfmpeg, hasExternalStreamEngine } from '../config.js';
+import { APP_VERSION, API_PORT, API_HOST, WEB_DIST, loadSettings, saveSettings, hasFfmpeg, hasExternalStreamEngine } from '../config.js';
 import { isMagnet, isTorrentUrl, isStreamUrl, guessFilename, sanitizeFilename } from '../util/helpers.js';
 import { probeUrl } from './probe.js';
 import { validateSettingsPatch } from '../settings.js';
 import { isWithinDirectory } from '../util/paths.js';
+import { checkReleaseUpdate } from '../../../extension/release-updates.mjs';
 
 const ARIA2_KEYS = [
   'gid', 'status', 'totalLength', 'completedLength', 'uploadLength', 'downloadSpeed',
@@ -336,6 +337,14 @@ export class ApiServer {
         ok: true, app: 'foxdown', aria2, aria2Version: version,
         stream: true, ffmpeg: hasFfmpeg(), externalStreamEngine: hasExternalStreamEngine(),
       });
+    });
+
+    r.get('/api/v1/updates', async (_req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      try {
+        const { version, available, releaseUrl } = await checkReleaseUpdate(APP_VERSION);
+        res.json({ version, available, releaseUrl });
+      } catch { res.status(502).json({ error: 'Could not check for updates' }); }
     });
 
     // ---- resolve (Gopeed-style two-step) ----

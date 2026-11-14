@@ -4,6 +4,7 @@ node_modules/
 # Build output
 web/dist/
 dist-electron/
+/installer/mac/background*.png
 Foxdown-extension.zip
 /bin/*
 !/bin/.gitkeep

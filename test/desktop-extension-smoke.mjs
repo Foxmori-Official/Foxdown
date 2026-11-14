@@ -12,6 +12,10 @@ import playwright from 'playwright';
 const require = createRequire(import.meta.url);
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const { version } = require('../package.json');
+const releases = 'https://github.com/Foxmori-Official/Foxdown/releases';
+const nextVersion = version.replace(/\d+$/, patch => Number(patch) + 1);
+const releaseFixture = (version, available) => ({ version, available, releaseUrl: `${releases}/tag/v${version}` });
 const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'foxdown-ui-'));
 const shots = process.env.FOXDOWN_SCREENSHOT_DIR || path.join(temp, 'screenshots');
 await fs.mkdir(shots, { recursive: true });
@@ -107,6 +111,26 @@ try {
   assert.equal(await app.locator('#sec-rpc').getByRole('switch').getAttribute('aria-checked'), 'false');
   await app.getByRole('tab', { name: 'Application', exact: true }).click();
   await app.getByText('Open Foxdown at login', { exact: true }).waitFor();
+  assert.equal(await app.locator('#app-version').innerText(), `v${version}`);
+  let releaseRequest = 0;
+  const localUpdateApi = `${origin}/api/v1/updates`;
+  await app.route(localUpdateApi, async route => {
+    assert.equal((await route.request().allHeaders()).authorization, `Bearer ${token}`);
+    releaseRequest++;
+    await route.fulfill(releaseRequest === 3 ? { status: 503, body: 'unavailable' }
+      : { json: releaseRequest === 1 ? releaseFixture(version, false) : releaseFixture(nextVersion, true) });
+  });
+  const appCheck = app.getByRole('button', { name: 'Check for updates', exact: true });
+  const appUpdate = app.locator('#app-update-status');
+  await appCheck.click();
+  await appUpdate.filter({ hasText: 'Foxdown is up to date.' }).waitFor();
+  await appCheck.click();
+  await appUpdate.filter({ hasText: `Version v${nextVersion} is available.` }).waitFor();
+  assert.equal(await appUpdate.getByRole('link').getAttribute('href'), `https://github.com/Foxmori-Official/Foxdown/releases/tag/v${nextVersion}`);
+  await appCheck.click();
+  await appUpdate.filter({ hasText: 'Could not check for updates.' }).waitFor();
+  assert.equal(await appUpdate.getByRole('link').count(), 0);
+  await app.unroute(localUpdateApi);
   await app.getByRole('tab', { name: 'General', exact: true }).click();
   await settingsTabs.first().focus();
   await app.keyboard.press('ArrowDown');
@@ -272,6 +296,24 @@ try {
   await options.waitForFunction(() => document.documentElement.lang === 'zh-CN');
   await options.locator('#locale').selectOption('en');
   await options.waitForFunction(() => document.documentElement.lang === 'en');
+  await options.locator('#extensionVersion').filter({ hasText: `v${version}` }).waitFor();
+  // Playwright routes only intercept the first URL in a redirect chain.
+  // Stub the final response for this UI check, while updates.test covers its request and validation.
+  await options.evaluate(({ releases, nextVersion }) => {
+    const original = window.fetch;
+    window.fetch = (url, init) => url === `${releases}/latest`
+      ? Promise.resolve({ ok: true, url: `${releases}/tag/v${nextVersion}` })
+      : original(url, init);
+  }, { releases, nextVersion });
+  await options.locator('#extensionCheckUpdates').click();
+  const extensionUpdate = options.locator('#extensionUpdateStatus');
+  await extensionUpdate.filter({ hasText: `Version v${nextVersion} is available.` }).waitFor();
+  assert.equal(await options.locator('#extensionUpdateLink').getAttribute('href'),
+    `https://github.com/Foxmori-Official/Foxdown/releases/download/v${nextVersion}/Foxdown-extension.zip`);
+  await options.locator('#locale').selectOption('zh-CN');
+  await extensionUpdate.filter({ hasText: `发现新版本 v${nextVersion}` }).waitFor();
+  await options.locator('#locale').selectOption('en');
+  await extensionUpdate.filter({ hasText: `Version v${nextVersion} is available.` }).waitFor();
   assert.equal(await options.locator('#serverUrl').inputValue(), origin);
   await options.locator('#test').click();
   await options.locator('#status.ok').filter({ hasText: /1\.36\.0/ }).waitFor();
@@ -292,6 +334,7 @@ try {
   const popup = await browser.newPage();
   await popup.goto(extensionBase + '/popup.html');
   await popup.waitForFunction(() => document.getElementById('state').textContent.length > 0);
+  assert.equal(await popup.locator('#popupVersion').innerText(), `v${version}`);
   assert.equal(await popup.locator('#capture').isChecked(), false);
   await popup.screenshot({ path: path.join(shots, 'extension-popup.png'), animations: 'disabled' });
 

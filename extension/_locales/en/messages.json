@@ -3,6 +3,13 @@
     "message": "Foxdown",
     "description": "Extension name"
   },
+  "extensionVersionLabel": { "message": "Extension version" },
+  "checkUpdates": { "message": "Check for updates" },
+  "downloadUpdate": { "message": "Download update" },
+  "updateChecking": { "message": "Checking for updates…" },
+  "updateCurrent": { "message": "The extension is up to date." },
+  "updateAvailable": { "message": "Version v$1 is available." },
+  "updateError": { "message": "Could not check for updates. Please try again later." },
   "extDesc": {
     "message": "Capture browser downloads and send them to the local Foxdown manager (HTTP/BT/magnet/m3u8 streams)",
     "description": "Extension description"

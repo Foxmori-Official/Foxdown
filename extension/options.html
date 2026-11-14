@@ -69,6 +69,9 @@
     #dashboardResources:hover { background: #fff1d610; }
     .settings-content { min-width: 0; border: 1px solid var(--border); background: var(--card-bg); padding: 28px 32px 0; border-radius: 22px; }
     .settings-content h1 { margin: 0 0 28px; font-size: 23px; font-weight: 650; letter-spacing: -.5px; }
+    .extension-version { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+    .extension-version strong { font-variant-numeric: tabular-nums; }
+    #extensionUpdateLink { color: var(--brand); text-underline-offset: 3px; }
     .settings-content h2 { margin-top: 32px; padding-bottom: 12px; }
     .settings-content input, .settings-content textarea, .settings-content select { min-width: 0; }
     .settings-content .row { align-items: flex-start; }
@@ -95,6 +98,12 @@
   </aside>
   <main class="settings-content">
   <h1><span data-i18n="optHeading">Foxdown 连接器设置</span></h1>
+  <div class="extension-version">
+    <span><span data-i18n="extensionVersionLabel">扩展版本</span> <strong id="extensionVersion"></strong></span>
+    <button id="extensionCheckUpdates" class="secondary" type="button" data-i18n="checkUpdates">检查更新</button>
+    <a id="extensionUpdateLink" target="_blank" rel="noopener noreferrer" data-i18n="downloadUpdate" hidden>下载更新</a>
+  </div>
+  <div id="extensionUpdateStatus" class="hint" role="status"></div>
 
   <h2 data-i18n="langTitle">语言</h2>
   <label><span data-i18n="langLabel">界面语言</span>
@@ -239,5 +248,6 @@
   <script src="connection.js"></script>
   <script src="options.js"></script>
   <script src="options-dashboard.js"></script>
+  <script type="module" src="options-updates.mjs"></script>
 </body>
 </html>

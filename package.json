@@ -1,6 +1,6 @@
 {
   "name": "foxdown",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "description": "Foxdown - unified download manager: aria2 engine + HLS/DASH stream engine + browser capture",
   "main": "electron/main.cjs",
@@ -70,6 +70,10 @@
         "to": "runtime/web/dist"
       },
       {
+        "from": "extension/release-updates.mjs",
+        "to": "runtime/extension/release-updates.mjs"
+      },
+      {
         "from": "bin/${os}-${arch}",
         "to": "runtime/bin",
         "filter": [
@@ -85,9 +89,12 @@
       "icon": "web/public/logo.png"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": false,
+      "displayLanguageSelector": false,
+      "installerLanguages": ["en_US", "zh_CN"],
+      "include": "installer/windows/options.nsh",
       "shortcutName": "Foxdown"
     },
     "protocols": [
@@ -110,13 +117,25 @@
     "artifactName": "Foxdown-${version}-${os}-${arch}.${ext}",
     "mac": {
       "target": [
-        "dir"
+        "dmg"
       ],
       "icon": "web/public/icon-mac.png",
       "category": "public.app-category.utilities",
       "notarize": false,
       "identity": "-",
       "minimumSystemVersion": "13.0"
+    },
+    "dmg": {
+      "title": "${productName}",
+      "background": "installer/mac/background.png",
+      "format": "UDZO",
+      "iconSize": 100,
+      "iconTextSize": 13,
+      "writeUpdateInfo": false,
+      "contents": [
+        { "x": 161, "y": 209, "type": "file" },
+        { "x": 439, "y": 209, "type": "link", "path": "/Applications" }
+      ]
     }
   },
   "author": "Foxmori",

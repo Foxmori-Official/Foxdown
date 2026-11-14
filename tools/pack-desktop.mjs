@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
@@ -20,7 +19,13 @@ if (missing.length) throw new Error('Bundled engines are incomplete: ' + missing
 
 const cli = require.resolve('electron-builder/out/cli/cli.js');
 const builderArgs = [cli, '--' + target, '--' + arch, '--publish', 'never'];
-if (target === 'mac') builderArgs.push('--dir');
+if (target === 'mac') {
+  const sharp = require('sharp');
+  const background = 'installer/mac/background';
+  for (const [suffix, density] of [['', 72], ['@2x', 144]]) {
+    await sharp(background + '.svg', { density }).png().toFile(background + suffix + '.png');
+  }
+}
 execFileSync(process.execPath, builderArgs, { stdio: 'inherit' });
 
 if (target === 'mac') {
@@ -41,13 +46,6 @@ if (target === 'mac') {
     verified++;
   }
   console.log(`Verified ${verified} Mach-O components for ${arch}`);
-  const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'foxdown-dmg-'));
-  try {
-    execFileSync('ditto', [app, path.join(staging, 'Foxdown.app')], { stdio: 'inherit' });
-    await fs.symlink('/Applications', path.join(staging, 'Applications'));
-    const dmg = path.join(output, `Foxdown-${version}-mac-${arch}.dmg`);
-    execFileSync('hdiutil', ['create', '-volname', 'Foxdown', '-srcfolder', staging, '-ov', '-format', 'UDZO', dmg], { stdio: 'inherit' });
-  } finally {
-    await fs.rm(staging, { recursive: true, force: true });
-  }
+  const dmg = path.join(output, `Foxdown-${version}-mac-${arch}.dmg`);
+  execFileSync('hdiutil', ['verify', dmg], { stdio: 'inherit' });
 }

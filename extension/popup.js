@@ -468,6 +468,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // 启动引导（普通 script 无法顶层 await，包 async IIFE）：
 // 先加载语言覆盖层 → 应用 data-i18n 文案（含主界面与下载前确认表单）→ 按模式初始化
 (async () => {
+  $('popupVersion').textContent = `v${chrome.runtime.getManifest().version}`;
   await applyI18nTexts();
   const qs = new URLSearchParams(location.search);
   if (qs.get('mode') === 'confirm') {

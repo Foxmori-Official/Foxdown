@@ -1,6 +1,6 @@
 # 隐私政策 / Privacy Policy
 
-**Foxdown Connector** 浏览器扩展 · 更新日期：2026-11-13
+**Foxdown Connector** 浏览器扩展 · 更新日期：2026-11-14
 
 ---
 
@@ -31,6 +31,7 @@
 设置和令牌保存在本设备的扩展存储。旧版的同步设置会迁移到本机并从同步区移除。嗅探媒体、必要请求头和防重复状态保存在浏览器会话存储，支持后台休眠恢复。标签页关闭或跳转时清理该页媒体，浏览器会话结束时清理会话存储。
 
 - 数据仅传输到你配置的服务器地址。默认地址为 `http://127.0.0.1:16801`（本机回环，数据不出你的电脑）；若你自行改为远程服务器地址，数据将通过你所配置的通道传输，请自行确保该服务器可信（建议使用 HTTPS 并设置 API Token）。
+- 点击「检查更新」时，扩展向 GitHub 请求公开版本信息。请求不携带 Foxdown 令牌、下载地址或浏览记录，版本比较在本地进行。
 - 远程代码：扩展不包含任何从服务器下载并执行的代码，所有逻辑都在扩展包内。
 
 ### 你的控制权
@@ -76,6 +77,7 @@ The purpose of this extension is to send downloads you initiate — together wit
 Settings and tokens use device-local extension storage. Legacy sync settings migrate locally and are removed from the sync area. Detected media, required request headers and duplicate suppression state use browser session storage so they survive worker suspension. Navigation or tab closure clears that tab’s media, and the browser clears session storage when the session ends.
 
 - Data is transmitted only to the server address you configured. The default is `http://127.0.0.1:16801` (loopback — data never leaves your machine). If you change it to a remote server, data travels over the channel you configured; ensure that server is trusted (HTTPS + API Token recommended).
+- When you choose **Check for updates**, the extension requests public release information from GitHub. The request contains no Foxdown token, download URLs, or browsing history. Version comparison takes place locally.
 - No remote code: the extension downloads and executes no code from any server; all logic ships inside the extension package.
 
 ### Your controls

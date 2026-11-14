@@ -3,6 +3,13 @@
     "message": "Foxdown",
     "description": "扩展名称"
   },
+  "extensionVersionLabel": { "message": "扩展版本" },
+  "checkUpdates": { "message": "检查更新" },
+  "downloadUpdate": { "message": "下载更新" },
+  "updateChecking": { "message": "正在检查更新…" },
+  "updateCurrent": { "message": "当前扩展已是最新版本。" },
+  "updateAvailable": { "message": "发现新版本 v$1。" },
+  "updateError": { "message": "无法检查更新，请稍后重试。" },
   "extDesc": {
     "message": "自动拦截浏览器下载，发送到本地下载管理器 Foxdown（HTTP/BT/磁力/m3u8 流媒体）",
     "description": "扩展描述"

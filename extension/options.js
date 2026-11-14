@@ -208,6 +208,7 @@ async function applyI18nTexts() {
     if (msg) el.placeholder = msg;
   }
   document.title = i18n('optTitle');
+  document.dispatchEvent(new Event('foxdown-options-language'));
 }
 
 // 语言切换：即时应用，无需重载扩展（参考 Aria2-Explorer localizeHtmlPage 思路——

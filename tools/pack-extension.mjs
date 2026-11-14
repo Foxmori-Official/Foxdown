@@ -12,7 +12,7 @@ const OUT_ZIP = path.join(ROOT, 'Foxdown-extension.zip');
 
 // ---- inclusion / exclusion rules -------------------------------------------
 const REQUIRED = [
-  'settings.js', 'options-dashboard.js',
+  'settings.js', 'options-dashboard.js', 'options-updates.mjs', 'release-updates.mjs',
   'manifest.json',
   'background.js', 'content.js', 'i18n.js', 'lib.js',
   'popup.html', 'popup.js', 'options.html', 'options.js',

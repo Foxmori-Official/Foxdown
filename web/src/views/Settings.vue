@@ -333,12 +333,25 @@
         </section>
         <section v-show="activeGroup === 'sec-app'" class="group-card" id="sec-app" role="tabpanel" aria-labelledby="tab-sec-app">
           <div class="group-header"><h2 class="group-title">{{ t('settings.groupApp') }}</h2></div>
+          <el-form-item :label="t('settings.currentVersion')">
+            <div class="app-version-row">
+              <span id="app-version" class="app-version">v{{ appVersion }}</span>
+              <el-button native-type="button" :loading="updateState === 'checking'" @click="checkUpdates">
+                {{ t('settings.checkUpdates') }}
+              </el-button>
+            </div>
+            <p v-if="updateState" id="app-update-status" class="app-update-status" role="status">
+              {{ updateState === 'available' ? t('settings.updateAvailable', { version: update.version })
+                : updateState === 'checking' ? t('settings.updateChecking')
+                : updateState === 'current' ? t('settings.updateCurrent') : t('settings.updateError') }}
+              <a v-if="updateState === 'available'" :href="update.releaseUrl" target="_blank" rel="noopener noreferrer">{{ t('settings.downloadUpdate') }}</a>
+            </p>
+          </el-form-item>
           <el-form-item v-if="desktop && loginAtStartup !== null" :label="t('settings.desktopStartup')">
             <el-switch v-model="loginAtStartup" @change="setStartup" :loading="savingStartup" />
           </el-form-item>
           <div class="app-links">
             <a href="https://github.com/Foxmori-Official/Foxdown#browser-extension" target="_blank" rel="noopener">{{ t('settings.extensionGuide') }}</a>
-            <a href="https://github.com/Foxmori-Official/Foxdown/releases" target="_blank" rel="noopener">{{ t('settings.checkUpdates') }}</a>
           </div>
         </section>
       </el-form>
@@ -373,6 +386,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSettingsStore } from '../stores/settings'
 import { api } from '../api/client'
 import i18n, { resolveLocale } from '../i18n'
+import { version as appVersion } from '../../package.json'
 import {
   bytesToSpeedDisplay,
   speedDisplayToBytes,
@@ -398,6 +412,19 @@ const saving = ref(false)
 const saveError = ref('')
 const desktop = window.foxdownDesktop
 const webApiAddress = window.location.origin
+const updateState = ref('')
+const update = ref(null)
+async function checkUpdates() {
+  if (updateState.value === 'checking') return
+  updateState.value = 'checking'
+  update.value = null
+  try {
+    update.value = await api.checkUpdates()
+    updateState.value = update.value.available ? 'available' : 'current'
+  } catch {
+    updateState.value = 'error'
+  }
+}
 const loginAtStartup = ref(null)
 const savingStartup = ref(false)
 async function setStartup(value) {
@@ -903,6 +930,10 @@ async function regenerateSecret() {
 .advanced-settings summary { cursor: pointer; color: var(--kd-primary); margin-bottom: 12px; }
 .app-links { display: flex; flex-wrap: wrap; gap: 14px; }
 .app-links a { text-decoration: underline; text-underline-offset: 3px; }
+.app-version-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.app-version { font-variant-numeric: tabular-nums; color: var(--kd-text-primary); font-weight: 600; }
+.app-update-status { width: 100%; margin: 2px 0 0; line-height: 1.5; color: var(--kd-text-secondary); }
+.app-update-status a { margin-inline-start: 6px; text-decoration: underline; text-underline-offset: 3px; }
 
 /* 分组卡片 */
 .group-card {

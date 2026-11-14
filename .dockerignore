@@ -12,6 +12,7 @@ extension
 !extension/
 extension/*
 !extension/gen-icons.js
+!extension/release-updates.mjs
 !extension/icons/
 extension/icons/*
 !extension/icons/icon-source.png

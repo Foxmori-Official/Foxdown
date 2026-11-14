@@ -50,6 +50,7 @@ node cli/foxdown.mjs add "https://example.com/file.zip"
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/v1/health` | `{ok, aria2, aria2Version, stream, ffmpeg, externalStreamEngine}` |
+| GET | `/api/v1/updates` | 查询 GitHub 的最新正式版本，返回 `{version, available, releaseUrl}`。查询失败时返回 502。 |
 | POST | `/api/v1/resolve` | 请求 `{url, headers?: string[]}`；响应见下 |
 | POST | `/api/v1/tasks` | 创建任务，见下 |
 | GET | `/api/v1/tasks?status=all|active|waiting|stopped&search=关键词` | `{tasks: Task[]}` |

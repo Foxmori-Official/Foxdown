@@ -9,6 +9,7 @@
     :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
     h1 { font-size: 19px; margin: 0 0 12px; display: flex; align-items: center; gap: 6px; }
     h1 img { width: 28px; height: 28px; }
+    #popupVersion { margin-inline-start: auto; font-size: 12px; font-weight: 500; color: var(--text-dim); font-variant-numeric: tabular-nums; }
     .capture { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--brand-ghost-bg); border-radius: 8px; margin-bottom: 10px; font-size: 13px; }
     .switch { position: relative; width: 40px; height: 22px; }
     .switch input { opacity: 0; width: 0; height: 0; }
@@ -87,7 +88,7 @@
   </style>
 </head>
 <body>
-  <h1><img src="icons/icon48.png" alt="">Foxdown</h1>
+  <h1><img src="icons/icon48.png" alt="">Foxdown <span id="popupVersion"></span></h1>
   <div class="capture">
     <span id="captureLabel" data-i18n="captureLabel">接管浏览器下载</span>
     <label class="switch"><input type="checkbox" id="capture" aria-labelledby="captureLabel"><span class="slider"></span></label>

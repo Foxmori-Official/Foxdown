@@ -38,6 +38,7 @@ WORKDIR /app
 COPY --from=deps /app/server/node_modules ./server/node_modules
 COPY server/package.json ./server/package.json
 COPY server/src ./server/src
+COPY extension/release-updates.mjs ./extension/
 COPY LICENSE ./LICENSE
 COPY --from=web /app/web/dist ./web/dist
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

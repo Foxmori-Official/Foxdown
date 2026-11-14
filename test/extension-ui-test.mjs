@@ -187,6 +187,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
     reg('langLabelEl', 'label', { 'data-i18n': 'langLabel' });
     reg('domainListPhEl', 'input', { 'data-i18n-ph': 'domainListPh' });
   } else if (page === 'popup') {
+    reg('popupVersion', 'span');
     reg('capture', 'input', { type: 'checkbox' }); reg('captureLabel', 'span', { 'data-i18n': 'captureLabel' });
     reg('active', 'span'); reg('waiting', 'span'); reg('speed', 'span'); reg('upspeed', 'span'); reg('state', 'span');
     reg('sniffCapture', 'input', { type: 'checkbox' });
@@ -220,6 +221,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
       onChanged: { addListener: (fn) => onChanged.push(fn) },
     },
     runtime: {
+      getManifest: () => JSON.parse(read('manifest.json')),
       getURL: (p) => p,
       openOptionsPage: () => { sent.push({ __openOptions: true }); },
       sendMessage: async (m) => {
@@ -275,7 +277,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
     console, chrome, fetch, window, document: null,
     readSettings: defaults => chrome.storage.local.get(defaults),
     writeSettings: patch => chrome.storage.local.set(patch), location: { search: locationSearch },
-    URLSearchParams, URL, El, AbortController, AbortSignal, clearTimeout,
+    URLSearchParams, URL, El, Event, AbortController, AbortSignal, clearTimeout,
     setInterval: () => 0, clearInterval: () => {},
     setTimeout: (fn) => { fn(); return 0; },
     Blob: class { constructor(parts) { this.parts = parts; } },
@@ -288,6 +290,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
     getElementById: (id) => byId[id] || null,
     querySelector: (sel) => body.querySelectorAll(sel)[0] || null,
     querySelectorAll: (sel) => body.querySelectorAll(sel),
+    dispatchEvent: (event) => body.dispatch(event.type),
     body, documentElement: {},
     title: '',
   };

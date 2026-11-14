@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+  <title>Foxdown installer background</title>
+  <defs>
+    <linearGradient id="paper" x2="0.8" y2="1">
+      <stop stop-color="#fffdf7"/>
+      <stop offset="1" stop-color="#f0f1e6"/>
+    </linearGradient>
+    <linearGradient id="sage" x2="0.72" y2="1">
+      <stop stop-color="#e8eddf"/>
+      <stop offset="1" stop-color="#d4dfcc"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#paper)" d="M0 0h600v400H0z"/>
+  <path fill="#f1e6d2" opacity=".68" d="M600 44c-59 6-110 49-111 108-1 53 39 91 111 109z"/>
+  <path fill="url(#sage)" d="M0 156c68-34 119-37 170-4 58 37 80 107 135 136 75 39 134-29 198-35 39-4 70 11 97 41V400H0z"/>
+  <path fill="#edf0e6" opacity=".9" d="M0 287c95-20 146 33 243 43 99 10 186-38 265-23 39 7 66 22 92 47V400H0z"/>
+  <path d="M250 209h98m-10-7 10 7-10 7" fill="none" stroke="#355643" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="300" y="101" fill="#294e37" font-family="Helvetica Neue, Helvetica, sans-serif" font-size="48" font-weight="700" letter-spacing="-1.7" text-anchor="middle">Foxdown</text>
+  <text x="300" y="319" fill="#294e37" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" text-anchor="middle">将 Foxdown 拖到「应用程序」</text>
+  <text x="300" y="342" fill="#4f6355" font-family="Helvetica Neue, Helvetica, sans-serif" font-size="13" text-anchor="middle">Drag Foxdown to Applications</text>
+</svg>

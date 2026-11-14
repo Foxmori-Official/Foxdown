@@ -35,6 +35,7 @@ async function request(method, path, body) {
 
 export const api = {
   health: () => request('GET', '/health'),
+  checkUpdates: () => request('GET', '/updates'),
   resolve: (url, headers) => request('POST', '/resolve', { url, headers }),
   createTask: (payload) => request('POST', '/tasks', payload),
   getTasks: (status = 'all') => request('GET', `/tasks?status=${status}`),

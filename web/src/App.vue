@@ -6,7 +6,7 @@
         <img class="nav-logo-img" src="/logo.png" alt="" />
         <div class="nav-identity">
           <strong>Foxdown</strong>
-          <span>Foxmori</span>
+          <span>Foxmori · v{{ appVersion }}</span>
         </div>
       </div>
       <nav class="nav-items">
@@ -103,6 +103,7 @@ import Tasks from './views/Tasks.vue'
 const Settings = defineAsyncComponent(() => import('./views/Settings.vue'))
 import { getAuthToken, setAuthToken } from './api/client'
 import { EP_LOCALES } from './i18n/element'
+import { version as appVersion } from '../package.json'
 
 const { t, locale } = useI18n()
 

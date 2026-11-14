@@ -35,7 +35,7 @@ export function popupFixture() {
   const window = { addEventListener: () => {}, close: () => {} };
   const chrome = {
     storage: { local: { get: defaults => controls.storage(defaults) }, onChanged: { addListener: () => {} } },
-    runtime: { getURL: file => `chrome-extension://test/${file}`, sendMessage: message => controls.message(message) },
+    runtime: { getURL: file => `chrome-extension://test/${file}`, sendMessage: message => controls.message(message), getManifest: () => ({ version: '0.0.2' }) },
     i18n: { getUILanguage: () => 'en' },
     tabs: { query: async () => [{ id: 1, active: true, url: 'https://example.invalid/page' }] },
   };
