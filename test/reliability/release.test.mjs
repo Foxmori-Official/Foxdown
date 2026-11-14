@@ -17,7 +17,7 @@ function fixture(t) {
   };
   for (const file of ['package.json', 'server/package.json', 'web/package.json', 'extension/manifest.json']) write(file, { version: '0.0.1' });
   for (const file of ['package-lock.json', 'server/package-lock.json', 'web/package-lock.json']) write(file, { version: '0.0.1', packages: { '': { version: '0.0.1' } } });
-  write('docs/releases/v0.0.1.md', '## 简体中文\n\n首个版本。\n');
+  write('docs/releases/v0.0.1.md', 'Foxdown v0.0.1 是首个版本。\n');
   const output = path.join(root, 'outputs');
   const run = overrides => spawnSync(process.execPath, [script], {
     cwd: root, encoding: 'utf8', env: { ...process.env, GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main',
@@ -50,14 +50,22 @@ test('a mismatched release tag or package version blocks the release', t => {
 
 test('Chinese-only release notes also support Windows line endings', t => {
   const f = fixture(t);
-  f.write('docs/releases/v0.0.1.md', '\uFEFF## 简体中文\r\n\r\n首个版本。\r\n');
+  f.write('docs/releases/v0.0.1.md', '\uFEFFFoxdown v0.0.1 是首个版本。\r\n\r\n### 下载与安装\r\n');
   const result = f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' });
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('foreign branches and English-first release notes cannot be released manually', t => {
+test('release preparation rejects foreign branches, missing summaries and bilingual notes', t => {
   const f = fixture(t);
   assert.notEqual(f.run({ GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/other', RELEASE_INPUT: 'v0.0.1' }).status, 0);
-  f.write('docs/releases/v0.0.1.md', '## English\n\nInitial release.\n\n## 简体中文\n\n首个版本。\n');
-  assert.notEqual(f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' }).status, 0);
+  for (const notes of ['', 'Initial release.\n\n### 下载与安装\n', '## 简体中文\n\n首个版本。\n']) {
+    f.write('docs/releases/v0.0.1.md', notes);
+    const result = f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /简体中文摘要/);
+  }
+  f.write('docs/releases/v0.0.1.md', '首个版本。\n\n## English\n\nInitial release.\n');
+  const result = f.run({ HEAD_COMMIT_MESSAGE: 'release: v0.0.1' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /英文说明章节/);
 });

@@ -23,12 +23,12 @@ node tools/upstream-report.mjs upstream-report.md
 
 ## 发布 Foxdown
 
-主 README 使用简体中文，英文文档位于 `docs/README.en.md`。每个版本的发布说明保存在 `docs/releases/v<version>.md`，只提供简体中文说明，不添加「English」章节，也不使用自动生成的英文提交列表替代发布说明。
+主 README 使用简体中文，英文文档位于 `docs/README.en.md`。每个版本的发布说明保存在 `docs/releases/v<version>.md`，以一段简体中文摘要开头。安装表格首列使用「系统与芯片」。发布说明只提供简体中文。
 
 1. 同步更新根包、服务端、Web 包、浏览器扩展 manifest 的版本和 npm lockfiles。
 2. 检查 [Desktop and extension builds](https://github.com/Foxmori-Official/Foxdown/actions/workflows/desktop.yml) 的四个平台构建和扩展产物。使用旧版本用户目录验证升级，并用临时用户目录验证首次安装。
 3. 准备对应版本的简体中文发布说明。可以在 main 分支提交标题为 `release: v<version>` 的发布提交，也可在 Actions 手动运行构建并填写 `release_tag`。工作流会先核对所有包与锁文件的版本，完成四个平台的构建和测试后，为该提交创建标签并生成 Release 草稿。直接推送 `v<version>` 标签也支持同一流程。普通提交仅构建，不创建版本。
-4. 在草稿中补充此次变更、已知限制、上游来源与升级说明，核对签名与安装结果后发布。用户通过「查看更新」访问已发布的版本。
+4. 在草稿中补充此次变更、已知限制、上游来源与升级说明，核对签名与安装结果后发布。桌面端和扩展均可通过「检查更新」查询最新正式版本。
 
 macOS ARM64 默认由 GitHub Intel Mac 交叉构建，流程验证 ARM64 组件与签名，原生启动和扩展联动需在 Apple 芯片机器验证并记录。标准 ARM 执行器可用时，可勾选手动运行中的 `native_mac_arm64`，直接执行原生 ARM 安装包测试。只做验证时将 `release_tag` 留空。
 

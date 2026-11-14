@@ -29,9 +29,13 @@ if (event === 'push' && ref.startsWith('refs/tags/')) {
 }
 if (tag) {
   if (tag !== `v${version}`) throw new Error(`发布标签必须与包版本一致：v${version}。`);
-  const notes = fs.readFileSync(path.resolve('docs/releases', `${tag}.md`), 'utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
-  if (!notes.startsWith('## 简体中文\n')) {
-    throw new Error('发布说明必须使用简体中文并以「## 简体中文」开头。');
+  const notes = fs.readFileSync(path.resolve('docs/releases', `${tag}.md`), 'utf8').replace(/\r\n/g, '\n').trim();
+  const summary = notes.split(/\n[ \t]*\n/, 1)[0];
+  if (summary.startsWith('#') || !/\p{Script=Han}/u.test(summary)) {
+    throw new Error('发布说明须直接以简体中文摘要开头。');
+  }
+  if (/^#{1,6}[ \t]+(?:English|英文|英语)[ \t]*#*[ \t]*$/im.test(notes)) {
+    throw new Error('发布说明只提供简体中文，请移除英文说明章节。');
   }
 }
 

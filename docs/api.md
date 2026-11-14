@@ -1,7 +1,7 @@
 # Foxdown API 契约（v1）
 
-Base: `http://127.0.0.1:16801`。REST 前缀 `/api/v1`。实时推送：WebSocket `ws://127.0.0.1:16801/ws`。
-鉴权由 settings.apiToken 控制。配置令牌后，请求需携带 `Authorization: Bearer <token>` 或 `?token=`。令牌为空时，服务只接受来自回环地址、Host 为回环地址或 localhost 的请求。
+服务默认地址为 `http://127.0.0.1:16801`，REST 路由以 `/api/v1` 开头。实时状态通过 `ws://127.0.0.1:16801/ws` 推送。
+鉴权由 `settings.apiToken` 控制。配置令牌后，请求需携带 `Authorization: Bearer <token>` 或 `?token=`。令牌为空时，服务只接受来自回环地址、Host 为回环地址或 localhost 的请求。
 
 REST、MCP 和 WebSocket 都校验浏览器 Origin，允许与服务 Host 相同的 Web UI 和 Chrome／Edge 扩展来源。扩展访问远程服务时仍需令牌。反向代理应保留客户端访问时的 Host，Vite 开发环境使用仓库内置代理。
 
@@ -53,21 +53,29 @@ node cli/foxdown.mjs add "https://example.com/file.zip"
 | GET | `/api/v1/updates` | 查询 GitHub 的最新正式版本，返回 `{version, available, releaseUrl}`。查询失败时返回 502。 |
 | POST | `/api/v1/resolve` | 请求 `{url, headers?: string[]}`；响应见下 |
 | POST | `/api/v1/tasks` | 创建任务，见下 |
-| GET | `/api/v1/tasks?status=all|active|waiting|stopped&search=关键词` | `{tasks: Task[]}` |
+| GET | `/api/v1/tasks` | 可通过 `status`（`all`、`active`、`waiting`、`stopped`）和 `search`（关键词）筛选，返回 `{tasks: Task[]}`。 |
 | GET | `/api/v1/tasks/:engine/:id` | 单个任务详情 |
-| POST | `/api/v1/tasks/:engine/:id/action` | `{action: pause|resume|retry|delete, deleteFiles?: bool}` → `{ok}` |
+| POST | `/api/v1/tasks/:engine/:id/action` | `action` 可取 `pause`、`resume`、`retry` 或 `delete`。删除时可传布尔值 `deleteFiles`，成功时返回 `{ok}`。 |
 | POST | `/api/v1/tasks/pause-all` / `resume-all` | 全局控制 |
 | POST | `/api/v1/tasks/clear-completed` | 清空已完成任务记录，保留磁盘文件。返回 `{removed, failed}` |
 | GET | `/api/v1/stats` | `{downloadSpeed, uploadSpeed, numActive, numWaiting, numStopped}` |
 | GET | `/api/v1/settings` | 当前设置，包含 Web API 令牌和 aria2 RPC 密钥 |
-| PUT | `/api/v1/settings` | 部分更新；改 aria2 关键项会自动重启引擎 → `{ok, restarted}` |
+| PUT | `/api/v1/settings` | 提交部分设置。请求包含需要重启的 aria2 配置项时，服务会自动重启引擎。成功时返回 `{ok, restarted}`。 |
 | POST | `/api/v1/trackers/update` | 拉取最新 BT tracker 并应用 → `{ok, count}` |
 | POST | `/api/v1/reveal` | `{path}` 在系统文件管理器中定位 |
-| GET | `/api/v1/doctor` | 环境自检：aria2c/ffmpeg/ffprobe/N_m3u8DL-RE 版本+路径+可用性、目录可写性（语义参考 N_m3u8DL-RE doctor） |
-| POST | `/mcp` | MCP Server（Model Context Protocol，Streamable HTTP + JSON-RPC 2.0）：9 工具 resolve_task/create_task/list_tasks/get_task/get_task_status/get_task_stats/pause_task/continue_task/delete_task，语义对齐 Gopeed |
+| GET | `/api/v1/doctor` | 检查 `aria2c`、`ffmpeg`、`ffprobe` 和可选的 `N_m3u8DL-RE`。返回工具的路径、版本和可用状态，以及默认下载目录和数据目录是否可写。 |
+| POST | `/mcp` | MCP 服务使用 Streamable HTTP 和 JSON-RPC 2.0，提供 9 个资源解析和任务管理工具。 |
 | GET | `/api/v1/dashboard` | 数据看板：速度历史采样（1Hz×300 点）+ 累计下载/上传量、完成数 |
-| POST | `/api/v1/tasks/:engine/:id/priority` | 队列优先级 `{direction: top|bottom|up|down}`（aria2 changePosition） |
+| POST | `/api/v1/tasks/:engine/:id/priority` | 调整 aria2 等待队列中前 100 个任务的顺序。`direction` 可取 `top`、`bottom`、`up` 或 `down`。流媒体任务返回 400。 |
 | POST | `/api/v1/speed-profiles/apply` | 应用限速预设 `{index}`（全速/办公/夜间三档） |
+
+### MCP 工具
+
+调用 `tools/list` 可获取工具及其参数定义。通过 `tools/call` 调用以下工具。
+
+- `resolve_task` 解析资源，`create_task` 创建下载任务。
+- `list_tasks`、`get_task`、`get_task_status` 和 `get_task_stats` 查询任务或统计数据。
+- `pause_task`、`continue_task` 和 `delete_task` 暂停、继续或删除任务。
 
 ### resolve 响应
 
