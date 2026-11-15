@@ -19,7 +19,6 @@
             </el-button>
           </div>
 
-          <!-- 应用组并入：主题与语言 -->
           <el-form-item :label="t('settings.theme')">
           <el-radio-group v-model="form.theme">
           <el-radio-button value="auto">{{ t('settings.themeAuto') }}</el-radio-button>
@@ -100,6 +99,25 @@
           <el-form-item :label="t('settings.resume')">
             <el-switch v-model="form.continueDownloads" />
           </el-form-item>
+
+          <el-form-item v-if="desktop && loginAtStartup !== null" :label="t('settings.desktopStartup')">
+            <el-switch v-model="loginAtStartup" @change="setStartup" :loading="savingStartup" />
+          </el-form-item>
+          <el-form-item :label="t('settings.currentVersion')">
+            <div class="app-version-row">
+              <span id="app-version" class="app-version">v{{ appVersion }}</span>
+              <el-button native-type="button" :loading="updateState === 'checking'" @click="checkUpdates">
+                {{ t('settings.checkUpdates') }}
+              </el-button>
+            </div>
+            <p v-if="updateState" id="app-update-status" class="app-update-status" role="status">
+              {{ updateState === 'available' ? t('settings.updateAvailable', { version: update.version })
+                : updateState === 'checking' ? t('settings.updateChecking')
+                : updateState === 'current' ? t('settings.updateCurrent') : t('settings.updateError') }}
+              <a v-if="updateState === 'available'" :href="update.releaseUrl" target="_blank" rel="noopener noreferrer">{{ t('settings.downloadUpdate') }}</a>
+            </p>
+          </el-form-item>
+
           <details class="advanced-settings">
           <summary>{{ t('dialog.advanced') }}</summary>
           <el-form-item :label="t('settings.maxConnPerServer')">
@@ -137,7 +155,7 @@
             <el-switch v-model="form.checkCertificate" />
           </el-form-item>
 
-        </details>
+          </details>
         </section>
 
 <!-- RPC / 远程访问 -->
@@ -329,29 +347,6 @@
               <el-input v-model="form.noProxy" :disabled="!form.proxyEnabled" />
               <span class="hint">{{ t('settings.noProxyHint') }}</span>
             </el-form-item>
-          </div>
-        </section>
-        <section v-show="activeGroup === 'sec-app'" class="group-card" id="sec-app" role="tabpanel" aria-labelledby="tab-sec-app">
-          <div class="group-header"><h2 class="group-title">{{ t('settings.groupApp') }}</h2></div>
-          <el-form-item :label="t('settings.currentVersion')">
-            <div class="app-version-row">
-              <span id="app-version" class="app-version">v{{ appVersion }}</span>
-              <el-button native-type="button" :loading="updateState === 'checking'" @click="checkUpdates">
-                {{ t('settings.checkUpdates') }}
-              </el-button>
-            </div>
-            <p v-if="updateState" id="app-update-status" class="app-update-status" role="status">
-              {{ updateState === 'available' ? t('settings.updateAvailable', { version: update.version })
-                : updateState === 'checking' ? t('settings.updateChecking')
-                : updateState === 'current' ? t('settings.updateCurrent') : t('settings.updateError') }}
-              <a v-if="updateState === 'available'" :href="update.releaseUrl" target="_blank" rel="noopener noreferrer">{{ t('settings.downloadUpdate') }}</a>
-            </p>
-          </el-form-item>
-          <el-form-item v-if="desktop && loginAtStartup !== null" :label="t('settings.desktopStartup')">
-            <el-switch v-model="loginAtStartup" @change="setStartup" :loading="savingStartup" />
-          </el-form-item>
-          <div class="app-links">
-            <a href="https://github.com/Foxmori-Official/Foxdown#browser-extension" target="_blank" rel="noopener">{{ t('settings.extensionGuide') }}</a>
           </div>
         </section>
       </el-form>
@@ -928,8 +923,6 @@ async function regenerateSecret() {
 .save-state.save-error { color: var(--kd-danger); }
 .advanced-settings { border-top: 1px solid var(--kd-border); padding-top: 12px; }
 .advanced-settings summary { cursor: pointer; color: var(--kd-primary); margin-bottom: 12px; }
-.app-links { display: flex; flex-wrap: wrap; gap: 14px; }
-.app-links a { text-decoration: underline; text-underline-offset: 3px; }
 .app-version-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .app-version { font-variant-numeric: tabular-nums; color: var(--kd-text-primary); font-weight: 600; }
 .app-update-status { width: 100%; margin: 2px 0 0; line-height: 1.5; color: var(--kd-text-secondary); }

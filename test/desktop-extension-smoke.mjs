@@ -70,19 +70,24 @@ try {
     ? path.join(path.dirname(path.dirname(packaged)), 'Resources/runtime/bin')
     : path.join(path.dirname(packaged), 'resources/runtime/bin')) : engineDir;
   await fs.access(path.join(packageBin, process.platform === 'darwin' ? 'media/bin/ffprobe' : 'ffprobe.exe'));
-  const settingsToggle = app.getByRole('button', { name: 'Settings', exact: true });
-  await settingsToggle.click();
+  const settingsButton = app.getByRole('button', { name: 'Settings', exact: true });
+  const navigation = app.locator('.side-nav nav');
+  const guideLink = navigation.getByRole('link', { name: 'Browser extension setup', exact: true });
+  assert.deepEqual(await navigation.locator(':scope > .nav-item > .nav-label').allTextContents(),
+    ['Tasks', 'Settings', 'Browser extension setup']);
+  assert.equal(await guideLink.getAttribute('href'), 'https://github.com/Foxmori-Official/Foxdown#browser-extension');
+  assert.equal(await guideLink.getAttribute('target'), '_blank');
   const settingsNavigation = app.locator('.side-nav .settings-subnav');
   await settingsNavigation.waitFor();
-  await app.getByRole('tabpanel').first().waitFor();
-  assert.equal(await settingsToggle.getAttribute('aria-expanded'), 'true');
-  await settingsToggle.click();
-  assert.equal(await settingsNavigation.isVisible(), false);
-  assert.equal(await app.getByRole('tabpanel').count(), 1, 'Collapsing the sidebar must keep the current settings panel');
-  await settingsToggle.click();
-  await settingsNavigation.waitFor();
   const settingsTabs = settingsNavigation.getByRole('tab');
-  assert.equal(await settingsTabs.count(), 7);
+  assert.equal(await settingsTabs.count(), 6);
+  assert.equal(await settingsNavigation.getByRole('tab', { selected: true }).count(), 0);
+  await settingsNavigation.getByRole('tab', { name: 'General', exact: true }).click();
+  await app.getByRole('tabpanel').first().waitFor();
+  await settingsButton.click();
+  assert.equal(await settingsNavigation.isVisible(), true);
+  assert.equal(await settingsButton.getAttribute('aria-current'), 'page');
+  assert.equal(await settingsNavigation.getByRole('tab', { name: 'Application', exact: true }).count(), 0);
   const sidebarLayout = await app.evaluate(() => {
     const sidebar = document.querySelector('.side-nav').getBoundingClientRect();
     const workspace = document.querySelector('.main-area').getBoundingClientRect();
@@ -109,9 +114,23 @@ try {
   assert.equal(pendingSettings.rpcListenAll, false, 'An unconfirmed switch must not autosave remote RPC access');
   await app.locator('.el-message-box').getByRole('button', { name: 'Cancel', exact: true }).click();
   assert.equal(await app.locator('#sec-rpc').getByRole('switch').getAttribute('aria-checked'), 'false');
-  await app.getByRole('tab', { name: 'Application', exact: true }).click();
-  await app.getByText('Open Foxdown at login', { exact: true }).waitFor();
-  assert.equal(await app.locator('#app-version').innerText(), `v${version}`);
+  await app.getByRole('tab', { name: 'General', exact: true }).click();
+  const generalPanel = app.getByRole('tabpanel', { name: 'General', exact: true });
+  const loginSwitch = generalPanel.locator('.el-switch').filter({
+    has: app.getByRole('switch', { name: 'Open Foxdown at login', exact: true }),
+  });
+  await loginSwitch.waitFor();
+  assert.equal(await generalPanel.locator('#app-version').innerText(), `v${version}`);
+  const rowOrder = await loginSwitch.evaluate(switchControl => {
+    const loginRow = switchControl.closest('.el-form-item');
+    const versionRow = loginRow.nextElementSibling;
+    return {
+      previousLabel: loginRow.previousElementSibling?.querySelector('.el-form-item__label')?.textContent.trim(),
+      displayVersion: Boolean(versionRow?.querySelector('#app-version')),
+      followedByAdvanced: versionRow?.nextElementSibling?.matches('details.advanced-settings'),
+    };
+  });
+  assert.deepEqual(rowOrder, { previousLabel: 'Resume interrupted downloads', displayVersion: true, followedByAdvanced: true });
   let releaseRequest = 0;
   const localUpdateApi = `${origin}/api/v1/updates`;
   await app.route(localUpdateApi, async route => {
@@ -120,8 +139,8 @@ try {
     await route.fulfill(releaseRequest === 3 ? { status: 503, body: 'unavailable' }
       : { json: releaseRequest === 1 ? releaseFixture(version, false) : releaseFixture(nextVersion, true) });
   });
-  const appCheck = app.getByRole('button', { name: 'Check for updates', exact: true });
-  const appUpdate = app.locator('#app-update-status');
+  const appCheck = generalPanel.getByRole('button', { name: 'Check for updates', exact: true });
+  const appUpdate = generalPanel.locator('#app-update-status');
   await appCheck.click();
   await appUpdate.filter({ hasText: 'Foxdown is up to date.' }).waitFor();
   await appCheck.click();
@@ -131,28 +150,29 @@ try {
   await appUpdate.filter({ hasText: 'Could not check for updates.' }).waitFor();
   assert.equal(await appUpdate.getByRole('link').count(), 0);
   await app.unroute(localUpdateApi);
-  await app.getByRole('tab', { name: 'General', exact: true }).click();
   await settingsTabs.first().focus();
   await app.keyboard.press('ArrowDown');
   assert.equal(await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).getAttribute('aria-selected'), 'true');
   await app.keyboard.press('Home');
   assert.equal(await settingsTabs.first().getAttribute('aria-selected'), 'true');
   await app.keyboard.press('ArrowLeft');
-  assert.equal(await settingsToggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(await settingsButton.evaluate(button => button === document.activeElement), true);
+  assert.equal(await settingsNavigation.isVisible(), true);
   await app.keyboard.press('ArrowRight');
-  assert.equal(await settingsToggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(await settingsTabs.first().evaluate(tab => tab === document.activeElement), true);
   const concurrency = app.locator('#sec-basic .num-stepper input').first();
   await concurrency.fill('6');
   await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).click();
   await app.getByRole('button', { name: 'Tasks', exact: true }).click();
-  assert.equal(await settingsNavigation.isVisible(), false);
+  assert.equal(await settingsNavigation.isVisible(), true);
+  assert.equal(await settingsNavigation.getByRole('tab', { selected: true }).count(), 0);
   for (let attempt = 0; ; attempt++) {
     const saved = await (await fetch(origin + '/api/v1/settings', { headers: { Authorization: 'Bearer ' + token } })).json();
     if (saved.maxConcurrentDownloads === 6) break;
     assert.ok(attempt < 30, 'Pending settings must still save after leaving the settings view');
     await delay(100);
   }
-  await settingsToggle.click();
+  await settingsButton.click();
   assert.equal(await app.getByRole('tab', { name: 'RPC / Remote Access', exact: true }).getAttribute('aria-selected'), 'true');
   await app.getByRole('tab', { name: 'General', exact: true }).click();
   assert.equal(await concurrency.inputValue(), '6');
@@ -198,7 +218,7 @@ try {
     await newTask.getByRole('button', { name: 'Browse…', exact: true }).click();
     assert.equal(await newTask.locator('.el-collapse-item__content .el-input input').first().inputValue(), downloads);
     await newTask.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await settingsToggle.click();
+    await settingsButton.click();
     await app.getByRole('tab', { name: 'General', exact: true }).click();
   } finally {
     await desktop.evaluate(({ dialog }) => {
@@ -213,7 +233,7 @@ try {
   await app.screenshot({ path: path.join(shots, 'settings.png'), animations: 'disabled' });
   await app.getByRole('button', { name: 'Tasks', exact: true }).click();
   await app.getByRole('tab', { name: 'All', exact: true, selected: true }).waitFor();
-  console.log(`Electron ${packaged ? 'packaged app' : 'host development runtime'} passed: expandable sidebar settings, category memory, pending autosave and login controls.`);
+  console.log(`Electron ${packaged ? 'packaged app' : 'host development runtime'} passed: persistent sidebar settings, category memory, pending autosave and login controls.`);
 
   await fs.mkdir(path.join(temp, 'browser/Default'), { recursive: true });
   await fs.writeFile(path.join(temp, 'browser/Default/Preferences'), JSON.stringify({ download: { default_directory: path.join(temp, 'browser-downloads'), prompt_for_download: false } }));

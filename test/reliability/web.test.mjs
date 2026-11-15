@@ -100,23 +100,30 @@ test('new-task dialog is conditionally lazy loaded, and task rows are split from
   assert.match(tasks, /defineAsyncComponent\(\(\) => import\('\.\.\/components\/TaskRow\.vue'\)\)/);
 });
 
-test('navigation and theme actions are keyboard-operable buttons', () => {
+test('navigation uses keyboard-operable buttons and links', () => {
   const { descriptor } = parse(read('web/src/App.vue'));
   const root = baseParse(descriptor.template.content);
   let navActions = 0;
+  let navLinks = 0;
   const visit = node => {
     if (node.type === 1) {
       const cls = node.props.find(prop => prop.type === 6 && prop.name === 'class')?.value?.content || '';
       if (cls.split(/\s+/).includes('nav-item')) {
-        assert.equal(node.tag, 'button');
-        assert.ok(node.props.some(prop => prop.type === 6 && prop.name === 'type' && prop.value?.content === 'button'));
-        navActions++;
+        if (node.tag === 'a') {
+          assert.ok(node.props.some(prop => prop.type === 6 && prop.name === 'href' && prop.value?.content));
+          navLinks++;
+        } else {
+          assert.equal(node.tag, 'button');
+          assert.ok(node.props.some(prop => prop.type === 6 && prop.name === 'type' && prop.value?.content === 'button'));
+          navActions++;
+        }
       }
     }
     for (const child of node.children || []) visit(child);
   };
   visit(root);
   assert.equal(navActions, 2);
+  assert.equal(navLinks, 1);
 });
 
 test('icon-only task row actions have localized accessible labels', () => {

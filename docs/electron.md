@@ -42,7 +42,7 @@ npm run dev-electron
 - macOS 的数据默认位于 `~/Library/Application Support/Foxdown/data`。
 - Windows 的数据默认位于 `%APPDATA%\Foxdown\data`。
 - 桌面安装版的引擎位于应用资源目录 `runtime/bin`，下载默认保存到用户的 `Downloads/Foxdown`。
-- 桌面版左侧显示版本号。「设置 → 应用 → 检查更新」会对比当前版本与 GitHub 最新正式版本，有更新时可打开下载页。关闭旧版再安装新版，Foxdown 会继续使用现有用户目录。
+- 桌面版左侧显示版本号。在「设置 → 基本」的「进阶设置」上方，可检查 GitHub 上的最新正式版本，也可设置登录时是否打开 Foxdown。发现更新时可打开下载页。关闭旧版再安装新版，Foxdown 会继续使用现有用户目录。
 - 扩展工具栏面板和选项页都显示扩展版本。打开选项页检查更新，下载 ZIP 后解压并替换原目录，再到浏览器的扩展管理页重新加载。
 - 从旧版本迁移时先退出两个程序，再备份和复制旧目录下的 `data` 内容。保留原下载目录，未完成任务的会话可能记录原文件路径。确认 Web API Token 后再连接浏览器扩展。
 

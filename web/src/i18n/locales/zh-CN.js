@@ -18,6 +18,7 @@ export default {
     connecting: '连接中…',
     navTasks: '任务',
     navSettings: '设置',
+    navExtensionGuide: '浏览器扩展安装指南',
     toLight: '切换到亮色',
     toDark: '切换到暗色',
     unknown: '未知',
@@ -134,7 +135,6 @@ export default {
   settings: {
     saving: "正在保存…",
     desktopStartup: "登录时打开 Foxdown",
-    extensionGuide: "浏览器扩展安装指南",
     currentVersion: '当前版本',
     checkUpdates: '检查更新',
     downloadUpdate: '查看下载',
@@ -145,7 +145,6 @@ export default {
     groupBasic: '基本',
     groupBt: 'BT / 做种',
     groupStream: '流媒体（m3u8 / mpd）',
-    groupApp: '应用',
     downloadDir: '下载目录',
     downloadDirPlaceholder: '默认下载目录',
     maxConcurrent: '同时下载任务数',

@@ -18,6 +18,7 @@ export default {
     connecting: 'Connecting…',
     navTasks: 'Tasks',
     navSettings: 'Settings',
+    navExtensionGuide: 'Browser extension setup',
     toLight: 'Switch to light mode',
     toDark: 'Switch to dark mode',
     unknown: 'Unknown',
@@ -134,7 +135,6 @@ export default {
   settings: {
     saving: "Saving…",
     desktopStartup: "Open Foxdown at login",
-    extensionGuide: "Browser extension setup",
     currentVersion: 'Current version',
     checkUpdates: 'Check for updates',
     downloadUpdate: 'View downloads',
@@ -145,7 +145,6 @@ export default {
     groupBasic: 'General',
     groupBt: 'BT / Seeding',
     groupStream: 'Streaming (m3u8 / mpd)',
-    groupApp: 'Application',
     downloadDir: 'Download directory',
     downloadDirPlaceholder: 'Default download directory',
     maxConcurrent: 'Max concurrent downloads',

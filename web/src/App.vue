@@ -12,31 +12,30 @@
       <nav class="nav-items">
         <template v-for="item in navItems" :key="item.key">
         <button type="button"
-          :id="item.key === 'settings' ? 'settings-toggle' : undefined"
+          :id="item.key === 'settings' ? 'settings-button' : undefined"
           class="nav-item"
           :class="{ active: view === item.key }"
           :title="item.label"
-          :aria-current="view === item.key && (item.key !== 'settings' || !settingsExpanded) ? 'page' : undefined"
-          :aria-expanded="item.key === 'settings' ? view === 'settings' && settingsExpanded : undefined"
-          :aria-controls="item.key === 'settings' ? 'settings-navigation' : undefined"
-          @click="selectView(item.key)"
-          @keydown="item.key === 'settings' && onSettingsToggleKeydown($event)"
+          :aria-current="view === item.key ? 'page' : undefined"
+          @click="view = item.key"
+          @keydown="item.key === 'settings' && onSettingsButtonKeydown($event)"
         >
           <el-icon :size="18"><component :is="item.icon" /></el-icon>
           <span class="nav-label">{{ item.label }}</span>
-          <svg v-if="item.key === 'settings'" class="nav-chevron" :class="{ expanded: view === 'settings' && settingsExpanded }"
-            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
         </button>
-        <div v-if="item.key === 'settings'" v-show="view === 'settings' && settingsExpanded"
-          id="settings-navigation" class="settings-subnav" role="tablist" aria-orientation="vertical"
+        <div v-if="item.key === 'settings'" class="settings-subnav" role="tablist" aria-orientation="vertical"
           :aria-label="t('common.navSettings')" @keydown="onSettingsGroupKeydown">
           <button v-for="group in settingsGroups" :key="group.id" type="button" role="tab"
             :id="'tab-' + group.id" class="settings-subitem" :aria-controls="group.id"
-            :aria-selected="activeSettingsGroup === group.id" :tabindex="activeSettingsGroup === group.id ? 0 : -1"
+            :aria-selected="view === 'settings' && activeSettingsGroup === group.id" :tabindex="activeSettingsGroup === group.id ? 0 : -1"
             @click="selectSettingsGroup(group.id)">{{ t(group.label) }}</button>
         </div>
         </template>
+        <a class="nav-item" href="https://github.com/Foxmori-Official/Foxdown#browser-extension" target="_blank" rel="noopener noreferrer">
+          <el-icon :size="18" aria-hidden="true"><Document /></el-icon>
+          <span class="nav-label">{{ t('common.navExtensionGuide') }}</span>
+          <span aria-hidden="true">↗</span>
+        </a>
       </nav>
       <div class="nav-footer">
         <a class="nav-brand" href="https://foxmori.com" target="_blank" rel="noopener">Foxmori <span aria-hidden="true">↗</span></a>
@@ -114,7 +113,6 @@ const navItems = computed(() => [
 
 const view = ref('tasks')
 const settingsVisited = ref(false)
-const settingsExpanded = ref(false)
 const activeSettingsGroup = ref('sec-basic')
 const mainBody = ref(null)
 const settingsGroups = [
@@ -123,8 +121,7 @@ const settingsGroups = [
   { id: 'sec-stream', label: 'settings.groupStream' },
   { id: 'sec-bt', label: 'settings.groupBt' },
   { id: 'sec-post', label: 'settings.groupPost' },
-  { id: 'sec-proxy', label: 'settings.groupProxy' },
-  { id: 'sec-app', label: 'settings.groupApp' }
+  { id: 'sec-proxy', label: 'settings.groupProxy' }
 ]
 function resetWorkspaceScroll() { mainBody.value?.scrollTo({ top: 0 }) }
 watch(view, value => {
@@ -132,25 +129,15 @@ watch(view, value => {
   nextTick(resetWorkspaceScroll)
 })
 
-function selectView(key) {
-  if (key === 'settings') settingsExpanded.value = view.value !== 'settings' || !settingsExpanded.value
-  view.value = key
-}
-
 function selectSettingsGroup(id) {
   activeSettingsGroup.value = id
-  settingsExpanded.value = true
   view.value = 'settings'
   nextTick(resetWorkspaceScroll)
 }
 
-function onSettingsToggleKeydown(event) {
-  if (event.key === 'ArrowLeft') {
+function onSettingsButtonKeydown(event) {
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
     event.preventDefault()
-    settingsExpanded.value = false
-  } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-    event.preventDefault()
-    settingsExpanded.value = true
     view.value = 'settings'
     nextTick(() => document.getElementById('tab-' + activeSettingsGroup.value)?.focus())
   }
@@ -165,8 +152,7 @@ function onSettingsGroupKeydown(event) {
   else if (event.key === 'End') index = settingsGroups.length - 1
   else if (event.key === 'ArrowLeft') {
     event.preventDefault()
-    settingsExpanded.value = false
-    document.getElementById('settings-toggle')?.focus()
+    document.getElementById('settings-button')?.focus()
     return
   } else return
   event.preventDefault()
@@ -330,8 +316,6 @@ watch(
 }
 
 .nav-label { flex: 1; }
-.nav-chevron { flex-shrink: 0; transition: transform 150ms ease; }
-.nav-chevron.expanded { transform: rotate(90deg); }
 .settings-subnav {
   display: grid;
   gap: 4px;
