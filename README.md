@@ -43,8 +43,6 @@
 - **接管浏览器下载**。按域名、文件类型或大小设置接管规则，也可通过链接右键菜单手动发送。转交失败时恢复浏览器下载。
 - **发现网页资源**。默认开启资源嗅探，刷新网页或播放媒体后，在「本页资源」中查看媒体与附件，预览或选择需要下载的内容。
 
-在 X 的单条帖子上，可点击扩展里的「查找此帖视频」。Foxdown 优先让已安装的 yt-dlp 解析公开视频，缺少 yt-dlp 时会尝试通过 X 的公开嵌入接口查找。资源列表按视频归并完整 MP4 和 HLS 主清单，过滤单独的流媒体分片，并显示完整文件名。安装方式见[桌面端说明](docs/electron.md#可选的-yt-dlp-解析器)。
-
 桌面应用和扩展提供简体中文、英语界面，可跟随系统自动选择。
 
 扩展设置左侧的仪表盘可以打开资源窗口并查看连接状态。工具栏角标帮助你随时了解任务与当前页面的情况：
@@ -82,6 +80,6 @@ npm run dev-electron
 
 ## 致谢与许可
 
-Foxdown 的项目代码使用 [MIT 许可证](LICENSE)。感谢 [aria2](https://github.com/aria2/aria2)、[Motrix](https://github.com/agalwood/Motrix)、[N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE)、[Gopeed](https://github.com/GopeedLab/gopeed)、[Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer)、[Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension) 和[猫抓](https://github.com/xifangczy/cat-catch)的作者与贡献者。
+Foxdown 的项目代码使用 [MIT 许可证](LICENSE)。感谢 [aria2](https://github.com/aria2/aria2)、[Motrix](https://github.com/agalwood/Motrix)、[N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE)、[Gopeed](https://github.com/GopeedLab/gopeed)、[Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer)、[Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension)、[猫抓](https://github.com/xifangczy/cat-catch)和 [yt-dlp](https://github.com/yt-dlp/yt-dlp) 的作者与贡献者。
 
 外部引擎、分发包和第三方代码遵循各自的许可证。具体采用内容、参考方向与分发来源见[第三方归属与参考记录](docs/third-party.md)。
