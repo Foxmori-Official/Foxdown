@@ -39,6 +39,8 @@ Refresh open pages after updating the extension. This README describes the curre
 - **Capture browser downloads.** Apply domain, file-type, and size rules, or send a link from its context menu. Failed handoffs fall back to the browser.
 - **Find page resources.** Detection is enabled by default. Reload a page or play media, then use **Page resources** to inspect media and attachments, preview them, or select downloads.
 
+On an individual X post, select **Find video in this X post**. If yt-dlp is installed, the desktop service uses it to resolve public videos. The extension can fall back to X's public embed endpoint. The resource list groups complete MP4s and HLS master playlists by video, filters out individual stream fragments, and displays full filenames. See the [desktop guide](electron.md#可选的-yt-dlp-解析器) to enable yt-dlp.
+
 The desktop app and extension support Simplified Chinese and English, including automatic system-language selection.
 
 The extension settings dashboard opens the resource window and shows connection status. Toolbar badges provide a quick status check:

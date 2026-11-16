@@ -1,6 +1,6 @@
 # Foxdown 浏览器扩展隐私政策 / Browser Extension Privacy Policy
 
-更新日期 / Updated: 2026-11-15
+更新日期 / Updated: 2026-11-16
 
 ## 中文
 
@@ -23,6 +23,8 @@ Foxdown 扩展用于发现网页资源，并将浏览器下载交给你配置的
 下载地址、文件名、必要请求头和下载参数发送到你配置的服务；默认的扩展到服务连接是本机回环。Foxdown 服务随后会访问下载来源、重定向地址和媒体清单引用的资源，这些请求不局限于本机。当前服务版本可能把传入的下载凭据继续用于清单依赖资源或重定向请求，包括不同来源的资源；本政策不承诺跨域凭据隔离。
 
 媒体预览会从资源所在站点读取媒体，临时请求规则可能为播放器附加捕获到的 Referer，关闭预览后移除。点击“检查更新”时，扩展向 GitHub 请求公开 Release 信息，不附加 Foxdown API Token、下载地址或页面历史；GitHub 会接收正常网络连接信息，例如 IP 地址。主动打开项目、帮助或下载链接时，浏览器按通常方式访问对应网站。
+
+在 X 的单条帖子内点击“查找此帖视频”时，扩展把帖子 ID 发送给你配置的 Foxdown 服务。服务可以调用你安装的 yt-dlp 请求 X 的公开帖子与媒体信息。服务无法解析时，扩展可以向 X 的公开嵌入接口提交该帖子 ID 以取得媒体地址。此查找流程不发送网站 Cookie 或登录凭据。自动发现媒体不会触发此查询。
 
 Foxmori 不运营用于接收扩展浏览记录、下载记录或认证信息的收集服务器。若你配置远程 Foxdown 服务，这些下载信息会离开本机；请选择可信服务，并使用 HTTPS 和 API Token。
 
@@ -57,6 +59,8 @@ Download capture and media detection are on by default and can be disabled separ
 Download details and necessary request headers are sent to your configured service. The default extension-to-service connection uses loopback. The service then contacts download sources, redirects and resources referenced by media playlists. Those subsequent requests can leave your device. The current service may reuse submitted credentials for playlist dependencies or redirects, including resources on a different origin; this policy does not promise cross-origin credential isolation.
 
 Media preview requests media from its hosting site. Temporary rules may attach the captured Referer and are removed when preview closes. Choosing Check for updates requests public release information from GitHub without attaching a Foxdown token, download URLs or browsing history. GitHub receives normal network metadata such as your IP address. Opening project, help or download links visits the linked websites normally.
+
+Selecting “Find video in this X post” sends the post ID to your configured Foxdown service. The service can use your installed yt-dlp to request public post and media information from X. If the service cannot resolve the post, the extension may send its ID to X's public embed endpoint to get media URLs. The lookup does not send website cookies or sign-in credentials. Automatic media discovery does not initiate this lookup.
 
 Foxmori does not operate a server collecting extension browsing history, download history or authentication information. Configuring a remote service sends download information off-device; choose a trusted service and use HTTPS and an API token.
 

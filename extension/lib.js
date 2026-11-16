@@ -106,10 +106,11 @@ function shouldAutoDownload(media, cfg, sentSet) {
 function scanDeepSearch() {
   try {
     var MEDIA_RE = /["']((?:https?:)?\/\/[^"'\s<>]+?\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|ts|aac|ogg|webm|mkv|mov|wav|flac)(?:\?[^"'\s<>]*)?)["']/gi;
+    var MEDIA_PATH_RE = /\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|ts|aac|ogg|webm|mkv|mov|wav|flac)(?:[?#]|$)/i;
     var found = new Set();
     var remaining = 4000;
     function add(u) {
-      if (!u) return;
+      if (!u || found.size >= 200) return;
       u = u.replace(/\\/g, '').trim();
       if (u.indexOf('//') === 0) u = location.protocol + u;
       if (!/^https?:\/\//i.test(u)) return;
@@ -119,6 +120,17 @@ function scanDeepSearch() {
       if (!text) return;
       var m; MEDIA_RE.lastIndex = 0;
       while (found.size < 200 && (m = MEDIA_RE.exec(text)) !== null) add(m[1] || m[0]);
+    }
+    // Media elements and resource timings can still contain a manifest URL
+    // when the player uses a blob: source and loaded its manifest earlier.
+    for (var player of Array.from(document.querySelectorAll?.('video, audio, video source, audio source') || []).slice(0, 200)) {
+      var src = player.currentSrc || player.src;
+      if (MEDIA_PATH_RE.test(src || '')) add(src);
+    }
+    if (typeof performance !== 'undefined') {
+      for (var resource of performance.getEntriesByType('resource').slice(0, 400)) {
+        if (MEDIA_PATH_RE.test(resource.name)) add(resource.name);
+      }
     }
     // 1) 扫描内联脚本文本（cat-catch search.js 同款做法）
     var scripts = document.scripts || [];
@@ -132,7 +144,7 @@ function scanDeepSearch() {
     function walk(obj, depth) {
       if (!obj || depth > 6) return;
       if (typeof obj === 'string') {
-        if (/^(?:https?:)?\/\//i.test(obj) && /\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|ts|aac|ogg|webm|mkv|mov|wav|flac)(?:[?#]|$)/i.test(obj)) add(obj);
+        if (/^(?:https?:)?\/\//i.test(obj) && MEDIA_PATH_RE.test(obj)) add(obj);
         else scanText(obj);
         return;
       }

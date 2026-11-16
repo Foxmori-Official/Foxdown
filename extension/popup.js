@@ -133,7 +133,7 @@ async function previewMedia(m, tabId) {
   const generation = previewGeneration;
   const box = $('previewBox');
   $('previewName').textContent = m.filename || m.url;
-  $('previewName').title = m.url;
+  $('previewName').title = m.filename || m.url;
   box.style.display = 'block';
   const ext = extOf(m.filename) || extOf(m.url);
   const isHls = ext === 'm3u8' || m.type === 'HLS';
@@ -142,7 +142,7 @@ async function previewMedia(m, tabId) {
   const isAudio = AUDIO_EXTS.has(ext);
   if (!isHls && !isAudio && !VIDEO_EXTS.has(ext)) { previewFail(i18n('previewUnsupported')); return; }
 
-  if (tabId != null && m.source === 'network' && m.headers?.referer) {
+  if (tabId != null && m.hasReferer) {
     try {
       const port = previewPort = chrome.runtime.connect({ name: 'foxdown-media-preview' });
       await new Promise(resolve => {
@@ -192,6 +192,16 @@ async function previewMedia(m, tabId) {
 // 本页媒体（background 嗅探结果 + 深度搜索结果）
 // ============================================================
 let mediaInFlight = false;
+let mediaRefreshQueued = false;
+let mediaTab;
+let mediaPageKey = '';
+let mediaSearchGeneration = 0;
+const mediaRows = new Map();
+
+function setText(element, value) {
+  if (element.textContent !== value) element.textContent = value;
+}
+
 async function resourceTab() {
   const requested = Number(new URLSearchParams(location.search).get('tabId'));
   if (Number.isSafeInteger(requested) && requested > 0) {
@@ -207,8 +217,110 @@ async function resourceTab() {
 
 $('sniffCapture')?.addEventListener('change', async event => {
   await writeSettings({ sniffEnabled: event.target.checked });
-  await loadMedia();
+  refreshMedia();
 });
+
+function refreshMedia() {
+  if (mediaInFlight) mediaRefreshQueued = true;
+  else void loadMedia();
+}
+
+function setResourcePage(tab) {
+  mediaTab = tab;
+  const key = tab ? `${tab.id}:${tab.url}` : '';
+  if (key === mediaPageKey) return;
+  mediaPageKey = key;
+  mediaSearchGeneration++;
+  $('deepSearch').disabled = false;
+  $('deepSearchStatus').textContent = '';
+  for (const entry of mediaRows.values()) entry.row.remove();
+  mediaRows.clear();
+  $('mediaList').scrollTop = 0;
+}
+
+function renderMediaRow(entry) {
+  const media = entry.media;
+  const filename = media.filename || mediaFilename(media.url);
+  setText(entry.name, filename);
+  entry.name.title = filename;
+  setText(entry.tag, media.type || 'MEDIA');
+  setText(entry.size, [media.dimensions, fmtSize(media.size)].filter(Boolean).join(' · '));
+  const ext = extOf(media.filename) || extOf(media.url);
+  entry.preview.disabled = !VIDEO_EXTS.has(ext) && !AUDIO_EXTS.has(ext) && media.type !== 'HLS';
+  setText(entry.preview, i18n('mediaPreview'));
+  entry.preview.setAttribute('aria-label', `${i18n('mediaPreview')} ${filename}`);
+  const download = entry.state === 'sent' ? 'mediaSent' : entry.state === 'pending' ? 'mediaSending' :
+    entry.state === 'failed' ? 'mediaRetry' : 'mediaDownload';
+  setText(entry.download, i18n(download));
+  entry.download.disabled = entry.state === 'pending' || entry.state === 'sent';
+  entry.download.title = entry.error || i18n(download);
+  entry.download.setAttribute('aria-label', `${i18n(download)} ${filename}`);
+}
+
+function createMediaRow(media, tabId) {
+  const row = document.createElement('div');
+  row.className = 'media-item';
+  const name = document.createElement('span');
+  name.className = 'mname';
+  const meta = document.createElement('div');
+  meta.className = 'media-meta';
+  const tag = document.createElement('span');
+  tag.className = 'mtag';
+  const size = document.createElement('span');
+  size.className = 'msize';
+  meta.append(tag, size);
+  const preview = document.createElement('button');
+  preview.type = 'button';
+  preview.className = 'mpv';
+  const download = document.createElement('button');
+  download.type = 'button';
+  download.className = 'mdl';
+  const entry = { media, row, name, tag, size, preview, download, state: 'ready', error: '' };
+  preview.addEventListener('click', () => previewMedia(entry.media, tabId));
+  download.addEventListener('click', async () => {
+    if (download.disabled) return;
+    entry.state = 'pending';
+    entry.error = '';
+    renderMediaRow(entry);
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'downloadSniffed', tabId, url: entry.media.url });
+      if (!response?.ok) throw new Error(response?.error || i18n('mediaUnavailable'));
+      entry.state = 'sent';
+    } catch (error) {
+      entry.state = 'failed';
+      entry.error = String(error?.message || error);
+    }
+    renderMediaRow(entry);
+  });
+  row.append(name, meta, preview, download);
+  return entry;
+}
+
+function renderMediaList(list, tabId) {
+  const keep = new Set(list.map(media => media.id || media.url));
+  for (const [id, entry] of mediaRows) {
+    if (!keep.has(id)) {
+      entry.row.remove();
+      mediaRows.delete(id);
+    }
+  }
+  // Start with the latest discoveries, then append newly discovered rows.
+  // Existing nodes stay in place so clicks, text selection and focus survive.
+  const ordered = mediaRows.size ? list : [...list].reverse();
+  for (const media of ordered) {
+    const id = media.id || media.url;
+    let entry = mediaRows.get(id);
+    if (!entry) {
+      entry = createMediaRow(media, tabId);
+      mediaRows.set(id, entry);
+      $('mediaList').appendChild(entry.row);
+    }
+    entry.media = media;
+    renderMediaRow(entry);
+  }
+  $('mediaEmpty').hidden = list.length > 0;
+  setText($('mediaHead'), list.length ? `${i18n('mediaTitle')} (${list.length})` : i18n('mediaTitle'));
+}
 
 async function loadMedia() {
   if (mediaInFlight) return;
@@ -217,78 +329,58 @@ async function loadMedia() {
     const s = await readSettings({ sniffEnabled: true });
     $('mediaBox').style.display = '';
     $('sniffCapture').checked = s.sniffEnabled;
-    $('mediaList').innerHTML = '';
-    $('mediaHead').textContent = i18n('mediaTitle');
-    $('mediaEmpty').hidden = false;
-    if (!s.sniffEnabled) {
-      $('mediaEmpty').textContent = i18n('sniffDisabled');
-      $('deepSearch').style.display = 'none';
+    const tab = s.sniffEnabled ? await resourceTab().catch(() => undefined) : undefined;
+    setResourcePage(tab);
+    setText($('mediaPage'), tab?.title || tab?.url || '');
+    $('mediaPage').title = tab?.url || '';
+    $('deepSearch').style.display = tab?.id ? '' : 'none';
+    if (!tab?.id) {
+      renderMediaList([], null);
+      setText($('mediaEmpty'), i18n(s.sniffEnabled ? 'sniffNoPage' : 'sniffDisabled'));
       return;
     }
-    $('deepSearch').style.display = '';
-    let tab;
-    try { tab = await resourceTab(); } catch {}
-    $('mediaPage').textContent = tab?.title || tab?.url || '';
-    $('mediaPage').title = tab?.url || '';
-    if (!tab?.id) { $('mediaEmpty').textContent = i18n('sniffNoPage'); return; }
-    let list = [];
-    try { list = await chrome.runtime.sendMessage({ type: 'getSniffedMedia', tabId: tab.id }) || []; } catch {}
-    const box = $('mediaBox');
-    if (!list.length) { $('mediaEmpty').textContent = i18n('sniffEmpty'); return; }
-    box.style.display = '';
-    $('mediaEmpty').hidden = true;
-    $('mediaHead').textContent = `${i18n('mediaTitle')} (${list.length})`;
-    const wrap = $('mediaList');
-    wrap.innerHTML = '';
-    for (const m of [...list].reverse()) {
-      const row = document.createElement('div');
-      row.className = 'media-item';
-      const tag = document.createElement('span');
-      tag.className = 'mtag';
-      tag.textContent = (m.source === 'deepSearch' ? '🔍' : '') + (m.type || 'MEDIA');
-      const name = document.createElement('span');
-      name.className = 'mname';
-      name.textContent = m.filename || m.url;
-      name.title = m.url;
-      const size = document.createElement('span');
-      size.className = 'msize';
-      size.textContent = fmtSize(m.size);
-      const pv = document.createElement('button');
-      pv.className = 'mpv';
-      pv.textContent = i18n('mediaPreview');
-      pv.title = m.url;
-      const ext = extOf(m.filename) || extOf(m.url);
-      pv.disabled = !VIDEO_EXTS.has(ext) && !AUDIO_EXTS.has(ext) && m.type !== 'HLS';
-      pv.addEventListener('click', () => previewMedia(m, tab.id));
-      const btn = document.createElement('button');
-      btn.className = 'mdl';
-      btn.textContent = i18n('mediaDownload');
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        try {
-          const r = await chrome.runtime.sendMessage({ type: 'downloadSniffed', tabId: tab.id, url: m.url });
-          btn.textContent = r?.ok ? '✓' : '✗';
-        } catch { btn.textContent = '✗'; }
-      });
-      row.append(tag, name, size, pv, btn);
-      wrap.appendChild(row);
-    }
+    const isPost = !!xPostId(tab.url);
+    if (!$('deepSearch').disabled) setText($('deepSearch'), i18n(isPost ? 'xSearchButton' : 'deepSearchBtn'));
+    $('deepSearch').title = isPost ? i18n('xSearchHint') : '';
+    setText($('mediaEmpty'), i18n(isPost ? 'sniffXEmpty' : 'sniffEmpty'));
+    const list = await chrome.runtime.sendMessage({ type: 'getSniffedMedia', tabId: tab.id });
+    if (Array.isArray(list)) renderMediaList(list, tab.id);
   } catch { /* Storage may be unavailable while an extension context closes. */ }
-  finally { mediaInFlight = false; }
+  finally {
+    mediaInFlight = false;
+    if (mediaRefreshQueued) {
+      mediaRefreshQueued = false;
+      refreshMedia();
+    }
+  }
 }
 
-// 深度搜索按钮：在当前 tab 执行扫描并刷新媒体列表
+// Only a button click on a single X post starts the public post lookup.
 $('deepSearch').addEventListener('click', async () => {
+  const tab = mediaTab;
+  if (!tab?.id) return;
+  const generation = ++mediaSearchGeneration;
   const btn = $('deepSearch');
   btn.disabled = true;
-  const orig = btn.textContent;
-  btn.textContent = '…';
+  setText(btn, i18n('mediaSearching'));
+  $('deepSearchStatus').textContent = '';
+  const isPost = !!xPostId(tab.url);
   try {
-    const tab = await resourceTab();
-    if (tab?.id) await chrome.runtime.sendMessage({ type: 'triggerDeepSearch', tabId: tab.id });
-    await loadMedia();
-  } catch {}
-  finally { btn.disabled = false; btn.textContent = orig; }
+    const search = isPost ? await chrome.runtime.sendMessage({ type: 'searchXPost', tabId: tab.id }) : null;
+    if (generation !== mediaSearchGeneration) return;
+    if (!search?.found) await chrome.runtime.sendMessage({ type: 'triggerDeepSearch', tabId: tab.id });
+    if (generation === mediaSearchGeneration && isPost && !search?.found) {
+      setText($('deepSearchStatus'), i18n('xSearchUnavailable'));
+    }
+  } catch {
+    if (generation === mediaSearchGeneration) setText($('deepSearchStatus'), i18n('mediaSearchFailed'));
+  } finally {
+    if (generation === mediaSearchGeneration) {
+      btn.disabled = false;
+      setText(btn, i18n(isPost ? 'xSearchButton' : 'deepSearchBtn'));
+      refreshMedia();
+    }
+  }
 });
 
 async function loadTaskStatus() {
@@ -459,10 +551,11 @@ async function applyI18nTexts() {
 
 // 语言在选项页切换后，若 popup 正开着则即时重刷（不重载扩展）
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'session' && mediaTab && changes[MEDIA_SESSION_PREFIX + mediaTab.id]) refreshMedia();
   if (area !== 'local') return;
-  if (changes.locale) applyI18nTexts();
+  if (changes.locale) void applyI18nTexts().then(() => { if (mediaTab) refreshMedia(); });
   if (changes.enabled) $('capture').checked = changes.enabled.newValue !== false;
-  if (changes.sniffEnabled) void loadMedia();
+  if (changes.sniffEnabled && !new URLSearchParams(location.search).has('mode')) refreshMedia();
 });
 
 // 启动引导（普通 script 无法顶层 await，包 async IIFE）：
@@ -480,7 +573,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
     load();
     loadMedia();
     loadTaskStatus();
-    const timer = setInterval(() => { if (!document.hidden) { load(); loadMedia(); loadTaskStatus(); } }, 2000);
+    chrome.tabs.onActivated?.addListener(refreshMedia);
+    chrome.tabs.onUpdated?.addListener((tabId, changes) => {
+      if ((!mediaTab || mediaTab.id === tabId) && (changes.url || changes.title || changes.status)) refreshMedia();
+    });
+    chrome.tabs.onRemoved?.addListener(tabId => { if (mediaTab?.id === tabId) refreshMedia(); });
+    const timer = setInterval(() => { if (!document.hidden) { load(); loadTaskStatus(); } }, 2000);
     window.addEventListener('unload', () => clearInterval(timer));
   }
 })();

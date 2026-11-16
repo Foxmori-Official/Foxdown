@@ -53,6 +53,26 @@ try {
   const audioOnly = dash.replace(/<AdaptationSet\b[^>]*contentType="video"[\s\S]*?<\/AdaptationSet>/, '');
   assert.notEqual(audioOnly, dash, 'The audio-only fixture must remove the video track');
   await fs.writeFile(path.join(temp, 'audio.mpd'), audioOnly);
+  // Reuse the generated fMP4 tracks in an HLS master with separate audio,
+  // matching the layout used by video.twimg.com playlists.
+  const segmentFiles = await fs.readdir(temp);
+  for (const [index, track] of ['video', 'audio'].entries()) {
+    const names = segmentFiles.filter(name => name.startsWith(`chunk-stream${index}-`)).sort();
+    assert.ok(names.length > 1);
+    const playlist = [
+      '#EXTM3U', '#EXT-X-VERSION:6', '#EXT-X-TARGETDURATION:1',
+      `#EXT-X-MAP:URI="init-stream${index}.m4s"`,
+      ...names.flatMap(name => ['#EXTINF:1.0,', name]),
+      '#EXT-X-ENDLIST', '',
+    ];
+    await fs.writeFile(path.join(temp, `split-${track}.m3u8`), playlist.join('\n'));
+  }
+  await fs.writeFile(path.join(temp, 'split.m3u8'), [
+    '#EXTM3U',
+    '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="separate",NAME="Audio",DEFAULT=YES,URI="split-audio.m3u8"',
+    '#EXT-X-STREAM-INF:BANDWIDTH=200000,RESOLUTION=128x96,AUDIO="separate"',
+    'split-video.m3u8', '',
+  ].join('\n'));
   const playlist = await fs.readFile(path.join(temp, 'sample.m3u8'), 'utf8');
   const key = Buffer.alloc(16, 0x12);
   await fs.writeFile(path.join(temp, 'key.bin'), key);
@@ -131,7 +151,9 @@ try {
   const encryptedStream = await api('/tasks', { url: fixtureOrigin + '/encrypted.m3u8', stream: { mux: true } });
   const dashStream = await api('/tasks', { url: fixtureOrigin + '/sample.mpd', stream: { mux: true } });
   const audioStream = await api('/tasks', { url: fixtureOrigin + '/audio.mpd', stream: { mux: true } });
-  await Promise.all([file, stream, encryptedStream, dashStream, audioStream].map(waitComplete));
+  const hlsWithAudio = await api('/tasks', { url: fixtureOrigin + '/split.m3u8', stream: { mux: true } });
+  const hlsSeparate = await api('/tasks', { url: fixtureOrigin + '/split.m3u8', options: { out: 'split-raw' }, stream: { mux: false } });
+  await Promise.all([file, stream, encryptedStream, dashStream, audioStream, hlsWithAudio, hlsSeparate].map(waitComplete));
   assert.deepEqual(await fs.readFile(path.join(downloads, 'encrypted.mp4')), await fs.readFile(path.join(downloads, 'sample.mp4')));
   const originalStream = await fs.readFile(path.join(downloads, 'sample.mp4'));
   const duplicateStreams = await Promise.all([1, 2].map(() => api('/tasks', {
@@ -148,6 +170,9 @@ try {
   }
   assert.deepEqual(tracks('sample.mkv'), ['audio', 'video']);
   assert.deepEqual(tracks('audio.mp4'), ['audio']);
+  assert.deepEqual(tracks('split.mp4'), ['audio', 'video']);
+  assert.deepEqual(tracks('split-raw.mp4'), ['video']);
+  assert.deepEqual(tracks('split-raw.audio.m4a'), ['audio']);
   servedFile = replacement;
   const duplicate = await waitComplete(await api('/tasks', fileRequest));
   assert.equal(duplicate.name, 'file.1.bin');
@@ -175,7 +200,7 @@ try {
   }
   const filesBefore = await fs.readdir(downloads);
   const bytesBefore = await Promise.all(filesBefore.map(name => fs.readFile(path.join(downloads, name))));
-  assert.deepEqual(await api('/tasks/clear-completed', { deleteFiles: true }), { removed: 10, failed: 0 });
+  assert.deepEqual(await api('/tasks/clear-completed', { deleteFiles: true }), { removed: 12, failed: 0 });
   const { tasks } = await api('/tasks');
   assert.deepEqual(new Map(tasks.map(task => [task.id, task.status])), new Map([[pending.id, 'paused'], [failed.id, 'error']]));
   assert.deepEqual(await fs.readdir(downloads), filesBefore);
@@ -185,7 +210,7 @@ try {
   const retried = await api(`/tasks/aria2/${failed.id}/action`, { action: 'retry' });
   const retriedTask = await waitComplete({ ...retried, engine: 'aria2' });
   assert.deepEqual(await fs.readFile(path.join(downloads, retriedTask.name)), content);
-  console.log(`Native engine smoke passed (${process.platform}/${process.arch}): HTTP/HLS duplicates, AES-128 HLS, DASH video/audio and audio-only mux, clearing completed records with files intact.`);
+  console.log(`Native engine smoke passed (${process.platform}/${process.arch}): HTTP/HLS duplicates, AES-128 HLS, split HLS tracks, DASH video/audio and audio-only mux, clearing completed records with files intact.`);
 } finally {
   if (backend?.connected) {
     backend.send({ type: 'shutdown' }, () => {});

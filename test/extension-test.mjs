@@ -88,7 +88,8 @@ vm.createContext(sandbox);
 
 const code = fs.readFileSync(path.join(EXT, 'background.js'), 'utf8');
 const libCode = fs.readFileSync(path.join(EXT, 'lib.js'), 'utf8');
-vm.runInContext(libCode + '\n' + code + '\n;globalThis.__test = { shouldCapture, matchWildcard, buildHeaders, storeRequestHeaders, consumeRequestHeaders, routeServer, resolveServers, defaultServer, sniffMatch, sanitizeExternalOptions, wildcardToRegex, matchSniffRegexRules, renderFileNameTemplate, shouldAutoDownload, scanDeepSearch, addDeepSearchMedia, maybeAutoDownload, sniffedMedia, autoSentSet, pendingConfirms, addPendingConfirm, getPendingConfirm, removePendingConfirm, resolveConfirmServers, confirmPendingDownload, cancelPendingDownload, normalizePanelStyle, applyPanelStyle, openPanel };', sandbox);
+const mediaCode = fs.readFileSync(path.join(EXT, 'media.js'), 'utf8');
+vm.runInContext(libCode + '\n' + mediaCode + '\n' + code + '\n;globalThis.__test = { shouldCapture, matchWildcard, buildHeaders, storeRequestHeaders, consumeRequestHeaders, routeServer, resolveServers, defaultServer, sniffMatch, sanitizeExternalOptions, wildcardToRegex, matchSniffRegexRules, renderFileNameTemplate, shouldAutoDownload, scanDeepSearch, addDeepSearchMedia, maybeAutoDownload, sniffedMedia, autoSentSet, pendingConfirms, addPendingConfirm, getPendingConfirm, removePendingConfirm, resolveConfirmServers, confirmPendingDownload, cancelPendingDownload, normalizePanelStyle, applyPanelStyle, openPanel, listPageMedia, xPostMedia };', sandbox);
 const T = sandbox.__test;
 
 let pass = 0, fail = 0;
@@ -250,6 +251,32 @@ assert(T.addDeepSearchMedia(991, ['https://a.com/v/master.m3u8'], 'https://a.com
 const dsEntry = T.sniffedMedia.get(991)?.get('https://a.com/v/master.m3u8');
 assert(dsEntry?.source === 'deepSearch' && dsEntry?.type === 'HLS', '深度搜索条目标记 source=deepSearch');
 assert(dsEntry?.headers?.referer === 'https://a.com/page', '深度搜索条目携带页面 referer');
+
+console.log('== X 完整视频与流媒体分片 ==');
+const xCdn = 'https://video.twimg.com/ext_tw_video/12345/pu';
+const master = xCdn + '/pl/master.m3u8?tag=12&v=3';
+const fragment = xCdn + '/vid/avc1/1280x720/chunk.m4s';
+const audioTrack = xCdn + '/pl/mp4a/128000/audio.m3u8';
+const audioInit = xCdn + '/aud/mp4a/0/0/128000/init.mp4';
+const videoInit = xCdn + '/vid/0/0/1280x720/init.mp4';
+const direct = xCdn + '/vid/avc1/1280x720/full.mp4?tag=12';
+const low = xCdn + '/vid/320x180/full.mp4?tag=12';
+assert(T.addDeepSearchMedia(992, [master, audioTrack, fragment, audioInit, videoInit], 'https://x.com/demo/status/456') === 1,
+  '仅保存 HLS 主清单，跳过 M4S、单独音频轨和 MP4 初始化分片');
+const firstX = T.listPageMedia(992)[0];
+assert(firstX?.url === master && firstX.type === 'HLS', '主清单的带参数地址原样保留');
+T.addDeepSearchMedia(992, [low, direct], 'https://x.com/demo/status/456');
+const [bestX] = T.listPageMedia(992);
+assert(T.listPageMedia(992).length === 1 && bestX.id === firstX.id && bestX.url === direct && bestX.dimensions === '1280×720',
+  '同一视频只占一个稳定条目，优先完整且清晰的 MP4');
+assert(T.sniffMatch('https://files.example/video.ts', 'video/mp2t', 'media')?.ext === 'ts', '仍能识别独立 TS 文件');
+assert(T.sniffMatch('https://files.example/media.mp4?name=part.m4s', 'video/mp4', 'media')?.ext === 'mp4', '查询参数不影响文件扩展名判定');
+const variantPost = { id_str: '456', mediaDetails: [{ type: 'video', video_info: { variants: [
+  { url: 'https://video.twimg.com.example/file.mp4', bitrate: 9000000 }, { url: low }, { url: audioTrack }, { url: direct }, { url: master },
+] } }] };
+assert(T.xPostMedia(variantPost, '456')[0]?.url === direct && T.xPostMedia(variantPost, '789').length === 0,
+  '只接受当前帖子返回的有效 X 完整视频地址');
+assert(T.xPostMedia(variantPost, '456', url => url.includes('.m3u8'))[0]?.url === master, '选择格式前应用用户资源过滤规则');
 sandbox.document = { scripts: [{ textContent: 'const video = "https://a.com/from-script.mp4";' }] };
 sandbox.window = { __INITIAL_STATE__: { video: 'https://a.com/from-state.mp4' } };
 sandbox.location = { href: 'https://a.com/page', protocol: 'https:' };

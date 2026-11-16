@@ -193,7 +193,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
     reg('sniffCapture', 'input', { type: 'checkbox' });
     reg('mediaPage', 'div'); reg('mediaEmpty', 'p');
     reg('taskErrors', 'div'); reg('taskErrorTitle', 'strong'); reg('taskErrorList', 'ul'); reg('clearHandoffError', 'button');
-    reg('mediaBox', 'div'); reg('mediaHead', 'div'); reg('mediaList', 'div'); reg('deepSearch', 'button');
+    reg('mediaBox', 'div'); reg('mediaHead', 'div'); reg('mediaList', 'div'); reg('deepSearch', 'button'); reg('deepSearchStatus', 'div');
     reg('open', 'button'); reg('options', 'button'); reg('guide', 'button');
     reg('previewBox', 'div'); reg('previewPlayer', 'div'); reg('previewName', 'div'); reg('previewErr', 'div');
     reg('cfState', 'div'); reg('cfName', 'input'); reg('cfReferer', 'input');
@@ -297,6 +297,7 @@ function makeSandbox({ page, storage = {}, fetchRoutes = {}, messages = [], uiLa
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(read('connection.js'), sandbox);
+  vm.runInContext(read('media.js'), sandbox);
   vm.runInContext(read('i18n.js'), sandbox); // 先装 i18n 覆盖层
   return { sandbox, byId, body, chrome, local, sent, createdTabs, window, msgQueue };
 }
@@ -543,7 +544,15 @@ console.log('== popup：本页媒体列表 ==');
   const dlBtn = first.querySelector('.mdl');
   t.msgQueue.push({ ok: true });
   await dlBtn.dispatch('click');
-  assert(t.sent.some(m => m.type === 'downloadSniffed' && m.url === 'https://x.com/v24.mp4') && dlBtn.textContent === '✓', '下载按钮 → downloadSniffed 消息 + 成功态 ✓');
+  assert(t.sent.some(m => m.type === 'downloadSniffed' && m.url === 'https://x.com/v24.mp4') && dlBtn.textContent === msg('en', 'mediaSent'), '下载按钮 → downloadSniffed 消息 + 已发送状态');
+  const longName = 'Project sample with a full filename and descriptive notes for the media resource.mp4';
+  t.msgQueue.push([...media, { url: 'https://example.com/full.mp4', filename: longName, type: 'MP4' }]);
+  await vm.runInContext('loadMedia()', t.sandbox);
+  const rows = t.body.querySelectorAll('.media-item');
+  assert(rows.length === 26 && rows[0] === first && rows[0].querySelector('.mdl') === dlBtn && dlBtn.textContent === msg('en', 'mediaSent'),
+    '新资源追加时保持原有行、按钮与发送结果');
+  assert(rows.at(-1).querySelector('.mname').textContent === longName && rows.at(-1).querySelector('.mname').title === longName,
+    '新资源显示完整文件名');
 }
 
 console.log('== popup：嗅探关闭时仍显示入口 ==');

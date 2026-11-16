@@ -82,7 +82,7 @@ export function backgroundFixture({ persisted = {}, missingWindows = [] } = {}) 
     },
   });
   const read = file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8');
-  vm.runInContext(read('lib.js') + '\n' + read('background.js') + `\n;globalThis.testing = {
+  vm.runInContext(read('lib.js') + '\n' + read('media.js') + '\n' + read('background.js') + `\n;globalThis.testing = {
     addPendingConfirm, getPendingConfirm, pendingConfirms, confirmPendingDownload, cancelPendingDownload,
     pendingRestore, sweepPendingConfirms, sniffedMedia, sniffHeaderMap, addDeepSearchMedia, connectEvents,
     mediaRestore, confirmPageLinks, submitPageLinks, maybeAutoDownload, refreshBadge, downloadStatus,

@@ -48,7 +48,8 @@ export function popupFixture() {
     fetch: (...args) => controls.fetch(...args),
   });
   Object.defineProperty(context, 'Hls', { get: () => window.Hls });
-  vm.runInContext(fs.readFileSync(new URL('../../extension/popup.js', import.meta.url), 'utf8') +
+  vm.runInContext(fs.readFileSync(new URL('../../extension/media.js', import.meta.url), 'utf8') + '\n' +
+    fs.readFileSync(new URL('../../extension/popup.js', import.meta.url), 'utf8') +
     '\n;globalThis.testing = { load, loadMedia, previewMedia, closePreview, loadHlsLibrary };', context);
   return { ...context.testing, controls, elements, scripts, timers, window, document };
 }

@@ -8,6 +8,7 @@ import { WebSocketServer } from 'ws';
 import { APP_VERSION, API_PORT, API_HOST, WEB_DIST, loadSettings, saveSettings, hasFfmpeg, hasExternalStreamEngine } from '../config.js';
 import { isMagnet, isTorrentUrl, isStreamUrl, guessFilename, sanitizeFilename } from '../util/helpers.js';
 import { probeUrl } from './probe.js';
+import { resolveXVideos } from '../media/yt-dlp.js';
 import { validateSettingsPatch } from '../settings.js';
 import { isWithinDirectory } from '../util/paths.js';
 import { checkReleaseUpdate } from '../../../extension/release-updates.mjs';
@@ -130,7 +131,7 @@ export class ApiServer {
     if (restrictedBrowserClient(req, this.settings.apiToken)) {
       const pathname = req.originalUrl.split('?')[0].replace(/\/+$/, '');
       const read = req.method === 'GET' && /^\/api\/v1\/(?:health|tasks(?:\/[^/]+\/[^/]+)?|stats|dashboard)$/.test(pathname);
-      const create = req.method === 'POST' && ['/api/v1/tasks', '/api/v1/resolve'].includes(pathname);
+      const create = req.method === 'POST' && ['/api/v1/tasks', '/api/v1/resolve', '/api/v1/media/x'].includes(pathname);
       if (!read && !create) return res.status(403).json({ error: 'this operation requires the Web UI or a Bearer token' });
     }
     next();
@@ -355,6 +356,17 @@ export class ApiServer {
         const info = await probeUrl(url, { headers, stream: this.stream });
         res.json(info);
       } catch (e) { res.status(400).json({ error: e.message }); }
+    });
+
+    r.post('/api/v1/media/x', async (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      const id = req.body?.id;
+      if (typeof id !== 'string' || !/^\d{1,22}$/.test(id)) return res.status(400).json({ error: 'invalid X post ID' });
+      try {
+        const resolve = resolveXVideos(id);
+        if (!resolve) return res.status(429).json({ error: 'media resolver is busy' });
+        res.json(await resolve);
+      } catch { res.status(502).json({ error: 'yt-dlp could not resolve this public post' }); }
     });
 
     // ---- create task ----

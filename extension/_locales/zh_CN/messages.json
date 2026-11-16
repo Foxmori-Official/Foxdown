@@ -519,6 +519,36 @@
   "sniffDisabled": {
     "message": "嗅探已关闭，开启自动嗅探后可发现本页资源。"
   },
+  "sniffXEmpty": {
+    "message": "播放视频，或点击「查找此帖视频」获取 X 帖子的公开视频。"
+  },
+  "xSearchButton": {
+    "message": "查找此帖视频"
+  },
+  "xSearchHint": {
+    "message": "向 X 查询此帖的公开视频，不发送登录凭据。"
+  },
+  "xSearchUnavailable": {
+    "message": "X 没有返回此帖的公开视频。可以播放视频后查看已发现的资源。"
+  },
+  "mediaSearching": {
+    "message": "查找中…"
+  },
+  "mediaSearchFailed": {
+    "message": "无法搜索当前页面。刷新网页后重试。"
+  },
+  "mediaUnavailable": {
+    "message": "这项资源已不可用。刷新网页后重试。"
+  },
+  "mediaSending": {
+    "message": "发送中…"
+  },
+  "mediaSent": {
+    "message": "已发送"
+  },
+  "mediaRetry": {
+    "message": "重试"
+  },
   "sniffNoPage": {
     "message": "打开一个网页，即可查看它的资源。"
   },

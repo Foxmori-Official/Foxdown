@@ -14,7 +14,7 @@ const OUT_ZIP = path.join(ROOT, 'Foxdown-extension.zip');
 const REQUIRED = [
   'settings.js', 'options-dashboard.js', 'options-updates.mjs', 'release-updates.mjs',
   'manifest.json',
-  'background.js', 'content.js', 'i18n.js', 'lib.js',
+  'background.js', 'content.js', 'i18n.js', 'lib.js', 'media.js',
   'popup.html', 'popup.js', 'options.html', 'options.js',
   'onboarding.html', 'onboarding.js', 'onboarding.css', 'theme.css', 'connection.js',
   'icons/icon16.png', 'icons/icon32.png', 'icons/icon48.png', 'icons/icon128.png',

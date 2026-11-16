@@ -317,9 +317,21 @@ export class NativeStreamEngine extends EventEmitter {
     if (plan.audio) plan.audio.segments = filterAdSegments(plan.audio.segments, task.options?.adKeywords);
     if (!plan.live && task.options?.customRange) {
       const [s, e] = parseCustomRange(task.options.customRange, plan.segments);
+      if (plan.format === 'hls' && plan.audio) {
+        const duration = (sum, seg) => sum + seg.duration;
+        const start = plan.segments.slice(0, s).reduce(duration, 0);
+        const end = plan.segments.slice(0, e).reduce(duration, 0);
+        let audioTime = 0;
+        plan.audio.segments = plan.audio.segments.filter(segment => {
+          const segmentStart = audioTime;
+          audioTime += segment.duration;
+          return start < end && segmentStart < end && audioTime > start;
+        });
+      }
       plan.segments = plan.segments.slice(s, e);
       // ctx.manifest.segments 是按 manifestKey 的对象映射：同步裁剪为保留下来的键
       const kept = new Set(plan.segments.map(seg => String(seg.manifestKey)));
+      for (const segment of plan.audio?.segments || []) kept.add(this._mkey('audio_', segment));
       for (const k of Object.keys(ctx.manifest.segments)) {
         if (!kept.has(k)) delete ctx.manifest.segments[k];
       }
@@ -418,14 +430,17 @@ export class NativeStreamEngine extends EventEmitter {
     plan.variant = sel;
 
     if (sel.audio) {
-      const track = master.audioTracks.find(a => a.groupId === sel.audio && a.uri);
-      if (track) {
-        const aresp = await this._fetch(track.uri, headers, ctx, { isPlaylist: true });
-        const aMedia = parseMedia((await readMetadata(aresp)).toString('utf8'), track.uri);
-        plan.audio = this._hlsSegmentPlan(aMedia);
-      }
+      const tracks = master.audioTracks.filter(track => track.groupId === sel.audio);
+      const track = tracks.find(track => track.default) || tracks.find(track => track.uri);
+      if (track?.uri) plan.audio = await this._loadHlsAudio(track.uri, headers, ctx);
     }
     return plan;
+  }
+
+  async _loadHlsAudio(playlistUrl, headers, ctx) {
+    const response = await this._fetch(playlistUrl, headers, ctx, { isPlaylist: true });
+    const text = (await readMetadata(response)).toString('utf8');
+    return { ...this._hlsSegmentPlan(parseMedia(text, playlistUrl)), playlistUrl };
   }
 
   _planHlsMedia(task, ctx, text, playlistUrl) {
@@ -548,6 +563,10 @@ export class NativeStreamEngine extends EventEmitter {
       current = isDash
         ? this._planDash(task, ctx, text)
         : this._planHlsMedia(task, ctx, text, current.playlistUrl);
+      if (!isDash && plan.audio?.playlistUrl) {
+        current.audio = await this._loadHlsAudio(plan.audio.playlistUrl, headers, ctx);
+        current.audio.segments = filterAdSegments(current.audio.segments, task.options?.adKeywords);
+      }
     }
   }
 
@@ -742,7 +761,7 @@ export class NativeStreamEngine extends EventEmitter {
       ...(ctx.initFile ? [ctx.initFile] : []),
       ...this._collectPrefix(ctx, '', 'audio_'),
     ];
-    const hasAudio = Object.keys(ctx.manifest.segments).some(k => k.startsWith('audio_'));
+    const audioSegments = this._collectPrefix(ctx, 'audio_', null);
 
     const outputFiles = [];
     let mainOut;
@@ -752,7 +771,25 @@ export class NativeStreamEngine extends EventEmitter {
       return output;
     };
 
-    if (plan.format === 'hls') {
+    if (plan.audio && audioSegments.length) {
+      const audioFiles = [...(ctx.audioInitFile ? [ctx.audioInitFile] : []), ...audioSegments];
+      const hls = plan.format === 'hls';
+      if (wantMux) {
+        const videoTrack = await concatFiles(videoFiles, path.join(dir, 'video.track'));
+        const audioTrack = await concatFiles(audioFiles, path.join(dir, 'audio.track'));
+        mainOut = await muxTracks(videoTrack, audioTrack, await reserve(hls ? '.mp4' : '.mkv'));
+        outputFiles.push(mainOut);
+      } else {
+        mainOut = await concatFiles(videoFiles, await reserve(hls && !ctx.initFile ? '.ts' : '.mp4'));
+        let audioSuffix = '.audio.m4s';
+        if (hls) {
+          const audioUri = plan.audio.segments[0]?.uri || '';
+          audioSuffix = ctx.audioInitFile ? '.audio.m4a' : /\.aac(?:[?#]|$)/i.test(audioUri) ? '.audio.aac' : '.audio.ts';
+        }
+        const audioOut = await concatFiles(audioFiles, await reserve(audioSuffix));
+        outputFiles.push(mainOut, audioOut);
+      }
+    } else if (plan.format === 'hls') {
       const outExt = wantMux ? '.mp4' : '.ts';
       mainOut = await reserve(outExt);
       if (wantMux) {
@@ -762,33 +799,10 @@ export class NativeStreamEngine extends EventEmitter {
       }
       outputFiles.push(mainOut);
     } else {
-      // dash
-      const mergedV = path.join(dir, 'video.m4s');
-      await concatFiles(videoFiles, mergedV);
-      if (hasAudio) {
-        const aFiles = [
-          ...(ctx.audioInitFile ? [ctx.audioInitFile] : []),
-          ...this._collectPrefix(ctx, 'audio_', null),
-        ];
-        const mergedA = path.join(dir, 'audio.m4s');
-        await concatFiles(aFiles, mergedA);
-        if (wantMux) {
-          mainOut = await reserve('.mkv');
-          mainOut = await muxTracks(mergedV, mergedA, mainOut);
-          outputFiles.push(mainOut);
-        } else {
-          mainOut = await reserve('.mp4');
-          await concatFiles([mergedV], mainOut);
-          const aOut = await reserve('.audio.m4s');
-          await concatFiles([mergedA], aOut);
-          outputFiles.push(mainOut, aOut);
-        }
-      } else {
-        mainOut = await reserve('.mp4');
-        if (wantMux) mainOut = await remuxToMp4([mergedV], mainOut);
-        else await concatFiles([mergedV], mainOut);
-        outputFiles.push(mainOut);
-      }
+      mainOut = await reserve('.mp4');
+      if (wantMux) mainOut = await remuxToMp4(videoFiles, mainOut);
+      else await concatFiles(videoFiles, mainOut);
+      outputFiles.push(mainOut);
     }
 
     if (ctx.abort.signal.aborted) throw ctx.cancelled ? CANCEL : PAUSE;

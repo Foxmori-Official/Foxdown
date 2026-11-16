@@ -60,6 +60,23 @@ test('confirm and immediate window close are serialized: successful handoff neve
   assert.deepEqual(b.calls.resume, []);
 });
 
+test('accepted browser handoff retries a transient history error without resuming or resubmitting', async () => {
+  const b = backgroundFixture();
+  b.local.askBeforeDownload = false;
+  const erase = b.chrome.downloads.erase;
+  let attempts = 0;
+  b.chrome.downloads.erase = async query => {
+    if (++attempts === 1) throw new Error('Download history busy');
+    return erase(query);
+  };
+  b.listeners.download({ id: 7, url: 'https://example.invalid/file.zip', totalBytes: 1024 });
+  await waitFor(() => b.calls.erase.length === 1);
+  assert.equal(attempts, 2);
+  assert.deepEqual(b.calls.erase, [7]);
+  assert.deepEqual(b.calls.resume, []);
+  assert.equal(b.calls.fetch.length, 1);
+});
+
 test('failed handoff then close recovers original download; concurrent confirm submits only once', async () => {
   const b = backgroundFixture();
   const token = await b.addPendingConfirm(entry({ windowId: 100 }));

@@ -516,6 +516,36 @@
   "sniffEmpty": {
     "message": "Detection is on. Play media or reload the page to discover video, audio and downloadable attachments."
   },
+  "sniffXEmpty": {
+    "message": "Play the video or choose Find video in this X post to look up its public media."
+  },
+  "xSearchButton": {
+    "message": "Find video in this X post"
+  },
+  "xSearchHint": {
+    "message": "Look up this post's public video on X without sending sign-in credentials."
+  },
+  "xSearchUnavailable": {
+    "message": "X did not return a public video for this post. Try playing it and check the detected resources."
+  },
+  "mediaSearching": {
+    "message": "Searching…"
+  },
+  "mediaSearchFailed": {
+    "message": "Couldn't search this page. Try again after refreshing it."
+  },
+  "mediaUnavailable": {
+    "message": "This resource is no longer available. Refresh the page and try again."
+  },
+  "mediaSending": {
+    "message": "Sending…"
+  },
+  "mediaSent": {
+    "message": "Sent"
+  },
+  "mediaRetry": {
+    "message": "Retry"
+  },
   "sniffDisabled": {
     "message": "Detection is off. Turn on auto-detect to find page resources."
   },

@@ -21,6 +21,7 @@
 // 手动语言切换覆盖层（i18n.js）：全局 i18n() / loadI18nOverride()
 // 测试环境已在同一上下文预加载 lib.js，importScripts 失败可忽略
 try { importScripts('lib.js'); } catch (e) {}
+importScripts('media.js');
 importScripts('settings.js');
 try { importScripts('i18n.js'); } catch (e) {}
 // i18n.js 未加载时（如测试环境）的兜底：等价原生 chrome.i18n 行为
@@ -297,6 +298,19 @@ async function sendToFoxdown(url, { referer, filename, headersOverride, extraOpt
   return result;
 }
 
+async function finishBrowserHandoff(id) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await chrome.downloads.cancel(id);
+      await chrome.downloads.erase({ id });
+      return;
+    } catch {
+      // Chrome can briefly reject operations while updating its download item.
+      if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 150));
+    }
+  }
+}
+
 // ============================================================
 // 下载前参数确认（Aria2-Explorer askBeforeDownload 模式）：
 // 下载接管流程 pause 后不直接发送，挂起任务进 pendingConfirms，
@@ -455,10 +469,7 @@ async function confirmPendingDownloadNow(token, { filename, split, serverIndex }
   }
   await postTask(srv, entry.url, { referer: entry.referer, headers: entry.headers, extraOptions });
   await removePendingConfirm(token);
-  if (entry.itemId != null) {
-    try { await chrome.downloads.cancel(entry.itemId); } catch {}
-    try { await chrome.downloads.erase({ id: entry.itemId }); } catch {}
-  }
+  if (entry.itemId != null) await finishBrowserHandoff(entry.itemId);
   notify(i18n('sentToFoxdown'), extraOptions.out || entry.filename || entry.url);
   return { ok: true };
 }
@@ -487,13 +498,13 @@ async function cancelPendingDownloadNow(token) {
 // onErrorOccurred 清理孤立的 requestId
 // ============================================================
 const MEDIA_EXTS = new Set([
-  'm3u8', 'mpd', 'mp4', 'm4s', 'm4v', 'm4a', 'ts', 'aac', 'mp3',
+  'm3u8', 'mpd', 'mp4', 'm4v', 'm4a', 'ts', 'aac', 'mp3',
   'flv', 'flac', 'ogg', 'ogv', 'webm', 'mkv', 'avi', 'mov', 'wav',
   'm3u', 'mpeg', 'mpg', 'wmv', 'asf', 'opus', 'weba', 'wma',
 ]);
-const MEDIA_CT_RE = /mpegurl|dash\+xml|^video\/|^audio\/|^application\/(?:ogg|m4s)$/;
-const sniffHeaderMap = new Map();   // requestId -> { headers, ts }
-const sniffedMedia = new Map();     // tabId -> Map<url, {url, type, size, contentType, filename, headers, ts, source}>
+const MEDIA_CT_RE = /mpegurl|dash\+xml|^video\/|^audio\/|^application\/ogg$/;
+const sniffHeaderMap = new Map();   // requestId -> { url, headers, tabId, ts }
+const sniffedMedia = new Map();     // tabId -> Map<resource key, media entry>
 const SNIFF_HDR_MAX = 5000;
 const SNIFF_MAX_PER_TAB = 200;
 let sniffEnabledCache = true;
@@ -501,9 +512,24 @@ let sniffRulesCache = [];           // sniffRegexRules 缓存（[{url, state}]�
 let deepSearchCache = false;        // deepSearch 自动执行开关缓存
 const autoSentSet = new Set();      // 自动下载防重复：同一 URL 只自动发一次
 const autoSending = new Set();
-const MEDIA_KEY_PREFIX = 'foxdown-media-';
 const AUTO_SENT_KEY = 'foxdown-auto-sent';
 const deepSearches = new Map();
+const xPostSearches = new Map();
+
+function storeMedia(tabId, entry) {
+  let tab = sniffedMedia.get(tabId);
+  if (!tab) { tab = new Map(); sniffedMedia.set(tabId, tab); }
+  const key = mediaKey(entry.url);
+  const previous = tab.get(key);
+  if (previous?.url === entry.url) {
+    if (previous.source === 'network' || entry.source !== 'network') return false;
+  } else if (previous && compareXMedia(entry, previous) <= 0) {
+    return false;
+  }
+  if (!previous && tab.size >= SNIFF_MAX_PER_TAB) tab.delete(tab.keys().next().value);
+  tab.set(key, entry);
+  return true;
+}
 
 const mediaRestore = (async () => {
   const entries = await chrome.storage.session.get(null);
@@ -511,15 +537,17 @@ const mediaRestore = (async () => {
     if (!Array.isArray(value)) continue;
     if (key === AUTO_SENT_KEY) {
       for (const url of value) autoSentSet.add(url);
-    } else if (key.startsWith(MEDIA_KEY_PREFIX)) {
-      const tabId = Number(key.slice(MEDIA_KEY_PREFIX.length));
-      sniffedMedia.set(tabId, new Map(value.map(entry => [entry.url, entry])));
+    } else if (key.startsWith(MEDIA_SESSION_PREFIX)) {
+      const tabId = Number(key.slice(MEDIA_SESSION_PREFIX.length));
+      for (const entry of value) {
+        if (entry?.url && !isMediaFragment(entry.url, entry.contentType)) storeMedia(tabId, entry);
+      }
     }
   }
 })().catch(() => {});
 
 function saveTabMedia(tabId) {
-  const key = MEDIA_KEY_PREFIX + tabId;
+  const key = MEDIA_SESSION_PREFIX + tabId;
   const tab = sniffedMedia.get(tabId);
   const operation = tab?.size ? chrome.storage.session.set({ [key]: [...tab.values()] }) : chrome.storage.session.remove(key);
   void operation.catch(() => {});
@@ -527,6 +555,7 @@ function saveTabMedia(tabId) {
 
 function clearTabMedia(tabId) {
   deepSearches.delete(tabId);
+  xPostSearches.delete(tabId);
   for (const [id, entry] of sniffHeaderMap) if (entry.tabId === tabId) sniffHeaderMap.delete(id);
   void mediaRestore.then(() => {
     sniffedMedia.delete(tabId);
@@ -544,6 +573,7 @@ const sniffConfigReady = cfg().then(c => {
 // 纯匹配函数（便于测试）：URL 后缀 或 响应 Content-Type 或 media 资源类型
 function sniffMatch(url, contentType, resourceType) {
   if (!/^https?:/i.test(url || '')) return null;
+  if (isMediaFragment(url, contentType)) return null;
   let ext = '';
   try {
     const pathname = new URL(url).pathname;
@@ -611,8 +641,9 @@ function sniffHeadersToLines(obj) {
 }
 
 function sniffStoreRequestHeaders(details) {
-  if (!sniffEnabledCache || !details.requestHeaders?.length) return;
-  sniffHeaderMap.set(details.requestId, { headers: details.requestHeaders, tabId: details.tabId, ts: Date.now() });
+  if (!sniffEnabledCache || !details.requestHeaders?.length || details.tabId < 0 ||
+      details.initiator?.startsWith('chrome-extension://') || isMediaFragment(details.url)) return;
+  sniffHeaderMap.set(details.requestId, { url: details.url, headers: details.requestHeaders, tabId: details.tabId, ts: Date.now() });
   if (sniffHeaderMap.size > SNIFF_HDR_MAX) sniffHeaderMap.clear(); // 猫抓同款：超限整体清空
 }
 
@@ -621,7 +652,7 @@ function sniffOnResponseStarted(details) {
     const hit = sniffHeaderMap.get(details.requestId);
     if (hit) sniffHeaderMap.delete(details.requestId);
     if (!sniffEnabledCache) return;
-    const headers = hit && Date.now() - hit.ts <= HEADER_TTL ? hit.headers : undefined;
+    const headers = hit && hit.url === details.url && Date.now() - hit.ts <= HEADER_TTL ? hit.headers : undefined;
     void Promise.all([mediaRestore, sniffConfigReady]).then(() => {
       if (sniffEnabledCache) sniffFindMedia(details, headers);
     }).catch(() => {});
@@ -641,6 +672,7 @@ function sniffFindMedia(details, reqHeaders) {
   if (details.initiator && details.initiator.startsWith('chrome-extension://')) return;
 
   const resp = sniffParseResponseHeaders(details.responseHeaders);
+  if (isMediaFragment(url, resp.type) || (resp.filename && isMediaFragment(resp.filename))) return;
   const suffix = resp.filename?.match(/\.([a-z0-9]{1,10})$/i)?.[1]?.toLowerCase();
   const m = sniffMatch(url, resp.type, details.type) ||
     (MEDIA_EXTS.has(suffix) || (resp.attachment && resp.filename) ? { ext: suffix || 'file' } : null);
@@ -648,25 +680,18 @@ function sniffFindMedia(details, reqHeaders) {
   // 嗅探正则过滤（cat-catch 方案）：规则非空时仅命中 state=true 规则的 URL 进列表
   if (!matchSniffRegexRules(sniffRulesCache, url)) return;
 
-  let tab = sniffedMedia.get(details.tabId);
-  if (!tab) { tab = new Map(); sniffedMedia.set(details.tabId, tab); }
-  if (tab.get(url)?.source === 'network') return; // Network headers replace a deep-search candidate.
-  if (tab.size >= SNIFF_MAX_PER_TAB) tab.delete(tab.keys().next().value); // 淘汰最旧
-
-  let filename = '';
-  try { filename = decodeURIComponent(new URL(url).pathname.split('/').pop() || ''); }
-  catch { filename = new URL(url).pathname.split('/').pop() || ''; }
+  const type = mediaTypeLabel(m.ext, resp.type);
   const entry = {
     url,
-    type: mediaTypeLabel(m.ext, resp.type),
-    size: resp.size || 0,
+    type,
+    size: type === 'HLS' || type === 'DASH' ? 0 : resp.size || 0,
     contentType: resp.type || '',
-    filename: resp.filename || filename || url,
+    filename: resp.filename || mediaFilename(url),
     headers: filterSniffHeaders(reqHeaders),
     ts: Date.now(),
     source: 'network'
   };
-  tab.set(url, entry);
+  if (!storeMedia(details.tabId, entry)) return;
   saveTabMedia(details.tabId);
   updateSniffBadge(details.tabId);
   maybeAutoDownload(entry);
@@ -683,25 +708,17 @@ function addDeepSearchMedia(tabId, urls, pageHref) {
     const m = sniffMatch(url, '', 'other');
     if (!m) continue;
     if (!matchSniffRegexRules(sniffRulesCache, url)) continue;
-    let tab = sniffedMedia.get(tabId);
-    if (!tab) { tab = new Map(); sniffedMedia.set(tabId, tab); }
-    if (tab.has(url)) continue;
-    if (tab.size >= SNIFF_MAX_PER_TAB) tab.delete(tab.keys().next().value);
-    let filename = '';
-    try { filename = decodeURIComponent(new URL(url).pathname.split('/').pop() || ''); }
-    catch { filename = new URL(url).pathname.split('/').pop() || ''; }
     const entry = {
       url,
       type: mediaTypeLabel(m.ext, ''),
       size: 0,
       contentType: '',
-      filename: filename || url,
+      filename: mediaFilename(url),
       headers: { referer: pageHref || '' },
       ts: Date.now(),
       source: 'deepSearch'
     };
-    tab.set(url, entry);
-    added++;
+    if (storeMedia(tabId, entry)) added++;
   }
   if (added) {
     saveTabMedia(tabId);
@@ -716,13 +733,80 @@ function searchTab(tabId) {
     await mediaRestore;
     const [scan] = await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: scanDeepSearch });
     if (deepSearches.get(tabId) === search && scan?.result) {
-      addDeepSearchMedia(tabId, scan.result.urls, scan.result.href);
+      return addDeepSearchMedia(tabId, scan.result.urls, scan.result.href);
     }
+    return 0;
   })().finally(() => {
     if (deepSearches.get(tabId) === search) deepSearches.delete(tabId);
   });
   deepSearches.set(tabId, search);
   return search;
+}
+
+async function desktopXVideos(id, url, accepts) {
+  const servers = resolveServers(await cfg());
+  const server = routeServer(servers, url);
+  const headers = { 'Content-Type': 'application/json' };
+  if (server.token) headers.Authorization = `Bearer ${server.token}`;
+  const response = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/media/x', {
+    method: 'POST', headers, body: JSON.stringify({ id }), credentials: 'omit',
+    referrerPolicy: 'no-referrer', redirect: 'error', signal: AbortSignal.timeout(29000)
+  });
+  return response.ok ? selectXVideos((await response.json())?.videos, accepts) : [];
+}
+
+async function publicXVideos(id, accepts) {
+  const endpoint = new URL('https://cdn.syndication.twimg.com/tweet-result');
+  const token = (Number(id) / 1e15 * Math.PI).toString(36).replace(/[0.]/g, '');
+  endpoint.search = new URLSearchParams({ id, token });
+  const response = await fetch(endpoint.href, {
+    credentials: 'omit', referrerPolicy: 'no-referrer', redirect: 'error', signal: AbortSignal.timeout(8000)
+  });
+  return response.ok ? xPostMedia(await response.json(), id, accepts) : [];
+}
+
+// Resolve only the current public post, on an explicit action in the panel.
+function searchXPost(tabId) {
+  if (xPostSearches.has(tabId)) return xPostSearches.get(tabId);
+  const search = (async () => {
+    await Promise.all([mediaRestore, sniffConfigReady]);
+    if (!sniffEnabledCache || xPostSearches.get(tabId) !== search) return 0;
+    const tab = await chrome.tabs.get(tabId);
+    const id = xPostId(tab.url);
+    if (!id || xPostSearches.get(tabId) !== search) return 0;
+    const accepts = url => matchSniffRegexRules(sniffRulesCache, url);
+    let candidates = await desktopXVideos(id, tab.url, accepts).catch(() => []);
+    let source = 'ytDlp';
+    if (!candidates.length && sniffEnabledCache && xPostSearches.get(tabId) === search) {
+      candidates = await publicXVideos(id, accepts);
+      source = 'xPost';
+    }
+    if (!sniffEnabledCache || xPostSearches.get(tabId) !== search) return 0;
+    let changed = false;
+    for (const media of candidates) {
+      if (storeMedia(tabId, {
+        ...media, size: 0, filename: mediaFilename(media.url), source, ts: Date.now()
+      })) changed = true;
+    }
+    if (changed) {
+      saveTabMedia(tabId);
+      updateSniffBadge();
+    }
+    return candidates.length;
+  })().finally(() => {
+    if (xPostSearches.get(tabId) === search) xPostSearches.delete(tabId);
+  });
+  xPostSearches.set(tabId, search);
+  return search;
+}
+
+function listPageMedia(tabId) {
+  if (!sniffEnabledCache) return [];
+  return [...(sniffedMedia.get(tabId) || [])].map(([id, entry]) => ({
+    id, url: entry.url, type: entry.type, size: entry.size, filename: entry.filename, source: entry.source,
+    dimensions: xMediaFormat(entry.url)?.dimensions,
+    hasReferer: entry.source === 'network' && !!entry.headers?.referer
+  }));
 }
 
 // ============================================================
@@ -732,8 +816,9 @@ function searchTab(tabId) {
 async function maybeAutoDownload(media) {
   await mediaRestore;
   const c = await cfg().catch(() => null);
-  if (!shouldAutoDownload(media, c, autoSentSet) || autoSending.has(media.url)) return;
-  autoSending.add(media.url);
+  const key = mediaKey(media.url);
+  if (autoSentSet.has(key) || autoSending.has(key) || !shouldAutoDownload(media, c, autoSentSet)) return;
+  autoSending.add(key);
   try {
     const headers = sniffHeadersToLines(media.headers);
     const result = await sendToFoxdown(media.url, {
@@ -742,14 +827,14 @@ async function maybeAutoDownload(media) {
       headersOverride: headers,
       reuseActive: true
     });
-    autoSentSet.add(media.url);
+    autoSentSet.add(key);
     if (autoSentSet.size > 1000) autoSentSet.delete(autoSentSet.values().next().value);
     await chrome.storage.session.set({ [AUTO_SENT_KEY]: [...autoSentSet] }).catch(() => {});
     if (!result.reused) notify(i18n('autoDownloaded'), media.filename || media.url);
   } catch (e) {
     notify(i18n('sendFailed'), String(e.message || e));
   } finally {
-    autoSending.delete(media.url);
+    autoSending.delete(key);
   }
 }
 
@@ -816,8 +901,7 @@ chrome.downloads.onDeterminingFilename.addListener((item) => {
     }
     try {
       await sendToFoxdown(url, { referer: item.referrer, filename: item.filename, reuseActive: true });
-      await chrome.downloads.cancel(item.id).catch(() => {});
-      chrome.downloads.erase({ id: item.id });
+      await finishBrowserHandoff(item.id);
     } catch (e) {
       // 回退：恢复浏览器下载
       try { await chrome.downloads.resume(item.id); } catch {}
@@ -1008,7 +1092,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   // popup 查询当前 tab 嗅探到的媒体列表
   if (msg?.type === 'getSniffedMedia') {
-    void mediaRestore.then(() => sendResponse([...(sniffedMedia.get(msg.tabId)?.values() || [])]));
+    void Promise.all([mediaRestore, sniffConfigReady]).then(() => sendResponse(listPageMedia(msg.tabId)));
     return true;
   }
   // popup"深度搜索"按钮
@@ -1018,18 +1102,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch(e => sendResponse({ error: String(e?.message || e) }));
     return true;
   }
+  if (msg?.type === 'searchXPost' && Number.isSafeInteger(msg.tabId) && msg.tabId > 0 &&
+      sender?.url?.split('?')[0] === chrome.runtime.getURL('popup.html')) {
+    searchXPost(msg.tabId)
+      .then(found => sendResponse({ found }))
+      .catch(() => sendResponse({ found: 0 }));
+    return true;
+  }
   // popup 点击下载某个嗅探到的媒体（带嗅探时捕获的请求头）
   if (msg?.type === 'downloadSniffed' && msg.url) {
     (async () => {
       try {
         await mediaRestore;
-        const media = sniffedMedia.get(msg.tabId)?.get(msg.url);
-        // m3u8/mpd 由后端识别为流媒体任务，其他按普通任务；均携带捕获的请求头
-        const headers = media ? sniffHeadersToLines(media.headers) : await buildHeaders(msg.url, msg.referer);
-        await sendToFoxdown(msg.url, {
-          referer: media?.headers?.referer || msg.referer,
-          filename: media?.filename,
-          headersOverride: headers
+        const entry = sniffedMedia.get(msg.tabId)?.get(mediaKey(msg.url));
+        if (!entry || !sniffEnabledCache) { sendResponse({ error: i18n('mediaUnavailable') }); return; }
+        // Use the selected URL and its own headers, even if a better version
+        // arrived after the panel last displayed this row.
+        await sendToFoxdown(entry.url, {
+          referer: entry.headers?.referer,
+          filename: entry.filename,
+          headersOverride: sniffHeadersToLines(entry.headers)
         });
         sendResponse({ ok: true });
       } catch (e) { sendResponse({ error: String(e.message || e) }); }
@@ -1186,7 +1278,7 @@ function downloadStatus() {
 
 async function paintBadge() {
   const generation = ++paintGeneration;
-  await failureReady;
+  await Promise.all([failureReady, mediaRestore, sniffConfigReady]);
   const config = await cfg();
   const status = downloadStatus();
   const failed = status.errors.length || status.unavailable || status.handoffFailure;
@@ -1200,7 +1292,7 @@ async function paintBadge() {
   if (generation !== paintGeneration) return;
   const targets = [{}, ...tabs.filter(tab => tab.id >= 0).map(tab => ({ tabId: tab.id }))];
   for (const target of targets) {
-    const media = sniffedMedia.get(target.tabId)?.size || 0;
+    const media = sniffEnabledCache ? sniffedMedia.get(target.tabId)?.size || 0 : 0;
     const resourceBadge = !failed && !status.ongoing && media > 0;
     const badgeText = resourceBadge ? (media > 999 ? '999+' : String(media)) : text;
     const badgeColor = resourceBadge ? '#2563eb' : color;
@@ -1357,8 +1449,8 @@ chrome.runtime.onConnect?.addListener(port => {
       await previewRulesReady;
       await mediaRestore;
       if (closed) return;
-      const media = sniffedMedia.get(tabId)?.get(url);
-      const referer = media?.source === 'network' && media.headers?.referer;
+      const media = sniffedMedia.get(tabId)?.get(mediaKey(url));
+      const referer = media?.url === url && media.source === 'network' && media.headers?.referer;
       if (referer && /^https?:\/\//i.test(referer)) {
         const target = new URL(url);
         target.hash = '';

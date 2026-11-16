@@ -19,6 +19,12 @@ npm run dev-electron
 
 图标统一源文件为 `extension/icons/icon-source.png`，执行 `npm run assets` 生成桌面、Web 和扩展尺寸。macOS 使用专用不透明背景图标，其他平台使用透明版本。
 
+## 可选的 yt-dlp 解析器
+
+安装当前版 [yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/Installation) 后重新启动 Foxdown。macOS 可运行 `brew install yt-dlp`，Windows 可运行 `winget install -e --id yt-dlp.yt-dlp`。服务会查找引擎目录和 `PATH` 中的 yt-dlp。在 macOS 上也会查找 Homebrew 的默认目录。开发或容器部署可通过 `FOXDOWN_YTDLP_PATH` 指定可执行文件的绝对路径。
+
+打开 X 的单条帖子，在扩展中点击「查找此帖视频」，然后选择要下载的视频。yt-dlp 解析公开帖子的媒体格式，Foxdown 使用现有下载引擎保存选中的文件或 HLS 流。解析无需网站登录信息。yt-dlp 不可用时，扩展仍可识别播放时的资源，也会尝试查询 X 的公开嵌入接口。
+
 ## 验证
 
 在仓库根目录运行以下命令：

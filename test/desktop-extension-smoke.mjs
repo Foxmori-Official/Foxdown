@@ -297,6 +297,7 @@ try {
     await delay(250);
   }
   assert.equal(length, 128 * 1024);
+  await guide.waitForFunction(async url => (await chrome.downloads.search({ url })).length === 0, origin + '/api/v1/demo-file', { timeout: 5000 });
   await app.screenshot({ path: path.join(shots, 'tasks.png'), animations: 'disabled' });
   const clearCompleted = app.getByRole('button', { name: 'Clear completed tasks', exact: true });
   await clearCompleted.click();

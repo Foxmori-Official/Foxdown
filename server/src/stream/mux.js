@@ -86,18 +86,13 @@ export async function remuxToMp4(inputFiles, outFile) {
 }
 
 /**
- * Mux a separate video file and audio file into a container (MKV).
+ * Mux a separate video file and audio file into MP4 or MKV.
  * @returns {Promise<string>} the actual output path
  */
 export async function muxTracks(videoFile, audioFile, outFile) {
-  if (!hasFfmpeg()) {
-    // no way to interleave; keep video stream only
-    const fallback = outFile.replace(/\.mkv$/i, '.m4s.mp4');
-    await fs.promises.copyFile(videoFile, fallback);
-    return fallback;
-  }
+  if (!hasFfmpeg()) throw new Error('FFmpeg is required to merge separate video and audio tracks');
   await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
-  const args = ['-y', '-i', videoFile, '-i', audioFile, '-c', 'copy'];
+  const args = ['-y', '-i', videoFile, '-i', audioFile, '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy'];
   if (/\.(mp4|mov|m4v)$/i.test(outFile)) args.push('-movflags', '+faststart');
   args.push(outFile);
   await runFfmpeg(args);
