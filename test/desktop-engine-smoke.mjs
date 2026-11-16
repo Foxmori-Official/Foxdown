@@ -198,9 +198,22 @@ try {
     assert.ok(attempt < 60, 'missing file should fail');
     await sleep(250);
   }
+  const completedIds = new Set([
+    file, stream, encryptedStream, dashStream, audioStream, hlsWithAudio, hlsSeparate,
+    ...duplicateStreams, duplicate, named, withSidecar,
+  ].map(task => task.id));
+  assert.equal(completedIds.size, 12);
+  // aria2 can report completion through tellStatus before publishing its stopped list.
+  for (let attempt = 0; ; attempt++) {
+    const { tasks } = await api('/tasks?status=stopped');
+    const visible = new Set(tasks.filter(task => task.status === 'complete').map(task => task.id));
+    if ([...completedIds].every(id => visible.has(id))) break;
+    assert.ok(attempt < 40, 'Completed tasks should appear in the stopped list');
+    await sleep(100);
+  }
   const filesBefore = await fs.readdir(downloads);
   const bytesBefore = await Promise.all(filesBefore.map(name => fs.readFile(path.join(downloads, name))));
-  assert.deepEqual(await api('/tasks/clear-completed', { deleteFiles: true }), { removed: 12, failed: 0 });
+  assert.deepEqual(await api('/tasks/clear-completed', { deleteFiles: true }), { removed: completedIds.size, failed: 0 });
   const { tasks } = await api('/tasks');
   assert.deepEqual(new Map(tasks.map(task => [task.id, task.status])), new Map([[pending.id, 'paused'], [failed.id, 'error']]));
   assert.deepEqual(await fs.readdir(downloads), filesBefore);

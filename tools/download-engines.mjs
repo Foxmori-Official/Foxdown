@@ -114,9 +114,11 @@ async function prepareYtDlp(binDir, arch) {
     if (asset.launcher) {
       // The expanded PyInstaller distribution retains its Python libraries
       // beside the executable, avoiding an extraction on each launch.
-      // Relative archive names also work with GNU tar on Windows runners,
-      // where a drive letter in the archive argument denotes a remote host.
-      execFileSync('tar', ['-xf', asset.name, '-C', 'bundle'], { cwd: temporary, stdio: 'pipe' });
+      // Use the system ZIP-capable tar on Windows even if Git's GNU tar is on PATH.
+      const tar = platform === 'win32'
+        ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
+        : 'tar';
+      execFileSync(tar, ['-xf', asset.name, '-C', 'bundle'], { cwd: temporary, stdio: 'pipe' });
       const launcher = path.join(bundle, asset.launcher);
       if (launcher !== executable) await rename(launcher, executable);
       await access(path.join(bundle, '_internal', 'THIRD_PARTY_LICENSES.txt'));
