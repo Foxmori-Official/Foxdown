@@ -94,8 +94,8 @@
     "message": "Download"
   },
   "deepSearchBtn": {
-    "message": "Deep search",
-    "description": "Deep search button in the popup"
+    "message": "Resolve page videos",
+    "description": "Resolve videos on the current page"
   },
   "mediaPreview": {
     "message": "Preview",
@@ -516,17 +516,14 @@
   "sniffEmpty": {
     "message": "Detection is on. Play media or reload the page to discover video, audio and downloadable attachments."
   },
-  "sniffXEmpty": {
-    "message": "Play the video or choose Find video in this X post to look up its public media."
+  "mediaResolveHint": {
+    "message": "Send the current page address to Foxdown for yt-dlp to find a downloadable video."
   },
-  "xSearchButton": {
-    "message": "Find video in this X post"
+  "mediaNoVideoFound": {
+    "message": "No downloadable video was found. Try playing the video to discover its resources."
   },
-  "xSearchHint": {
-    "message": "Look up this post's public video on X without sending sign-in credentials."
-  },
-  "xSearchUnavailable": {
-    "message": "X did not return a public video for this post. Try playing it and check the detected resources."
+  "mediaInstallResolver": {
+    "message": "Install yt-dlp and restart Foxdown to resolve this page. You can also play the video to discover its resources."
   },
   "mediaSearching": {
     "message": "Searching…"

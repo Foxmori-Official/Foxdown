@@ -80,6 +80,16 @@ test('isolated REST and WebSocket authentication / state delivery', { timeout: 1
       assert.equal(response.status, token === 'test-only-token' ? 200 : 401);
     }
   });
+  await t.test('page video resolution requires authorization and rejects non-web URLs', async () => {
+    const endpoint = `${base}/api/v1/media/resolve`;
+    const post = (url, auth = {}) => fetch(endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...auth }, body: JSON.stringify({ url }),
+    });
+    assert.equal((await post('https://example.test/video')).status, 401);
+    for (const url of ['file:///path/to/media.mp4', '--exec', 'https://user:password@example.test/video']) {
+      assert.equal((await post(url, { Authorization: 'Bearer test-only-token' })).status, 400);
+    }
+  });
   await t.test('WebSocket rejects missing and wrong credentials before sending any state', async () => {
     for (const suffix of ['', '?token=wrong-test-token']) {
       const ws = connect(wsbase + suffix);

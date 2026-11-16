@@ -8,7 +8,7 @@ import { WebSocketServer } from 'ws';
 import { APP_VERSION, API_PORT, API_HOST, WEB_DIST, loadSettings, saveSettings, hasFfmpeg, hasExternalStreamEngine } from '../config.js';
 import { isMagnet, isTorrentUrl, isStreamUrl, guessFilename, sanitizeFilename } from '../util/helpers.js';
 import { probeUrl } from './probe.js';
-import { resolveXVideos } from '../media/yt-dlp.js';
+import { normalizeVideoUrl, resolvePageVideos, resolveXVideos } from '../media/yt-dlp.js';
 import { validateSettingsPatch } from '../settings.js';
 import { isWithinDirectory } from '../util/paths.js';
 import { checkReleaseUpdate } from '../../../extension/release-updates.mjs';
@@ -131,7 +131,7 @@ export class ApiServer {
     if (restrictedBrowserClient(req, this.settings.apiToken)) {
       const pathname = req.originalUrl.split('?')[0].replace(/\/+$/, '');
       const read = req.method === 'GET' && /^\/api\/v1\/(?:health|tasks(?:\/[^/]+\/[^/]+)?|stats|dashboard)$/.test(pathname);
-      const create = req.method === 'POST' && ['/api/v1/tasks', '/api/v1/resolve', '/api/v1/media/x'].includes(pathname);
+      const create = req.method === 'POST' && ['/api/v1/tasks', '/api/v1/resolve', '/api/v1/media/x', '/api/v1/media/resolve'].includes(pathname);
       if (!read && !create) return res.status(403).json({ error: 'this operation requires the Web UI or a Bearer token' });
     }
     next();
@@ -358,15 +358,25 @@ export class ApiServer {
       } catch (e) { res.status(400).json({ error: e.message }); }
     });
 
-    r.post('/api/v1/media/x', async (req, res) => {
+    async function respondWithVideos(res, resolve) {
       res.setHeader('Cache-Control', 'no-store');
+      try {
+        const pending = resolve();
+        if (!pending) return res.status(429).json({ error: 'media resolver is busy' });
+        res.json(await pending);
+      } catch { res.status(502).json({ error: 'yt-dlp could not resolve this page' }); }
+    }
+
+    r.post('/api/v1/media/resolve', (req, res) => {
+      const url = normalizeVideoUrl(req.body?.url);
+      if (!url) return res.status(400).json({ error: 'invalid video page URL' });
+      return respondWithVideos(res, () => resolvePageVideos(url));
+    });
+
+    r.post('/api/v1/media/x', (req, res) => {
       const id = req.body?.id;
       if (typeof id !== 'string' || !/^\d{1,22}$/.test(id)) return res.status(400).json({ error: 'invalid X post ID' });
-      try {
-        const resolve = resolveXVideos(id);
-        if (!resolve) return res.status(429).json({ error: 'media resolver is busy' });
-        res.json(await resolve);
-      } catch { res.status(502).json({ error: 'yt-dlp could not resolve this public post' }); }
+      return respondWithVideos(res, () => resolveXVideos(id));
     });
 
     // ---- create task ----

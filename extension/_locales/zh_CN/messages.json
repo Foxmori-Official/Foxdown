@@ -94,8 +94,8 @@
     "message": "下载"
   },
   "deepSearchBtn": {
-    "message": "深度搜索",
-    "description": "弹窗中的深度搜索按钮"
+    "message": "解析页面视频",
+    "description": "解析当前页面视频按钮"
   },
   "mediaPreview": {
     "message": "预览",
@@ -519,17 +519,14 @@
   "sniffDisabled": {
     "message": "嗅探已关闭，开启自动嗅探后可发现本页资源。"
   },
-  "sniffXEmpty": {
-    "message": "播放视频，或点击「查找此帖视频」获取 X 帖子的公开视频。"
+  "mediaResolveHint": {
+    "message": "将当前页面地址交给 Foxdown，由 yt-dlp 查找可下载的视频。"
   },
-  "xSearchButton": {
-    "message": "查找此帖视频"
+  "mediaNoVideoFound": {
+    "message": "未找到可下载的视频。可以播放视频后查看自动发现的资源。"
   },
-  "xSearchHint": {
-    "message": "向 X 查询此帖的公开视频，不发送登录凭据。"
-  },
-  "xSearchUnavailable": {
-    "message": "X 没有返回此帖的公开视频。可以播放视频后查看已发现的资源。"
+  "mediaInstallResolver": {
+    "message": "安装 yt-dlp 并重启 Foxdown 后可解析此页面，也可播放视频查看自动发现的资源。"
   },
   "mediaSearching": {
     "message": "查找中…"

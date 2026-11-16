@@ -232,7 +232,7 @@ function defaultServer(servers) {
 // ============================================================
 // 任务发送
 // ============================================================
-async function postTask(server, url, { referer, headers, extraOptions, reuseActive } = {}) {
+async function postTask(server, url, { referer, headers, extraOptions, reuseActive, stream } = {}) {
   await failureReady;
   pendingSends++;
   void paintBadge();
@@ -244,6 +244,7 @@ async function postTask(server, url, { referer, headers, extraOptions, reuseActi
     if (headers?.length) options.headers = headers;
     const body = { url, options };
     if (reuseActive) body.reuseActive = true;
+    if (stream) body.stream = {};
     const res = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/tasks', {
       method: 'POST', headers: h, body: JSON.stringify(body), signal: AbortSignal.timeout(15000),
     });
@@ -280,7 +281,7 @@ async function resolvePageTitle(referer) {
   } catch { return ''; }
 }
 
-async function sendToFoxdown(url, { referer, filename, headersOverride, extraOptions, pageTitle, reuseActive } = {}) {
+async function sendToFoxdown(url, { referer, filename, headersOverride, extraOptions, pageTitle, reuseActive, stream, defaultName } = {}) {
   const c = await cfg();
   const servers = resolveServers(c);
   // 路由匹配目标：下载 URL + 文件名（Aria2-Explorer 同款拼接）
@@ -293,7 +294,8 @@ async function sendToFoxdown(url, { referer, filename, headersOverride, extraOpt
     const out = renderFileNameTemplate(c.fileNameTemplate, { url, title });
     if (out) opts.out = out;
   }
-  const result = await postTask(srv, url, { referer, headers, extraOptions: opts, reuseActive });
+  if (!opts.out && defaultName) opts.out = defaultName;
+  const result = await postTask(srv, url, { referer, headers, extraOptions: opts, reuseActive, stream });
   if (!result.reused) notify(i18n('sentToFoxdown'), filename || opts.out || url);
   return result;
 }
@@ -514,7 +516,7 @@ const autoSentSet = new Set();      // 自动下载防重复：同一 URL 只自
 const autoSending = new Set();
 const AUTO_SENT_KEY = 'foxdown-auto-sent';
 const deepSearches = new Map();
-const xPostSearches = new Map();
+const pageVideoSearches = new Map();
 
 function storeMedia(tabId, entry) {
   let tab = sniffedMedia.get(tabId);
@@ -522,7 +524,19 @@ function storeMedia(tabId, entry) {
   const key = mediaKey(entry.url);
   const previous = tab.get(key);
   if (previous?.url === entry.url) {
-    if (previous.source === 'network' || entry.source !== 'network') return false;
+    if (previous.source === 'network') {
+      if (entry.source !== 'ytDlp') return false;
+      const dimensions = previous.dimensions || entry.dimensions;
+      const size = previous.size || entry.size;
+      if (dimensions === previous.dimensions && size === previous.size) return false;
+      entry = { ...previous, dimensions, size };
+    } else if (entry.source === 'network' && previous.source === 'ytDlp') {
+      entry = { ...entry, dimensions: previous.dimensions, size: entry.size || previous.size,
+        filename: previous.filename, defaultName: previous.defaultName, headers: { ...previous.headers, ...entry.headers } };
+    } else if (entry.source === 'ytDlp' && previous.source === 'deepSearch') {
+      entry = { ...entry, filename: previous.filename, defaultName: undefined,
+        headers: { ...previous.headers, ...entry.headers } };
+    } else if (entry.source !== 'network') return false;
   } else if (previous && compareXMedia(entry, previous) <= 0) {
     return false;
   }
@@ -540,7 +554,10 @@ const mediaRestore = (async () => {
     } else if (key.startsWith(MEDIA_SESSION_PREFIX)) {
       const tabId = Number(key.slice(MEDIA_SESSION_PREFIX.length));
       for (const entry of value) {
-        if (entry?.url && !isMediaFragment(entry.url, entry.contentType)) storeMedia(tabId, entry);
+        if (!entry?.url || isMediaFragment(entry.url, entry.contentType)) continue;
+        const transport = isTransportStream(entry.url, entry.contentType) || isTransportStream(entry.filename || '');
+        if (transport && !entry.standaloneTransport && entry.source !== 'ytDlp') continue;
+        storeMedia(tabId, entry);
       }
     }
   }
@@ -555,7 +572,7 @@ function saveTabMedia(tabId) {
 
 function clearTabMedia(tabId) {
   deepSearches.delete(tabId);
-  xPostSearches.delete(tabId);
+  pageVideoSearches.delete(tabId);
   for (const [id, entry] of sniffHeaderMap) if (entry.tabId === tabId) sniffHeaderMap.delete(id);
   void mediaRestore.then(() => {
     sniffedMedia.delete(tabId);
@@ -673,6 +690,9 @@ function sniffFindMedia(details, reqHeaders) {
 
   const resp = sniffParseResponseHeaders(details.responseHeaders);
   if (isMediaFragment(url, resp.type) || (resp.filename && isMediaFragment(resp.filename))) return;
+  const transport = isTransportStream(url, resp.type) || isTransportStream(resp.filename || '');
+  // Playback requests for MPEG-TS chunks are covered by the HLS playlist.
+  if (transport && !resp.attachment && details.type !== 'main_frame') return;
   const suffix = resp.filename?.match(/\.([a-z0-9]{1,10})$/i)?.[1]?.toLowerCase();
   const m = sniffMatch(url, resp.type, details.type) ||
     (MEDIA_EXTS.has(suffix) || (resp.attachment && resp.filename) ? { ext: suffix || 'file' } : null);
@@ -687,6 +707,7 @@ function sniffFindMedia(details, reqHeaders) {
     size: type === 'HLS' || type === 'DASH' ? 0 : resp.size || 0,
     contentType: resp.type || '',
     filename: resp.filename || mediaFilename(url),
+    standaloneTransport: transport,
     headers: filterSniffHeaders(reqHeaders),
     ts: Date.now(),
     source: 'network'
@@ -704,7 +725,7 @@ function addDeepSearchMedia(tabId, urls, pageHref) {
   if (!sniffEnabledCache || !Array.isArray(urls)) return 0;
   let added = 0;
   for (const url of urls.slice(0, SNIFF_MAX_PER_TAB)) {
-    if (typeof url !== 'string' || !/^https?:/i.test(url)) continue;
+    if (typeof url !== 'string' || !/^https?:/i.test(url) || isTransportStream(url)) continue;
     const m = sniffMatch(url, '', 'other');
     if (!m) continue;
     if (!matchSniffRegexRules(sniffRulesCache, url)) continue;
@@ -743,16 +764,45 @@ function searchTab(tabId) {
   return search;
 }
 
-async function desktopXVideos(id, url, accepts) {
+function desktopVideoEntry(media) {
+  try {
+    const url = new URL(media.url);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || isMediaFragment(url.href)) return null;
+    const type = /^[A-Z0-9]{1,12}$/.test(media.type) ? media.type : 'VIDEO';
+    const headers = {};
+    for (const name of ['referer', 'user-agent']) {
+      const value = media.headers?.[name];
+      if (typeof value === 'string' && value.length <= 4096 && !/[\x00-\x1f\x7f]/.test(value)) headers[name] = value;
+    }
+    return {
+      url: url.href, type, headers,
+      filename: typeof media.filename === 'string' && media.filename ? media.filename.slice(0, 120) : mediaFilename(url.href),
+      defaultName: typeof media.filename === 'string' ? media.filename.slice(0, 120) : undefined,
+      size: Number.isFinite(media.size) && media.size > 0 ? media.size : 0,
+      dimensions: media.width > 0 && media.height > 0 ? `${media.width}×${media.height}` : undefined,
+      source: 'ytDlp', ts: Date.now(),
+    };
+  } catch { return null; }
+}
+
+async function desktopPageVideos(url, id, accepts) {
   const servers = resolveServers(await cfg());
   const server = routeServer(servers, url);
   const headers = { 'Content-Type': 'application/json' };
   if (server.token) headers.Authorization = `Bearer ${server.token}`;
-  const response = await fetch(server.url.replace(/\/+$/, '') + '/api/v1/media/x', {
-    method: 'POST', headers, body: JSON.stringify({ id }), credentials: 'omit',
+  const request = (path, body) => fetch(server.url.replace(/\/+$/, '') + path, {
+    method: 'POST', headers, body: JSON.stringify(body), credentials: 'omit',
     referrerPolicy: 'no-referrer', redirect: 'error', signal: AbortSignal.timeout(29000)
   });
-  return response.ok ? selectXVideos((await response.json())?.videos, accepts) : [];
+  const response = await request('/api/v1/media/resolve', { url });
+  if (response.status === 404 && id) {
+    const legacy = await request('/api/v1/media/x', { id });
+    const data = legacy.ok ? await legacy.json() : null;
+    return { videos: selectXVideos(data?.videos, accepts).map(desktopVideoEntry).filter(Boolean), available: data?.available };
+  }
+  const data = response.ok ? await response.json() : null;
+  const videos = Array.isArray(data?.videos) ? data.videos.slice(0, 8) : [];
+  return { videos: videos.map(desktopVideoEntry).filter(item => item && accepts(item.url)), available: data?.available };
 }
 
 async function publicXVideos(id, accepts) {
@@ -765,38 +815,45 @@ async function publicXVideos(id, accepts) {
   return response.ok ? xPostMedia(await response.json(), id, accepts) : [];
 }
 
-// Resolve only the current public post, on an explicit action in the panel.
-function searchXPost(tabId) {
-  if (xPostSearches.has(tabId)) return xPostSearches.get(tabId);
+// Resolve the currently selected page only after a click in the resource panel.
+function resolvePageMedia(tabId) {
+  if (pageVideoSearches.has(tabId)) return pageVideoSearches.get(tabId);
+  const current = () => sniffEnabledCache && pageVideoSearches.get(tabId) === search;
   const search = (async () => {
     await Promise.all([mediaRestore, sniffConfigReady]);
-    if (!sniffEnabledCache || xPostSearches.get(tabId) !== search) return 0;
+    if (!current()) return { found: 0 };
     const tab = await chrome.tabs.get(tabId);
-    const id = xPostId(tab.url);
-    if (!id || xPostSearches.get(tabId) !== search) return 0;
+    if (!/^https?:\/\//i.test(tab.url || '') || !current()) return { found: 0 };
+    const pageUrl = new URL(tab.url);
+    if (pageUrl.username || pageUrl.password) return { found: 0 };
+    pageUrl.hash = '';
+    const id = xPostId(pageUrl.href);
     const accepts = url => matchSniffRegexRules(sniffRulesCache, url);
-    let candidates = await desktopXVideos(id, tab.url, accepts).catch(() => []);
-    let source = 'ytDlp';
-    if (!candidates.length && sniffEnabledCache && xPostSearches.get(tabId) === search) {
-      candidates = await publicXVideos(id, accepts);
-      source = 'xPost';
+    // Browser results can appear while yt-dlp is still resolving the page.
+    const discovered = searchTab(tabId).catch(() => 0);
+    const result = await desktopPageVideos(pageUrl.href, id, accepts).catch(() => ({ videos: [] }));
+    let candidates = result.videos;
+    if (!candidates.length && id && current()) {
+      const fallback = await publicXVideos(id, accepts).catch(() => []);
+      candidates = fallback.map(media => ({
+        ...media, size: 0, filename: mediaFilename(media.url), source: 'xPost', ts: Date.now(),
+      }));
     }
-    if (!sniffEnabledCache || xPostSearches.get(tabId) !== search) return 0;
+    if (!current()) return { found: 0 };
     let changed = false;
     for (const media of candidates) {
-      if (storeMedia(tabId, {
-        ...media, size: 0, filename: mediaFilename(media.url), source, ts: Date.now()
-      })) changed = true;
+      if (storeMedia(tabId, media)) changed = true;
     }
     if (changed) {
       saveTabMedia(tabId);
       updateSniffBadge();
     }
-    return candidates.length;
+    const found = candidates.length || await discovered;
+    return current() ? { found, available: result.available } : { found: 0 };
   })().finally(() => {
-    if (xPostSearches.get(tabId) === search) xPostSearches.delete(tabId);
+    if (pageVideoSearches.get(tabId) === search) pageVideoSearches.delete(tabId);
   });
-  xPostSearches.set(tabId, search);
+  pageVideoSearches.set(tabId, search);
   return search;
 }
 
@@ -804,8 +861,8 @@ function listPageMedia(tabId) {
   if (!sniffEnabledCache) return [];
   return [...(sniffedMedia.get(tabId) || [])].map(([id, entry]) => ({
     id, url: entry.url, type: entry.type, size: entry.size, filename: entry.filename, source: entry.source,
-    dimensions: xMediaFormat(entry.url)?.dimensions,
-    hasReferer: entry.source === 'network' && !!entry.headers?.referer
+    dimensions: entry.dimensions || xMediaFormat(entry.url)?.dimensions,
+    hasReferer: ['network', 'ytDlp'].includes(entry.source) && !!entry.headers?.referer
   }));
 }
 
@@ -1098,14 +1155,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // popup"深度搜索"按钮
   if (msg?.type === 'triggerDeepSearch' && msg.tabId != null) {
     searchTab(msg.tabId)
-      .then(() => sendResponse({ ok: true }))
+      .then(found => sendResponse({ ok: true, found }))
       .catch(e => sendResponse({ error: String(e?.message || e) }));
     return true;
   }
-  if (msg?.type === 'searchXPost' && Number.isSafeInteger(msg.tabId) && msg.tabId > 0 &&
+  if (msg?.type === 'resolvePageMedia' && Number.isSafeInteger(msg.tabId) && msg.tabId > 0 &&
       sender?.url?.split('?')[0] === chrome.runtime.getURL('popup.html')) {
-    searchXPost(msg.tabId)
-      .then(found => sendResponse({ found }))
+    resolvePageMedia(msg.tabId)
+      .then(sendResponse)
       .catch(() => sendResponse({ found: 0 }));
     return true;
   }
@@ -1121,6 +1178,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await sendToFoxdown(entry.url, {
           referer: entry.headers?.referer,
           filename: entry.filename,
+          defaultName: entry.defaultName,
+          stream: entry.type === 'HLS' || entry.type === 'DASH',
           headersOverride: sniffHeadersToLines(entry.headers)
         });
         sendResponse({ ok: true });
@@ -1450,7 +1509,7 @@ chrome.runtime.onConnect?.addListener(port => {
       await mediaRestore;
       if (closed) return;
       const media = sniffedMedia.get(tabId)?.get(mediaKey(url));
-      const referer = media?.url === url && media.source === 'network' && media.headers?.referer;
+      const referer = media?.url === url && ['network', 'ytDlp'].includes(media.source) && media.headers?.referer;
       if (referer && /^https?:\/\//i.test(referer)) {
         const target = new URL(url);
         target.hash = '';

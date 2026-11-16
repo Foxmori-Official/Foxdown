@@ -304,10 +304,8 @@ function renderMediaList(list, tabId) {
       mediaRows.delete(id);
     }
   }
-  // Start with the latest discoveries, then append newly discovered rows.
-  // Existing nodes stay in place so clicks, text selection and focus survive.
-  const ordered = mediaRows.size ? list : [...list].reverse();
-  for (const media of ordered) {
+  // Preserve discovery order and keep existing nodes in place.
+  for (const media of list) {
     const id = media.id || media.url;
     let entry = mediaRows.get(id);
     if (!entry) {
@@ -339,10 +337,9 @@ async function loadMedia() {
       setText($('mediaEmpty'), i18n(s.sniffEnabled ? 'sniffNoPage' : 'sniffDisabled'));
       return;
     }
-    const isPost = !!xPostId(tab.url);
-    if (!$('deepSearch').disabled) setText($('deepSearch'), i18n(isPost ? 'xSearchButton' : 'deepSearchBtn'));
-    $('deepSearch').title = isPost ? i18n('xSearchHint') : '';
-    setText($('mediaEmpty'), i18n(isPost ? 'sniffXEmpty' : 'sniffEmpty'));
+    if (!$('deepSearch').disabled) setText($('deepSearch'), i18n('deepSearchBtn'));
+    $('deepSearch').title = i18n('mediaResolveHint');
+    setText($('mediaEmpty'), i18n('sniffEmpty'));
     const list = await chrome.runtime.sendMessage({ type: 'getSniffedMedia', tabId: tab.id });
     if (Array.isArray(list)) renderMediaList(list, tab.id);
   } catch { /* Storage may be unavailable while an extension context closes. */ }
@@ -355,7 +352,6 @@ async function loadMedia() {
   }
 }
 
-// Only a button click on a single X post starts the public post lookup.
 $('deepSearch').addEventListener('click', async () => {
   const tab = mediaTab;
   if (!tab?.id) return;
@@ -364,20 +360,18 @@ $('deepSearch').addEventListener('click', async () => {
   btn.disabled = true;
   setText(btn, i18n('mediaSearching'));
   $('deepSearchStatus').textContent = '';
-  const isPost = !!xPostId(tab.url);
   try {
-    const search = isPost ? await chrome.runtime.sendMessage({ type: 'searchXPost', tabId: tab.id }) : null;
+    const search = await chrome.runtime.sendMessage({ type: 'resolvePageMedia', tabId: tab.id });
     if (generation !== mediaSearchGeneration) return;
-    if (!search?.found) await chrome.runtime.sendMessage({ type: 'triggerDeepSearch', tabId: tab.id });
-    if (generation === mediaSearchGeneration && isPost && !search?.found) {
-      setText($('deepSearchStatus'), i18n('xSearchUnavailable'));
+    if (!search?.found) {
+      setText($('deepSearchStatus'), i18n(search?.available === false ? 'mediaInstallResolver' : 'mediaNoVideoFound'));
     }
   } catch {
     if (generation === mediaSearchGeneration) setText($('deepSearchStatus'), i18n('mediaSearchFailed'));
   } finally {
     if (generation === mediaSearchGeneration) {
       btn.disabled = false;
-      setText(btn, i18n(isPost ? 'xSearchButton' : 'deepSearchBtn'));
+      setText(btn, i18n('deepSearchBtn'));
       refreshMedia();
     }
   }

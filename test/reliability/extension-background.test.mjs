@@ -130,6 +130,25 @@ test('navigation and tab close clear only that tab media and in-flight sniff hea
   assert.equal(b.sniffHeaderMap.size, 0);
 });
 
+test('HLS transport chunks are hidden while playlists and named TS attachments keep discovery order', async () => {
+  const base = 'https://media.example.test/';
+  const b = backgroundFixture({ persisted: {
+    'foxdown-media-1': [{ url: base + 'old-part.ts', type: 'TS', source: 'network' }],
+  } });
+  await b.mediaRestore;
+  const response = (file, mime, extra = []) => b.listeners.response({
+    url: base + file, tabId: 1, type: 'xmlhttprequest', statusCode: 200, method: 'GET',
+    responseHeaders: [{ name: 'Content-Type', value: mime }, ...extra],
+  });
+  response('master.m3u8', 'application/vnd.apple.mpegurl');
+  response('index-v1-a1.m3u8', 'application/vnd.apple.mpegurl');
+  response('seg-1-v1-a1.ts?token=test', 'application/octet-stream');
+  response('chunk-without-extension', 'video/mp2t');
+  response('archive.ts', 'video/mp2t', [{ name: 'Content-Disposition', value: 'attachment; filename="archive.ts"' }]);
+  await waitFor(() => b.sniffedMedia.get(1)?.has(base + 'archive.ts'));
+  assert.deepEqual(Array.from(b.sniffedMedia.get(1).keys()), ['master.m3u8', 'index-v1-a1.m3u8', 'archive.ts'].map(file => base + file));
+});
+
 test('event socket authenticates and stays connected for badges when notifications are disabled', async () => {
   const b = backgroundFixture();
   b.local.servers = [{ url: 'http://127.0.0.1:16801', token: 'test token+&', pattern: '*' }];

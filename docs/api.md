@@ -52,6 +52,7 @@ node cli/foxdown.mjs add "https://example.com/file.zip"
 | GET | `/api/v1/health` | `{ok, aria2, aria2Version, stream, ffmpeg, externalStreamEngine}` |
 | GET | `/api/v1/updates` | 查询 GitHub 的最新正式版本，返回 `{version, available, releaseUrl}`。查询失败时返回 502。 |
 | POST | `/api/v1/resolve` | 请求 `{url, headers?: string[]}`；响应见下 |
+| POST | `/api/v1/media/resolve` | 提交 `{url}` 解析 HTTP／HTTPS 页面。返回 `{available, videos: [{url, type, filename?, width, height, size, headers}]}`，按解析顺序列出完整视频候选。`type` 为文件格式或 `HLS`／`DASH`。`size` 单位为字节。未安装 yt-dlp 时 `available` 为 `false`。 |
 | POST | `/api/v1/media/x` | 请求 `{id: "数字帖子 ID"}`。使用本地 yt-dlp 解析公开视频，返回 `{available, videos: Array<Array<{url, bitrate}>>}`。每个子数组包含一个视频的完整 MP4 地址和 HLS 主清单，`bitrate` 单位为 bit/s。解析失败返回 502，解析器繁忙返回 429。 |
 | POST | `/api/v1/tasks` | 创建任务，见下 |
 | GET | `/api/v1/tasks` | 可通过 `status`（`all`、`active`、`waiting`、`stopped`）和 `search`（关键词）筛选，返回 `{tasks: Task[]}`。 |

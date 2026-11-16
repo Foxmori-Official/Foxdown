@@ -37,6 +37,10 @@ function isMediaFragment(url, contentType = '') {
   return /^https:\/\/video\.twimg\.com\//i.test(url) && xMediaFormat(url)?.priority === 0;
 }
 
+function isTransportStream(url, contentType = '') {
+  return /^[^?#]*\.ts(?:[?#]|$)/i.test(url) || /^video\/mp2t(?:;|$)/i.test(contentType);
+}
+
 function mediaKey(url) {
   return xMediaFormat(url)?.key || url;
 }

@@ -13,7 +13,7 @@ Foxdown 的项目代码使用 [MIT 许可证](../LICENSE)。外部引擎、分�
 | [Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer) | 浏览器下载接管、确认对话框、多服务器规则与失败回退 |
 | [Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension) | 浏览器下载转交与请求头透传 |
 | [cat-catch](https://github.com/xifangczy/cat-catch) | 网页媒体发现、深度搜索、过滤、预览与资源列表增量更新 |
-| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | 调用用户自行安装的命令行工具解析 X 公共帖子。浏览器回退参考其公开视频格式识别。 |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | 调用用户自行安装的命令行工具，解析其支持站点的完整视频直链与 HLS／DASH 清单。 |
 | [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) | Windows FFmpeg 和 FFprobe 分发版本 |
 | [ffmpeg-macos-builds](https://github.com/dfloresc/ffmpeg-macos-builds) | macOS LGPL FFmpeg、FFprobe、共享库及源码声明 |
 | [hls.js](https://github.com/video-dev/hls.js) | 扩展媒体预览中的 HLS 播放 |

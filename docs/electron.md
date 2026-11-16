@@ -23,7 +23,9 @@ npm run dev-electron
 
 安装当前版 [yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/Installation) 后重新启动 Foxdown。macOS 可运行 `brew install yt-dlp`，Windows 可运行 `winget install -e --id yt-dlp.yt-dlp`。服务会查找引擎目录和 `PATH` 中的 yt-dlp。在 macOS 上也会查找 Homebrew 的默认目录。开发或容器部署可通过 `FOXDOWN_YTDLP_PATH` 指定可执行文件的绝对路径。
 
-打开 X 的单条帖子，在扩展中点击「查找此帖视频」，然后选择要下载的视频。yt-dlp 解析公开帖子的媒体格式，Foxdown 使用现有下载引擎保存选中的文件或 HLS 流。解析无需网站登录信息。yt-dlp 不可用时，扩展仍可识别播放时的资源，也会尝试查询 X 的公开嵌入接口。
+在视频所在页面打开扩展，点击「解析页面视频」。Foxdown 通过 yt-dlp 解析站点提供的视频格式，同时查找当前页面已有的媒体地址。解析出的完整直链及含音视频的 HLS／DASH 清单可以交给 Foxdown 下载。播放时嗅探发现的资源也会出现在同一列表，最先发现的资源排在最上面，HLS 的 `.ts` 分片会被过滤。
+
+解析范围取决于 yt-dlp 版本和站点可访问性。部分站点需要额外的 JavaScript 运行时，见 [yt-dlp 的 EJS 安装说明](https://github.com/yt-dlp/yt-dlp/wiki/EJS)。没有可用解析结果时仍可使用浏览器自动嗅探。X 的公开帖子还可使用其公开嵌入接口回退。
 
 ## 验证
 

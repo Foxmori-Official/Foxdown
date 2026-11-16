@@ -105,8 +105,8 @@ function shouldAutoDownload(media, cfg, sentSet) {
 // ============================================================
 function scanDeepSearch() {
   try {
-    var MEDIA_RE = /["']((?:https?:)?\/\/[^"'\s<>]+?\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|ts|aac|ogg|webm|mkv|mov|wav|flac)(?:\?[^"'\s<>]*)?)["']/gi;
-    var MEDIA_PATH_RE = /\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|ts|aac|ogg|webm|mkv|mov|wav|flac)(?:[?#]|$)/i;
+    var MEDIA_RE = /["']((?:https?:)?\/\/[^"'\s<>]+?\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|aac|ogg|webm|mkv|mov|wav|flac)(?:\?[^"'\s<>]*)?)["']/gi;
+    var MEDIA_PATH_RE = /\.(?:m3u8|mpd|mp4|m4v|m4a|mp3|flv|aac|ogg|webm|mkv|mov|wav|flac)(?:[?#]|$)/i;
     var found = new Set();
     var remaining = 4000;
     function add(u) {
