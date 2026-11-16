@@ -1,7 +1,7 @@
 // Build-time engine preparation. Desktop installers include the prepared directory.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -23,6 +23,30 @@ const winHashes = {
   ffmpeg: '8883a3dffbd0a16cf4ef95206ea05283f78908dbfb118f73c83f4951dcc06d77',
   ffprobe: 'f309e6223ad89d2fe54bccd420a7709b66fd27540674e92309578ed491a43c8d',
 };
+const ytDlpVersion = '2026.10.26';
+const ytDlpRelease = `https://github.com/yt-dlp/yt-dlp/releases/download/${ytDlpVersion}`;
+const ytDlpSource = `https://raw.githubusercontent.com/yt-dlp/yt-dlp/${ytDlpVersion}`;
+const ytDlpAssets = {
+  darwin: {
+    name: 'yt-dlp_macos.zip',
+    launcher: 'yt-dlp_macos',
+    hash: '20d98fa608998eff87d1d35a6e9fb65e4b874639a6cc89addc19da3becde3ef1',
+  },
+  'win32-x64': {
+    name: 'yt-dlp_win.zip',
+    launcher: 'yt-dlp.exe',
+    hash: 'fd51b212cf8380c7a52ee08c0d6be7f3c59b2f2c832eaf7b45acfae6eab57419',
+  },
+  'win32-arm64': {
+    name: 'yt-dlp_win_arm64.zip',
+    launcher: 'yt-dlp_arm64.exe',
+    hash: '5eaa4c61f3c09189f3a551bf1855c13aad61fb865cc33f06012a6c2dbe287a45',
+  },
+  linux: {
+    name: 'yt-dlp',
+    hash: 'e51e69e89489f199530f13d32a4342da3ddb2cf34842f364603a066db05afbf3',
+  },
+};
 
 function digest(bytes, algorithm = 'sha256', encoding = 'hex') {
   return createHash(algorithm).update(bytes).digest(encoding);
@@ -30,11 +54,16 @@ function digest(bytes, algorithm = 'sha256', encoding = 'hex') {
 
 async function download(url) {
   const request = async source => {
-    const response = await fetch(source, { signal: AbortSignal.timeout(90000) });
+    const response = await fetch(source, {
+      headers: { 'Accept-Encoding': 'identity' },
+      signal: AbortSignal.timeout(90000),
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status} for ${source}`);
     return Buffer.from(await response.arrayBuffer());
   };
-  return request(url).catch(() => request(url + '?retry=' + Date.now()));
+  return request(url).catch(() => request(url + '?retry=' + Date.now())).catch(error => {
+    throw new Error(`Could not download ${url}: ${error.message}`, { cause: error });
+  });
 }
 
 async function verifiedBinary(file, url, sha256, compressed = false) {
@@ -48,16 +77,89 @@ async function verifiedBinary(file, url, sha256, compressed = false) {
   await writeFile(file, compressed ? gunzipSync(bytes) : bytes, { mode: 0o755 });
 }
 
+async function restoreMacPythonLinks(bundle) {
+  const internal = path.join(bundle, '_internal');
+  const framework = path.join(internal, 'Python.framework');
+  const versions = path.join(framework, 'Versions');
+  const version = (await readdir(versions)).find(name => /^\d+\.\d+$/.test(name));
+  if (!version) throw new Error('Python framework version is missing from the macOS yt-dlp archive');
+  await access(path.join(versions, version, 'Python'));
+  await access(path.join(versions, version, 'Resources', 'Info.plist'));
+  // The upstream ZIP stores framework aliases as copies. Restore relative
+  // symlinks so Apple codesign recognizes the versioned framework.
+  for (const [file, target] of [
+    [path.join(versions, 'Current'), version],
+    [path.join(framework, 'Python'), 'Versions/Current/Python'],
+    [path.join(framework, 'Resources'), 'Versions/Current/Resources'],
+    [path.join(internal, 'Python'), 'Python.framework/Python'],
+  ]) {
+    await rm(file, { recursive: true, force: true });
+    await symlink(target, file);
+  }
+}
+
+async function prepareYtDlp(binDir, arch) {
+  const platform = process.platform;
+  const asset = ytDlpAssets[`${platform}-${arch}`] || ytDlpAssets[platform];
+  const dest = path.join(binDir, 'yt-dlp');
+  const temporary = await mkdtemp(path.join(binDir, '.yt-dlp-'));
+  const bundle = path.join(temporary, 'bundle');
+  const archive = path.join(temporary, asset.name);
+  const executable = path.join(bundle, platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+  const url = `${ytDlpRelease}/${asset.name}`;
+  console.log(`Preparing bundled yt-dlp ${ytDlpVersion} for ${platform}/${arch}`);
+  try {
+    await mkdir(bundle);
+    await verifiedBinary(archive, url, asset.hash);
+    if (asset.launcher) {
+      // The expanded PyInstaller distribution retains its Python libraries
+      // beside the executable, avoiding an extraction on each launch.
+      execFileSync('tar', ['-xf', archive, '-C', bundle], { stdio: 'pipe' });
+      const launcher = path.join(bundle, asset.launcher);
+      if (launcher !== executable) await rename(launcher, executable);
+      await access(path.join(bundle, '_internal', 'THIRD_PARTY_LICENSES.txt'));
+      if (platform === 'darwin') await restoreMacPythonLinks(bundle);
+    } else {
+      await rename(archive, executable);
+      await writeFile(path.join(bundle, 'THIRD_PARTY_LICENSES.txt'), await download(ytDlpSource + '/THIRD_PARTY_LICENSES.txt'));
+    }
+    await chmod(executable, 0o755);
+    await writeFile(path.join(bundle, 'LICENSE'), await download(ytDlpSource + '/LICENSE'));
+    await writeFile(path.join(bundle, 'SOURCE.txt'), [
+      `yt-dlp ${ytDlpVersion}`,
+      `Distribution: ${url}`,
+      `Archive SHA-256: ${asset.hash}`,
+      `Source: ${ytDlpRelease}/yt-dlp.tar.gz`,
+      `Build and dependency sources: https://github.com/yt-dlp/yt-dlp/tree/${ytDlpVersion}`,
+      `Dependency licenses and sources: ${asset.launcher ? '_internal/' : ''}THIRD_PARTY_LICENSES.txt`,
+      '',
+    ].join('\n'));
+    await rm(dest, { recursive: true, force: true });
+    await rename(bundle, dest);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+}
+
 export async function missingEngines(binDir) {
   const suffix = process.platform === 'win32' ? '.exe' : '';
   const mediaDir = process.platform === 'darwin' ? path.join(binDir, 'media/bin') : binDir;
-  const files = [path.join(binDir, 'aria2c' + suffix), ...['ffmpeg', 'ffprobe'].map(name => path.join(mediaDir, name + suffix))];
+  const files = [
+    path.join(binDir, 'aria2c' + suffix),
+    ...['ffmpeg', 'ffprobe'].map(name => path.join(mediaDir, name + suffix)),
+    path.join(binDir, 'yt-dlp', 'yt-dlp' + suffix),
+  ];
   const exists = await Promise.all(files.map(file => access(file, constants.X_OK).then(() => true, () => false)));
   return files.filter((_, index) => !exists[index]);
 }
 
 async function prepare(binDir, arch) {
   const platform = process.platform;
+  if (platform === 'linux') {
+    await mkdir(binDir, { recursive: true });
+    await prepareYtDlp(binDir, arch);
+    return;
+  }
   const engineArch = platform === 'win32' && arch === 'arm64' ? 'x64' : arch;
   const target = `${platform}-${engineArch}`;
   const aria2Hash = aria2Hashes[target];
@@ -106,15 +208,16 @@ async function prepare(binDir, arch) {
   }
   for (const [name, url] of notices) await writeFile(path.join(licenses, name), await download(url));
   await cp(new URL('../docs/third-party.md', import.meta.url), path.join(licenses, 'THIRD-PARTY.md'));
+  await prepareYtDlp(binDir, arch);
   await writeFile(path.join(binDir, 'target.json'), JSON.stringify({
     platform, arch, engineArch, aria2Source: motrix, macFFmpeg: platform === 'darwin' ? '9.0.1-1 LGPL' : null,
-    winFFmpeg: platform === 'win32' ? 'ffmpeg-static b6.1.1' : null,
+    winFFmpeg: platform === 'win32' ? 'ffmpeg-static b6.1.1' : null, ytDlp: ytDlpVersion,
   }, null, 2) + '\n');
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
   const arch = process.argv.find(arg => arg.startsWith('--arch='))?.slice(7) || process.arch;
-  const folder = (process.platform === 'darwin' ? 'mac' : 'win') + '-' + arch;
+  const folder = ({ darwin: 'mac', win32: 'win', linux: 'linux' }[process.platform] || process.platform) + '-' + arch;
   const dir = process.env.FOXDOWN_BIN_DIR || fileURLToPath(new URL('../bin/' + folder + '/', import.meta.url));
   prepare(dir, arch).then(() => console.log(`Bundled engines ready in ${dir}`)).catch(error => {
     console.error(error.message);

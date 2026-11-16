@@ -1,14 +1,12 @@
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, stat } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { BIN_DIR, FFMPEG_BIN, hasFfmpeg } from '../config.js';
+import { YTDLP_BIN, FFMPEG_BIN, hasFfmpeg } from '../config.js';
 import { sanitizeFilename } from '../util/helpers.js';
 
 const run = promisify(execFile);
-const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
 const active = new Map();
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mkv', 'mov', 'm4v', 'avi', 'flv', 'ogv', 'wmv', 'mpeg', 'mpg', 'ts']);
 
@@ -23,20 +21,13 @@ export function normalizeVideoUrl(value) {
 }
 
 async function findYtDlp() {
-  const override = process.env.FOXDOWN_YTDLP_PATH;
-  const directories = (process.env.PATH || '').split(path.delimiter).filter(dir => path.isAbsolute(dir));
-  if (process.platform === 'darwin') directories.push('/opt/homebrew/bin', '/usr/local/bin');
-  if (process.platform !== 'win32') directories.push(path.join(os.homedir(), '.local', 'bin'));
-  const paths = [path.join(BIN_DIR, binaryName), ...directories.map(dir => path.join(dir, binaryName))];
-  for (const file of override ? [override] : new Set(paths)) {
-    if (!path.isAbsolute(file)) continue;
-    try {
-      if (!(await stat(file)).isFile()) continue;
-      await access(file, constants.X_OK);
-      return file;
-    } catch {}
-  }
-  return null;
+  const file = process.env.FOXDOWN_YTDLP_PATH || YTDLP_BIN;
+  if (!path.isAbsolute(file)) return null;
+  try {
+    if (!(await stat(file)).isFile()) return null;
+    await access(file, constants.X_OK);
+    return file;
+  } catch { return null; }
 }
 
 function legacyXFormats(info) {
@@ -130,9 +121,10 @@ async function extractVideos(url, legacyX) {
   const executable = await findYtDlp();
   if (!executable) return { available: false, videos: [] };
   const ffmpeg = hasFfmpeg() ? ['--ffmpeg-location', path.dirname(FFMPEG_BIN)] : [];
-  const extractor = legacyX ? ['--use-extractors', 'Twitter', '--no-js-runtimes'] : ['--js-runtimes', 'node'];
+  // In the desktop service ELECTRON_RUN_AS_NODE is inherited by the resolver.
+  const extractor = legacyX ? ['--use-extractors', 'Twitter'] : ['--js-runtimes', `node:${process.execPath}`];
   const { stdout } = await run(executable, [
-    '--ignore-config', '--no-plugin-dirs', '--no-cache-dir', '--no-remote-components', ...extractor,
+    '--ignore-config', '--no-plugin-dirs', '--no-cache-dir', '--no-remote-components', '--no-js-runtimes', ...extractor,
     '--extractor-args', 'twitter:api=syndication', '--no-playlist', '--playlist-end', '8',
     '--socket-timeout', '6', '--retries', '0', '--extractor-retries', '0',
     '--no-check-formats', '--no-warnings', '--dump-single-json', '--skip-download', ...ffmpeg,

@@ -522,8 +522,8 @@
   "mediaNoVideoFound": {
     "message": "No downloadable video was found. Try playing the video to discover its resources."
   },
-  "mediaInstallResolver": {
-    "message": "Install yt-dlp and restart Foxdown to resolve this page. You can also play the video to discover its resources."
+  "mediaResolverUnavailable": {
+    "message": "The Foxdown video resolver is unavailable. Check that Foxdown is up to date, or play the video to discover its resources."
   },
   "mediaSearching": {
     "message": "Searching…"

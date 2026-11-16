@@ -9,7 +9,8 @@ export const APP_VERSION = JSON.parse(fs.readFileSync(new URL('../package.json',
 export const ROOT = path.resolve(__dirname, '..', '..');
 // Docker/headless overrides: all paths & listen settings can come from env.
 // Defaults are unchanged (desktop layout under the repo root).
-const platformBin = path.join(ROOT, 'bin', (process.platform === 'darwin' ? 'mac' : 'win') + '-' + process.arch);
+const platformFolder = { darwin: 'mac', win32: 'win', linux: 'linux' }[process.platform] || process.platform;
+const platformBin = path.join(ROOT, 'bin', platformFolder + '-' + process.arch);
 export const BIN_DIR = path.resolve(process.env.FOXDOWN_BIN_DIR
   || (fs.existsSync(platformBin) ? platformBin : path.join(ROOT, 'bin')));
 export const DATA_DIR = process.env.DATA_DIR
@@ -26,6 +27,7 @@ const MEDIA_DIR = process.platform === 'darwin' && fs.existsSync(path.join(BIN_D
   ? path.join(BIN_DIR, 'media/bin') : BIN_DIR;
 export const FFMPEG_BIN = path.join(MEDIA_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 export const FFPROBE_BIN = path.join(MEDIA_DIR, process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe');
+export const YTDLP_BIN = path.join(BIN_DIR, 'yt-dlp', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
 // Optional external stream engine (drop N_m3u8DL-RE.exe into bin/ to enable full MSS/DRM support)
 export const NM3U8_BIN = path.join(BIN_DIR, process.platform === 'win32' ? 'N_m3u8DL-RE.exe' : 'N_m3u8DL-RE');
 

@@ -49,7 +49,9 @@ try {
     ? path.join(root, 'dist-electron', packagedDirectory, process.platform === 'darwin'
       ? 'Foxdown.app/Contents/MacOS/Foxdown' : 'Foxdown.exe') : undefined);
   const env = { ...process.env, FOXDOWN_PORT: String(port), DATA_DIR: data, DOWNLOAD_DIR: downloads, API_TOKEN: token };
-  if (!packaged) env.FOXDOWN_BIN_DIR = engineDir;
+  if (packaged) delete env.FOXDOWN_BIN_DIR;
+  else env.FOXDOWN_BIN_DIR = engineDir;
+  delete env.FOXDOWN_YTDLP_PATH;
   desktop = await playwright._electron.launch({
     executablePath: packaged || require('electron'),
     args: [...(packaged ? [] : [root]), '--user-data-dir=' + path.join(temp, 'desktop-profile')],
@@ -70,6 +72,7 @@ try {
     ? path.join(path.dirname(path.dirname(packaged)), 'Resources/runtime/bin')
     : path.join(path.dirname(packaged), 'resources/runtime/bin')) : engineDir;
   await fs.access(path.join(packageBin, process.platform === 'darwin' ? 'media/bin/ffprobe' : 'ffprobe.exe'));
+  await fs.access(path.join(packageBin, 'yt-dlp', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'));
   const settingsButton = app.getByRole('button', { name: 'Settings', exact: true });
   const navigation = app.locator('.side-nav nav');
   const guideLink = navigation.getByRole('link', { name: 'Browser extension setup', exact: true });
@@ -385,6 +388,12 @@ try {
       if (request.headers.referer !== mediaOrigin + '/watch') return response.writeHead(403).end();
       response.writeHead(200, { 'Content-Type': 'video/webm', 'Content-Length': mediaBytes.length });
       response.end(mediaBytes);
+    } else if (pathname === '/video-page') {
+      response.setHeader('Content-Type', 'text/html');
+      response.end('<!doctype html><title>Resolver fixture</title><video src="/video.webm"></video>');
+    } else if (pathname === '/video.webm') {
+      response.writeHead(200, { 'Content-Type': 'video/webm', 'Content-Length': mediaBytes.length });
+      response.end(mediaBytes);
     } else if (pathname === '/slow.bin') {
       const range = request.headers.range?.match(/^bytes=(\d+)-(\d*)$/);
       let offset = range ? Number(range[1]) : 0;
@@ -410,6 +419,19 @@ try {
   mediaFixture.listen(0, '127.0.0.1');
   await once(mediaFixture, 'listening');
   mediaOrigin = 'http://127.0.0.1:' + mediaFixture.address().port;
+  const resolved = await fetch(origin + '/api/v1/media/resolve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ url: mediaOrigin + '/video-page' }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const resolvedMedia = await resolved.json();
+  assert.equal(resolved.status, 200, JSON.stringify(resolvedMedia));
+  assert.equal(resolvedMedia.available, true);
+  assert.deepEqual(resolvedMedia.videos.map(({ url, type }) => ({ url, type })), [
+    { url: mediaOrigin + '/video.webm', type: 'WEBM' },
+  ]);
+  console.log('Bundled yt-dlp resolved an HTML video page through the desktop API.');
   const watch = await browser.newPage();
   await watch.goto(mediaOrigin + '/watch');
   await watch.evaluate(origin => window.postMessage({

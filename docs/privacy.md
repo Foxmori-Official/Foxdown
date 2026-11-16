@@ -30,7 +30,7 @@ Foxdown 扩展用于发现网页资源，并将浏览器下载交给你配置的
 
 媒体预览会从资源所在站点读取媒体，临时请求规则可能为播放器附加捕获到的 Referer，关闭预览后移除。点击“检查更新”时，扩展向 GitHub 请求公开 Release 信息，不附加 Foxdown API Token、下载地址或页面历史；GitHub 会接收正常网络连接信息，例如 IP 地址。主动打开项目、帮助或下载链接时，浏览器按通常方式访问对应网站。
 
-点击“解析页面视频”时，扩展会把当前网页地址发送给你配置的 Foxdown 服务。服务可以调用你安装的 yt-dlp 请求所在网站的媒体信息。X 帖子无法解析时，扩展还可以向 X 的公开嵌入接口提交帖子 ID 以取得媒体地址。此解析流程不发送浏览器的网站 Cookie 或登录凭据。自动发现媒体不会启动 yt-dlp。
+点击“解析页面视频”时，扩展会把当前网页地址发送给你配置的 Foxdown 服务。服务通过内置的 yt-dlp 请求所在网站的媒体信息。X 帖子无法解析时，扩展还可以向 X 的公开嵌入接口提交帖子 ID 以取得媒体地址。此解析流程不发送浏览器的网站 Cookie 或登录凭据。自动发现媒体不会启动 yt-dlp。
 
 Foxmori 不运营用于接收扩展浏览记录、下载记录或认证信息的收集服务器。若你配置远程 Foxdown 服务，这些下载信息会离开本机；请选择可信服务，并使用 HTTPS 和 API Token。
 
@@ -66,7 +66,7 @@ Download details and necessary request headers are sent to your configured servi
 
 Media preview requests media from its hosting site. Temporary rules may attach the captured Referer and are removed when preview closes. Choosing Check for updates requests public release information from GitHub without attaching a Foxdown token, download URLs or browsing history. GitHub receives normal network metadata such as your IP address. Opening project, help or download links visits the linked websites normally.
 
-Selecting “Resolve page videos” sends the current page URL to your configured Foxdown service. The service can use your installed yt-dlp to request media information from the site's servers. For an X post that the service cannot resolve, the extension may send its post ID to X's public embed endpoint to get media URLs. The lookup does not send browser website cookies or sign-in credentials. Automatic media discovery does not start yt-dlp.
+Selecting “Resolve page videos” sends the current page URL to your configured Foxdown service. The service uses its bundled yt-dlp to request media information from the site's servers. For an X post that the service cannot resolve, the extension may send its post ID to X's public embed endpoint to get media URLs. The lookup does not send browser website cookies or sign-in credentials. Automatic media discovery does not start yt-dlp.
 
 Foxmori does not operate a server collecting extension browsing history, download history or authentication information. Configuring a remote service sends download information off-device; choose a trusted service and use HTTPS and an API token.
 

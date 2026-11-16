@@ -13,7 +13,7 @@ Foxdown 的项目代码使用 [MIT 许可证](../LICENSE)。外部引擎、分�
 | [Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer) | 浏览器下载接管、确认对话框、多服务器规则与失败回退 |
 | [Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension) | 浏览器下载转交与请求头透传 |
 | [cat-catch](https://github.com/xifangczy/cat-catch) | 网页媒体发现、深度搜索、过滤、预览与资源列表增量更新 |
-| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | 调用用户自行安装的命令行工具，解析其支持站点的完整视频直链与 HLS／DASH 清单。 |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | 内置网页视频解析器，查找完整视频直链与 HLS／DASH 清单。 |
 | [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) | Windows FFmpeg 和 FFprobe 分发版本 |
 | [ffmpeg-macos-builds](https://github.com/dfloresc/ffmpeg-macos-builds) | macOS LGPL FFmpeg、FFprobe、共享库及源码声明 |
 | [hls.js](https://github.com/video-dev/hls.js) | 扩展媒体预览中的 HLS 播放 |
@@ -25,6 +25,7 @@ Foxdown 的项目代码使用 [MIT 许可证](../LICENSE)。外部引擎、分�
 - **aria2** 作为独立可执行文件随安装包分发。构建时从[固定提交的 Motrix 目录](https://github.com/agalwood/Motrix/tree/a0a1fe90f7e9f6d305ed2b512f62c8d36c2fb95a/extra)获取对应平台的二进制，并校验 SHA-256。许可与源码见 [aria2 仓库](https://github.com/aria2/aria2)。
 - **Windows FFmpeg 与 FFprobe** 来自 [ffmpeg-static b6.1.1](https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1)，对应平台的许可和源码说明包含在引擎目录中。
 - **macOS FFmpeg 与 FFprobe** 来自 [ffmpeg-macos-builds 9.0.1-1 的 LGPL 版本](https://github.com/dfloresc/ffmpeg-macos-builds/releases/tag/v9.0.1-1)。安装包包含共享库，组件声明、构建配置与源码校验值位于 `media/LICENSES` 和 `media/BUILDINFO.txt`。[对应源码归档](https://github.com/dfloresc/ffmpeg-macos-builds/releases/tag/v9.0.1-1) · [FFmpeg 许可说明](https://ffmpeg.org/legal.html)
+- **yt-dlp** 使用 [2026.10.26 官方发行版](https://github.com/yt-dlp/yt-dlp/releases/tag/2026.10.26)，构建时校验 SHA-256。桌面安装包使用对应架构的 PyInstaller 发行包，其组合分发遵循 GPLv3+。Docker 镜像使用官方 Unix 可执行包，包含 Unlicense、ISC 和 MIT 许可的代码。许可证和组件源码来源随解析器分发。[上游许可说明](https://github.com/yt-dlp/yt-dlp/blob/2026.10.26/README.md#licensing) · [源码归档](https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp.tar.gz) · [组件许可与源码](https://github.com/yt-dlp/yt-dlp/blob/2026.10.26/THIRD_PARTY_LICENSES.txt)
 - **N_m3u8DL-RE** 是可选的外部流媒体引擎，由用户自行安装。[项目仓库](https://github.com/nilaoda/N_m3u8DL-RE)
 - **hls.js** 随浏览器扩展分发，用于 HLS 媒体预览，许可保存在 [extension/vendor/hls.LICENSE](../extension/vendor/hls.LICENSE)。[项目源码](https://github.com/video-dev/hls.js)
 - **@silentbot1/nat-api** 用于 UPnP/NAT-PMP 端口映射，采用支持 Promise 的维护分支，以替换旧 `nat-api` 的过时依赖链。遵循其 MIT 许可证。[项目源码](https://github.com/silentbot1/nat-api)

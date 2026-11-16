@@ -82,6 +82,6 @@ npm run dev-electron
 
 Foxdown 的项目代码使用 [MIT 许可证](LICENSE)。感谢 [aria2](https://github.com/aria2/aria2)、[Motrix](https://github.com/agalwood/Motrix)、[N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE)、[Gopeed](https://github.com/GopeedLab/gopeed)、[Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer)、[Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension)、[猫抓](https://github.com/xifangczy/cat-catch)和 [yt-dlp](https://github.com/yt-dlp/yt-dlp) 的作者与贡献者。
 
-网页视频解析可调用用户自行安装的 yt-dlp，查找完整的视频直链与 HLS／DASH 清单。解析范围见 [yt-dlp 支持的站点](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)。
+Foxdown 内置 yt-dlp，用于查找网页中的完整视频直链与 HLS／DASH 清单。解析范围见 [yt-dlp 支持的站点](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)。
 
 外部引擎、分发包和第三方代码遵循各自的许可证。具体采用内容、参考方向与分发来源见[第三方归属与参考记录](docs/third-party.md)。

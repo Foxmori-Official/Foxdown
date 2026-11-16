@@ -74,6 +74,8 @@ More: [CLI, API, and MCP](api.md) · [Docker deployment](docker.md) · [Function
 
 ## Acknowledgements and license
 
-Foxdown’s project code uses the [MIT license](../LICENSE). Thanks to the authors and contributors of [aria2](https://github.com/aria2/aria2), [Motrix](https://github.com/agalwood/Motrix), [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE), [Gopeed](https://github.com/GopeedLab/gopeed), [Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer), [Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension), and [cat-catch](https://github.com/xifangczy/cat-catch).
+Foxdown’s project code uses the [MIT license](../LICENSE). Thanks to the authors and contributors of [aria2](https://github.com/aria2/aria2), [Motrix](https://github.com/agalwood/Motrix), [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE), [Gopeed](https://github.com/GopeedLab/gopeed), [Aria2-Explorer](https://github.com/alexhua/Aria2-Explorer), [Gopeed Browser Extension](https://github.com/GopeedLab/browser-extension), [cat-catch](https://github.com/xifangczy/cat-catch), and [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+
+Foxdown bundles yt-dlp to find complete video URLs and HLS or DASH manifests. See the [yt-dlp list of supported sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
 
 External engines, binary distributions, and third-party code retain their own licenses. See the [third-party credits and reference notes](third-party.md) for specific uses, design references, and distribution sources.

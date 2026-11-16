@@ -364,7 +364,7 @@ $('deepSearch').addEventListener('click', async () => {
     const search = await chrome.runtime.sendMessage({ type: 'resolvePageMedia', tabId: tab.id });
     if (generation !== mediaSearchGeneration) return;
     if (!search?.found) {
-      setText($('deepSearchStatus'), i18n(search?.available === false ? 'mediaInstallResolver' : 'mediaNoVideoFound'));
+      setText($('deepSearchStatus'), i18n(search?.available === false ? 'mediaResolverUnavailable' : 'mediaNoVideoFound'));
     }
   } catch {
     if (generation === mediaSearchGeneration) setText($('deepSearchStatus'), i18n('mediaSearchFailed'));

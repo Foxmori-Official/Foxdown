@@ -176,6 +176,7 @@ jobs:
         run: |
           docker run -d --name foxdown-ci --read-only --tmpfs /tmp --tmpfs /data:uid=1000,gid=1000 --tmpfs /downloads:uid=1000,gid=1000 -p 127.0.0.1:16801:16801 -e API_TOKEN=headless-ci-fixture foxdown:ci
           test "$(docker exec foxdown-ci id -u)" = '1000'
+          docker exec foxdown-ci /usr/bin/yt-dlp/yt-dlp --version
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import { setTimeout as delay } from 'node:timers/promises';

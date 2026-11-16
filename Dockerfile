@@ -15,11 +15,13 @@ FROM node:22-alpine AS deps
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
+COPY tools/download-engines.mjs /app/tools/download-engines.mjs
+RUN FOXDOWN_BIN_DIR=/opt/foxdown-bin node /app/tools/download-engines.mjs
 
 FROM node:22-alpine
 
-# Linux builds of the download/stream engines (Alpine official repos)
-RUN apk add --no-cache aria2 ffmpeg \
+# aria2 and FFmpeg use Alpine packages. Python runs the bundled yt-dlp zipapp.
+RUN apk add --no-cache aria2 ffmpeg python3 \
  && deluser node \
  && (delgroup node 2>/dev/null || true) \
  && addgroup -g 1000 foxdown \
@@ -36,6 +38,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 COPY --from=deps /app/server/node_modules ./server/node_modules
+COPY --from=deps /opt/foxdown-bin/yt-dlp /usr/bin/yt-dlp/
 COPY server/package.json ./server/package.json
 COPY server/src ./server/src
 COPY extension/release-updates.mjs ./extension/

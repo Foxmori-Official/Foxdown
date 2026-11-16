@@ -19,13 +19,13 @@ npm run dev-electron
 
 图标统一源文件为 `extension/icons/icon-source.png`，执行 `npm run assets` 生成桌面、Web 和扩展尺寸。macOS 使用专用不透明背景图标，其他平台使用透明版本。
 
-## 可选的 yt-dlp 解析器
+## 内置的 yt-dlp 解析器
 
-安装当前版 [yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/Installation) 后重新启动 Foxdown。macOS 可运行 `brew install yt-dlp`，Windows 可运行 `winget install -e --id yt-dlp.yt-dlp`。服务会查找引擎目录和 `PATH` 中的 yt-dlp。在 macOS 上也会查找 Homebrew 的默认目录。开发或容器部署可通过 `FOXDOWN_YTDLP_PATH` 指定可执行文件的绝对路径。
+macOS 和 Windows 安装包内置 [yt-dlp](https://github.com/yt-dlp/yt-dlp) 及其 Python 运行环境。需要 JavaScript 的解析会使用 Foxdown 已有的 Node 运行时。解析器随 Foxdown 一起更新。
 
 在视频所在页面打开扩展，点击「解析页面视频」。Foxdown 通过 yt-dlp 解析站点提供的视频格式，同时查找当前页面已有的媒体地址。解析出的完整直链及含音视频的 HLS／DASH 清单可以交给 Foxdown 下载。播放时嗅探发现的资源也会出现在同一列表，最先发现的资源排在最上面，HLS 的 `.ts` 分片会被过滤。
 
-解析范围取决于 yt-dlp 版本和站点可访问性。部分站点需要额外的 JavaScript 运行时，见 [yt-dlp 的 EJS 安装说明](https://github.com/yt-dlp/yt-dlp/wiki/EJS)。没有可用解析结果时仍可使用浏览器自动嗅探。X 的公开帖子还可使用其公开嵌入接口回退。
+解析范围取决于 yt-dlp 版本、站点可访问性和视频格式。也可播放视频，在扩展中查看自动发现的资源。[yt-dlp 支持的站点](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
 
 ## 验证
 
@@ -37,7 +37,7 @@ npm run dev-electron
 | `npm run test:web-build` | 验证网页生产构建、按需加载与资源大小 |
 | `npm run test:desktop-engine` | 验证 HTTP/HLS 重名下载、AES-128、DASH 双轨与纯音频输出 |
 | `npm run test:backend-performance` | 用 500 条历史任务和 16 个并发客户端测量接口延迟、事件循环和内存 |
-| `npm run test:desktop-extension` | 验证桌面启动、设置导航和真实浏览器下载接管 |
+| `npm run test:desktop-extension` | 验证桌面启动、内置网页视频解析、设置导航和真实浏览器下载接管 |
 | `npm run test:desktop-multiconnection` | 实际下载大文件，校验并发连接、分段、暂停恢复及 SHA-256 |
 | `npm run pack:extension` | 生成浏览器扩展 ZIP |
 
@@ -65,7 +65,7 @@ npm run pack -- --win --x64
 npm run pack -- --win --arm64
 ```
 
-在对应系统执行命令，产物位于 `dist-electron/`。Windows ARM64 的 Electron 进程为 ARM64，下载引擎通过 Windows 11 的 x64 模拟层运行。macOS 安装包支持 macOS 13 或更新版本，需要配置发布者签名和公证才能获得正式分发体验。当前构建使用临时签名，Windows 构建未做发布者签名。
+在对应系统执行命令，产物位于 `dist-electron/`。Windows ARM64 内置原生 ARM64 的 Electron 和 yt-dlp，aria2 和 FFmpeg 通过 Windows 11 的 x64 模拟层运行。macOS 安装包支持 macOS 13 或更新版本，需要配置发布者签名和公证才能获得正式分发体验。当前构建使用临时签名，Windows 构建未做发布者签名。
 
 首次打开时，如 macOS 提示无法验证开发者，确认安装包来源后，可在「系统设置 → 隐私与安全性」中对 Foxdown 选择「仍要打开」。操作步骤见 [Apple 支持](https://support.apple.com/en-euro/guide/mac-help/mh40617/27/mac/27)。
 

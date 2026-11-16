@@ -1,7 +1,7 @@
 # Docker 无头部署
 
 Foxdown 支持以非 root 容器方式运行在 NAS / 服务器上。镜像基于 `node:22-alpine`，
-内置 Linux 版 aria2 与 ffmpeg（Alpine 官方源），容器内以非 root 用户 `foxdown`（uid 1000）运行，
+内置 Linux 版 aria2 与 FFmpeg（Alpine 官方源）、yt-dlp 和运行它所需的 Python。容器内以非 root 用户 `foxdown`（uid 1000）运行，
 根文件系统只读，仅 `/data` 与 `/downloads` 两个卷可写。
 
 Docker 多阶段构建会从源码生成当前图标和网页，宿主机无需安装 Node.js 或预先生成 `web/dist`。

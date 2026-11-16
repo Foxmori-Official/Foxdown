@@ -17,7 +17,8 @@ extension/*
 extension/icons/*
 !extension/icons/icon-source.png
 test
-tools
+tools/*
+!tools/download-engines.mjs
 docs
 dist-electron
 Foxdown-extension.zip
