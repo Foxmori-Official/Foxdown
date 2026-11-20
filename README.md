@@ -3,6 +3,7 @@
   <h1>Foxdown</h1>
   <p>面向 macOS 和 Windows 的下载管理器，支持浏览器下载接管与网页资源发现</p>
   <p><a href="https://github.com/Foxmori-Official/Foxdown/releases/latest">下载安装包</a> · <a href="#快速安装">安装步骤</a> · <a href="docs/README.en.md">English</a></p>
+  <p><a href="https://chromewebstore.google.com/detail/foxdown/jffihmlfgebdkpfmgfeccgbpfpdphmej"><img src="docs/assets/chrome-web-store-badge.png" alt="在 Chrome 应用商店安装 Foxdown" width="170" height="48"></a></p>
 </div>
 
 ## 快速安装
@@ -28,10 +29,9 @@
 
 ### 浏览器扩展
 
-1. 保持 Foxdown 桌面版运行，从同一版本的发布附件下载并解压 `Foxdown-extension.zip`。
-2. 打开 Chrome 的 `chrome://extensions` 或 Edge 的 `edge://extensions`，开启「开发者模式」，点击「加载已解压的扩展程序」，选择包含 `manifest.json` 的文件夹。
-3. 按引导测试 `http://127.0.0.1:16801`。如果桌面版设置了 Web API Token，请填写同一个令牌。
-4. 将扩展固定到工具栏，打开引导中的演示页测试下载接管。在 Foxdown 的任务列表中确认结果。
+1. 在 [Chrome 应用商店](https://chromewebstore.google.com/detail/foxdown/jffihmlfgebdkpfmgfeccgbpfpdphmej)安装 Foxdown 扩展。手动安装时，从同一版本的发布附件下载并解压 `Foxdown-extension.zip`，打开 Chrome 的 `chrome://extensions` 或 Edge 的 `edge://extensions`，开启「开发者模式」，点击「加载已解压的扩展程序」，选择包含 `manifest.json` 的文件夹。
+2. 保持 Foxdown 桌面版运行，按引导测试 `http://127.0.0.1:16801`。如果桌面版设置了 Web API Token，请填写同一个令牌。
+3. 将扩展固定到工具栏，打开引导中的演示页测试下载接管。在 Foxdown 的任务列表中确认结果。
 
 扩展更新后，刷新已打开的网页。此 README 介绍当前源码，下载包的功能以对应的[发布说明](https://github.com/Foxmori-Official/Foxdown/releases)为准。
 

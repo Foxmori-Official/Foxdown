@@ -3,6 +3,7 @@
   <h1>Foxdown</h1>
   <p>A download manager for macOS and Windows, with browser download capture and page resource discovery</p>
   <p><a href="https://github.com/Foxmori-Official/Foxdown/releases/latest">Download</a> · <a href="#quick-install">Installation</a> · <a href="../README.md">简体中文</a></p>
+  <p><a href="https://chromewebstore.google.com/detail/foxdown/jffihmlfgebdkpfmgfeccgbpfpdphmej"><img src="assets/chrome-web-store-badge.png" alt="Install Foxdown from the Chrome Web Store" width="170" height="48"></a></p>
 </div>
 
 ## Quick install
@@ -24,10 +25,9 @@ Installers bundle aria2, FFmpeg, and FFprobe. No engine download or Node.js inst
 
 ### Browser extension
 
-1. Keep the desktop app running. Download `Foxdown-extension.zip` from the same release and extract it.
-2. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the folder containing `manifest.json`.
-3. Follow the setup guide to test `http://127.0.0.1:16801`. If you configured a Web API token in Foxdown, enter the same token.
-4. Pin the extension and test a download on the guide’s demo page. Confirm the task appears in Foxdown.
+1. Install Foxdown from the [Chrome Web Store](https://chromewebstore.google.com/detail/foxdown/jffihmlfgebdkpfmgfeccgbpfpdphmej). To install manually, download and extract `Foxdown-extension.zip` from the same release. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the folder containing `manifest.json`.
+2. Keep the desktop app running and follow the setup guide to test `http://127.0.0.1:16801`. If you configured a Web API token in Foxdown, enter the same token.
+3. Pin the extension and test a download on the guide’s demo page. Confirm the task appears in Foxdown.
 
 Refresh open pages after updating the extension. This README describes the current source; see the corresponding [release notes](https://github.com/Foxmori-Official/Foxdown/releases) for features in a downloaded build.
 
